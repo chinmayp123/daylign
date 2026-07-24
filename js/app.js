@@ -415,6 +415,7 @@ function render() {
   if (typeof renderCardio === 'function') renderCardio();
   if (typeof renderTraining === 'function') renderTraining();
   if (typeof renderSleep === 'function') renderSleep();
+  if (typeof renderTodayPlan === 'function') renderTodayPlan();
   if (typeof renderSettingsPrefs === 'function') renderSettingsPrefs();
   renderDiet();
   populateCategoryDropdowns();
