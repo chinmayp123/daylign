@@ -7236,3 +7236,91 @@ body.onboard-open { overflow: hidden; }
 @media (max-width: 640px) {
   .cardio-week-tiles { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ========== Log Food bottom sheet (mobile) ========== */
+.logfood-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-end;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.logfood-sheet-overlay[hidden] { display: none; }
+.logfood-sheet-overlay.open { opacity: 1; }
+
+.logfood-sheet {
+  width: 100%;
+  max-height: 88vh;
+  background: var(--bg-primary);
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 0.24s cubic-bezier(0.32, 0.72, 0, 1);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.logfood-sheet-overlay.open .logfood-sheet { transform: translateY(0); }
+
+.logfood-sheet-handle {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  margin: 10px auto 4px;
+  flex-shrink: 0;
+}
+.logfood-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 18px 10px;
+  flex-shrink: 0;
+}
+.logfood-sheet-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.logfood-sheet-close {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.logfood-sheet-close:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+/* The lifted card fills the sheet and scrolls internally if tall */
+.logfood-sheet-body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 16px 20px;
+}
+/* Inside the sheet the card is already the panel — drop its own chrome */
+.logfood-sheet-body .diet-log-card {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+/* The card's own "Log Food" heading is redundant with the sheet title */
+.logfood-sheet-body .diet-log-card > h2 { display: none; }
+
+/* Lock the page behind the sheet from scrolling */
+body.logfood-sheet-lock { overflow: hidden; }
+
+/* Desktop keeps the always-visible rail — the sheet never applies there */
+@media (min-width: 901px) {
+  .logfood-sheet-overlay { display: none !important; }
+}

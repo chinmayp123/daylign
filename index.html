@@ -785,6 +785,19 @@
     </button>
   </nav>
 
+  <!-- Log Food bottom sheet (mobile): the Log Food card is lifted into here so
+       you can add food without scrolling past the whole day. See js/diet-sheet.js -->
+  <div class="logfood-sheet-overlay" id="logFoodSheet" hidden>
+    <div class="logfood-sheet">
+      <div class="logfood-sheet-handle"></div>
+      <div class="logfood-sheet-head">
+        <span class="logfood-sheet-title">Log Food</span>
+        <button type="button" class="logfood-sheet-close" id="logFoodSheetClose" aria-label="Close">&times;</button>
+      </div>
+      <div class="logfood-sheet-body" id="logFoodSheetBody"></div>
+    </div>
+  </div>
+
   <!-- Mobile "More" sheet: the views the bottom bar can't fit + appearance -->
   <div class="more-sheet-overlay" id="moreSheet">
     <div class="more-sheet">
@@ -1093,6 +1106,7 @@
   <script src="js/training.js"></script>
   <script src="js/sleep.js"></script>
   <script src="js/today.js"></script>
+  <script src="js/diet-sheet.js"></script>
   <script src="js/preferences.js"></script>
   <script src="js/diet.js"></script>
   <script src="js/food-photo.js"></script>

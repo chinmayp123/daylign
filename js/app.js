@@ -149,6 +149,7 @@ function bindEvents() {
   if (typeof bindPreferencesEvents === 'function') bindPreferencesEvents();
   bindDietEvents();
   bindGoalsEvents();
+  if (typeof bindLogFoodSheet === 'function') bindLogFoodSheet();
   if (typeof bindPhotoEvents === 'function') bindPhotoEvents();
   if (typeof bindVoiceEvents === 'function') bindVoiceEvents();
 
@@ -204,6 +205,13 @@ function headerPrimaryAction() {
     const el = $(cardio ? '#cardioDistance' : '#weightInput');
     if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
   } else if (currentView === 'diet') {
+    // On a phone, open the Log Food sheet so you never scroll to the bottom of
+    // the day to add a food. On desktop the form is already in a visible rail —
+    // just focus it.
+    if (typeof logFoodSheetApplies === 'function' && logFoodSheetApplies()
+        && typeof openLogFoodSheet === 'function' && openLogFoodSheet()) {
+      return;
+    }
     const el = $('#dietFoodName');
     if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
   } else {
@@ -335,6 +343,10 @@ function updateHeaderActionBtn(view) {
 const TASKMETA_VIEWS = ['dashboard', 'tasks', 'board', 'calendar'];
 
 function switchView(view) {
+  // The Log Food sheet holds the real diet card node while open. Close it (which
+  // returns the card home) before navigating, so it is never left in the sheet.
+  if (typeof isLogFoodSheetOpen === 'function' && isLogFoodSheetOpen()) closeLogFoodSheet();
+
   // Guard against landing on a module the user has turned off (e.g. a saved
   // last-view, or a stale command-palette entry).
   // Gym and Cardio are now two modes of one Training view. Old saved views,
