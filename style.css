@@ -5829,7 +5829,14 @@ body.profile-gated { overflow: hidden; }
   margin-bottom: 14px;
 }
 .cardio-field-wide { grid-column: 1 / -1; }
-.cardio-field { display: flex; flex-direction: column; gap: 6px; }
+/* min-width:0 lets the grid 1fr tracks shrink below the inputs' intrinsic
+   width — without it, two inputs side by side force the grid (and the whole
+   Training view) wider than a phone screen, which makes mobile Safari zoom the
+   page out to fit and everything reads as a shrunken desktop layout. */
+.cardio-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.cardio-add-grid { min-width: 0; }
+.cardio-field input,
+.cardio-field select { min-width: 0; max-width: 100%; box-sizing: border-box; }
 .cardio-field label {
   font-size: 11.5px;
   font-weight: 600;
