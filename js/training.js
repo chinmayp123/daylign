@@ -148,9 +148,107 @@ function renderTrainingShell() {
   renderTrainingWeek();
 }
 
+// Desktop right rail (ref 11c): the cross-mode cards that belong beside either
+// logging pane — this week's training, readiness, and consistency. The rail is
+// hidden on mobile (CSS), where these live in the shell/panes instead.
+function renderTrainingRail() {
+  renderRailWeek();
+  renderRailReadiness();
+  renderRailConsistency();
+}
+
+function renderRailWeek() {
+  const host = document.getElementById('trainingRailWeek');
+  if (!host) return;
+  const s = trainingWeekSummary();
+  const gymOn = typeof moduleEnabled !== 'function' || moduleEnabled('gym');
+  const cardioOn = typeof moduleEnabled !== 'function' || moduleEnabled('cardio');
+  const tiles = [];
+  if (gymOn) tiles.push({ v: s.lifts, l: 'lifts' });
+  if (cardioOn) tiles.push({ v: s.runs, l: 'runs', sub: s.runMiles > 0 ? `${s.runMiles.toFixed(1)} mi` : '' });
+  if (s.crossTrain > 0) tiles.push({ v: s.crossTrain, l: 'cross' });
+  host.innerHTML = `
+    <div class="card training-rail-card">
+      <div class="coach-head">
+        <h2>This week's training</h2>
+        ${s.streak > 0 ? `<span class="training-week-streak">🔥 ${s.streak}</span>` : ''}
+      </div>
+      <div class="rail-week-tiles">
+        ${tiles.map(t => `
+          <div class="rail-week-tile">
+            <span class="rail-week-val">${t.v}</span>
+            <span class="rail-week-lbl">${t.l}${t.sub ? ` · ${t.sub}` : ''}</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+function renderRailReadiness() {
+  const host = document.getElementById('trainingRailReadiness');
+  if (!host) return;
+  if (typeof readinessBreakdown !== 'function') { host.innerHTML = ''; return; }
+  const b = readinessBreakdown();
+  if (!b) {
+    host.innerHTML = `
+      <div class="card training-rail-card">
+        <div class="coach-head"><h2>Readiness</h2></div>
+        <p class="readiness-empty">Log a night's sleep and this turns into a single read on whether to push today.</p>
+      </div>`;
+    return;
+  }
+  const v = readinessVerdict(b.score);
+  const deg = Math.round((b.score / 100) * 360);
+  host.innerHTML = `
+    <div class="card training-rail-card">
+      <div class="coach-head">
+        <h2>Readiness</h2>
+        <span class="readiness-chip ${v.tone}">${v.label}</span>
+      </div>
+      <div class="readiness-body">
+        <div class="readiness-ring ${v.tone}" style="--ready-deg:${deg}deg">
+          <span class="readiness-score">${b.score}</span>
+          <span class="readiness-unit">ready</span>
+        </div>
+        <p class="readiness-advice">${readinessAdvice(b)}</p>
+      </div>
+    </div>`;
+}
+
+// Compact consistency heatmap for the rail — any lift or cardio day counts.
+function renderRailConsistency() {
+  const host = document.getElementById('trainingRailConsistency');
+  if (!host) return;
+  const active = new Set([
+    ...(state.gym || []).map(e => e.date),
+    ...(state.cardio || []).map(s => s.date),
+  ]);
+  const today = getTodayStr();
+  const WEEKS = 12;
+  const end = new Date(today + 'T00:00:00');
+  const endDow = (end.getDay() + 6) % 7; // Mon = 0
+  const start = new Date(end);
+  start.setDate(start.getDate() - endDow - (WEEKS - 1) * 7);
+  const cells = [];
+  for (let w = 0; w < WEEKS; w++) {
+    for (let d = 0; d < 7; d++) {
+      const cur = new Date(start);
+      cur.setDate(cur.getDate() + w * 7 + d);
+      const ds = toLocalDateStr(cur);
+      if (ds > today) { cells.push('<div class="streak-cell future"></div>'); continue; }
+      cells.push(`<div class="streak-cell ${active.has(ds) ? 'lvl3' : ''}" title="${formatDate(ds)}"></div>`);
+    }
+  }
+  host.innerHTML = `
+    <div class="card training-rail-card">
+      <div class="coach-head"><h2>Consistency</h2></div>
+      <div class="streak-heatmap-wrap"><div class="streak-heatmap rail-heatmap">${cells.join('')}</div></div>
+    </div>`;
+}
+
 function renderTraining() {
   if (!document.getElementById('trainingView')) return;
   renderTrainingShell();
+  renderTrainingRail();
   applyTrainingMode();
 }
 

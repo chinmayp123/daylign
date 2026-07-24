@@ -340,6 +340,11 @@
           <div class="training-week" id="trainingWeek"></div>
         </div>
 
+        <!-- Desktop: center logs the active mode, right rail carries the shared
+             cross-mode cards (ref 11c). On mobile it's one column, rail below. -->
+        <div class="training-layout">
+        <div class="training-center">
+
         <div class="training-pane" id="trainingStrength">
         <!-- Date Navigation -->
         <div class="gym-date-bar">
@@ -508,6 +513,14 @@
           <div class="cardio-coach" id="cardioCoach"></div>
         </div>
         </div><!-- /#trainingCardio -->
+
+        </div><!-- /.training-center -->
+        <aside class="training-rail" id="trainingRail">
+          <div id="trainingRailWeek"></div>
+          <div id="trainingRailReadiness"></div>
+          <div id="trainingRailConsistency"></div>
+        </aside>
+        </div><!-- /.training-layout -->
       </div><!-- /#trainingView -->
 
       <div class="view" id="dietView">
