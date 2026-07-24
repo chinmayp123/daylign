@@ -261,17 +261,12 @@ function bindTrainingEvents() {
     });
   }
   // Delegated: the readout is re-rendered on every render(), so a direct
-  // listener on the button would be lost each time.
+  // listener would be lost each time. Tapping the readout opens the
+  // weight-trend sheet (ref 5b) where the trend + log input live.
   const weight = document.getElementById('trainingWeight');
   if (weight) {
-    weight.addEventListener('click', e => {
-      if (!e.target.closest('[data-training-log-weight]')) return;
-      setTrainingMode('strength');
-      const input = document.getElementById('weightInput');
-      if (input) {
-        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        input.focus();
-      }
+    weight.addEventListener('click', () => {
+      if (typeof openWeightSheet === 'function') openWeightSheet();
     });
   }
 }

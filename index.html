@@ -377,21 +377,8 @@
           <div class="empty-state"><p>No exercises logged yet</p></div>
         </div>
 
-        <!-- Body Weight -->
-        <div class="card weight-card">
-          <div class="weight-head">
-            <h2>Body Weight</h2>
-            <span class="weight-goal-chip" id="weightGoalChip"></span>
-          </div>
-          <div class="weight-row">
-            <div class="weight-current" id="weightCurrent"></div>
-            <div class="weight-spark" id="weightSpark"></div>
-            <div class="weight-log-form">
-              <input type="number" id="weightInput" placeholder="lbs" step="0.1" min="50" max="500">
-              <button class="btn-primary weight-log-btn" id="weightLogBtn">Log</button>
-            </div>
-          </div>
-        </div>
+        <!-- Body Weight now lives in the weight-trend sheet (opened from the
+             shell's weight readout, ref 5a/5b) — not inline in the pane. -->
 
         <!-- Targets & Coach -->
         <div class="card coach-card">
@@ -807,6 +794,22 @@
     </button>
   </nav>
 
+  <!-- Weight-trend sheet (ref 5b): opened from the Training shell's weight
+       readout. 30-day mini bars + delta + goal + inline Log. See js/weight-sheet.js -->
+  <div class="weight-sheet-overlay" id="weightSheet" hidden>
+    <div class="weight-sheet">
+      <div class="weight-sheet-head">
+        <span class="weight-sheet-title">Body weight</span>
+        <button type="button" class="weight-sheet-close" id="weightSheetClose" aria-label="Close">&times;</button>
+      </div>
+      <div class="weight-sheet-body" id="weightSheetBody"></div>
+      <div class="weight-sheet-log">
+        <input type="number" id="weightInput" placeholder="lbs" step="0.1" min="50" max="500" inputmode="decimal">
+        <button class="btn-primary" id="weightLogBtn">Log</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Log Food bottom sheet (mobile): the Log Food card is lifted into here so
        you can add food without scrolling past the whole day. See js/diet-sheet.js -->
   <div class="logfood-sheet-overlay" id="logFoodSheet" hidden>
@@ -1129,6 +1132,7 @@
   <script src="js/sleep.js"></script>
   <script src="js/today.js"></script>
   <script src="js/diet-sheet.js"></script>
+  <script src="js/weight-sheet.js"></script>
   <script src="js/preferences.js"></script>
   <script src="js/ai-usage.js"></script>
   <script src="js/diet.js"></script>

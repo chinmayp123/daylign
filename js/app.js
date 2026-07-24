@@ -150,6 +150,7 @@ function bindEvents() {
   bindDietEvents();
   bindGoalsEvents();
   if (typeof bindLogFoodSheet === 'function') bindLogFoodSheet();
+  if (typeof bindWeightSheet === 'function') bindWeightSheet();
   if (typeof bindPhotoEvents === 'function') bindPhotoEvents();
   if (typeof bindVoiceEvents === 'function') bindVoiceEvents();
 
@@ -231,6 +232,10 @@ function headerPrimaryAction() {
   if (currentView === 'training') {
     // Follows the active mode, so the button always means the thing on screen.
     const cardio = typeof effectiveTrainingMode === 'function' && effectiveTrainingMode() === 'cardio';
+    if (!cardio) {
+      // Strength: "Log Weight" opens the weight-trend sheet (5b).
+      if (typeof openWeightSheet === 'function') { openWeightSheet(); return; }
+    }
     const el = $(cardio ? '#cardioDistance' : '#weightInput');
     if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
   } else if (currentView === 'diet') {

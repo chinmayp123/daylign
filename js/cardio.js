@@ -49,6 +49,7 @@ function hrZone(avgHr) {
   return 5;
 }
 const ZONE_COLORS = ['', 'var(--text-muted)', 'var(--blue)', 'var(--green)', 'var(--yellow)', 'var(--red)'];
+const ZONE_NAMES = ['', 'Recovery', 'Easy', 'Aerobic', 'Threshold', 'VO₂ max'];
 
 function cardioGoals() {
   const g = state.goals || {};
@@ -397,11 +398,16 @@ function renderCardioZoneBar() {
   if (!wrap) return;
   const hr = parseFloat(($('#cardioHr') || {}).value) || 0;
   const active = hrZone(hr);
+  // When a zone is active, name it (e.g. "Z3 · Aerobic") so the bar reads as
+  // effort, not just a number — ref 4c.
+  const nameChip = active > 0
+    ? `<span class="cardio-zone-name" style="color:${ZONE_COLORS[active]}">Z${active} · ${ZONE_NAMES[active]}</span>`
+    : '';
   wrap.innerHTML = `<span class="cardio-zone-label">HR zones</span>` +
     [1, 2, 3, 4, 5].map(z => `
       <span class="cardio-zone${z === active ? ' active' : ''}"
         style="${z === active ? `background:${ZONE_COLORS[z]};border-color:${ZONE_COLORS[z]}` : ''}">Z${z}</span>`).join('') +
-    (hr > 0 ? `<span class="cardio-zone-hr">${Math.round(hr)} bpm</span>` : '');
+    (hr > 0 ? `<span class="cardio-zone-hr">${Math.round(hr)} bpm</span>${nameChip}` : '');
 }
 
 // Cross-check against what the watch recorded, without ever creating a session

@@ -634,6 +634,7 @@ function renderGym() {
   // the Training shell above it (week line + weight readout) has to be brought
   // along or it shows stale numbers until the next navigation.
   if (typeof renderTrainingShell === 'function') renderTrainingShell();
+  if (typeof renderWeightSheetBody === 'function') renderWeightSheetBody();
 }
 
 function bindGymEvents() {
