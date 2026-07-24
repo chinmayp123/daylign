@@ -114,10 +114,12 @@ function applyFirebaseData(data) {
 
 // Optional modules the user can turn on/off in Settings. Tasks, Board,
 // Calendar and Dashboard are core and always present.
+// The keys stay 'gym'/'cardio' — they name stored data, not the UI. The labels
+// follow the merged Training tab, where these are its two modes.
 const TOGGLEABLE_MODULES = [
-  { key: 'gym',    label: 'Gym',    desc: 'Strength workouts, body weight, PRs' },
-  { key: 'cardio', label: 'Cardio', desc: 'Running, cycling, swimming, race training' },
-  { key: 'diet',   label: 'Diet',   desc: 'Food logging, macros, water' },
+  { key: 'gym',    label: 'Strength', desc: 'Lifting, body weight, PRs — the Strength side of Training' },
+  { key: 'cardio', label: 'Cardio',   desc: 'Running, cycling, swimming, race training' },
+  { key: 'diet',   label: 'Diet',     desc: 'Food logging, macros, water' },
 ];
 
 // Missing/true = enabled. Only an explicit false hides a module.
