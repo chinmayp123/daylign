@@ -20,6 +20,35 @@ const RACE_DISTANCES = {
 
 let cardioDate = getTodayStr();
 let cardioType = 'run';
+let cardioRunType = 'easy'; // intensity for the run being logged
+
+// Run intensity types (handoff §3), colour-coded. Only apply to runs — a ride
+// or swim just has a distance and a duration.
+const RUN_TYPES = {
+  easy:     { label: 'Easy',     color: 'var(--green)' },
+  tempo:    { label: 'Tempo',    color: 'var(--yellow)' },
+  interval: { label: 'Interval', color: 'var(--red)' },
+  long:     { label: 'Long',     color: 'var(--accent)' },
+  recovery: { label: 'Recovery', color: 'var(--blue)' },
+};
+
+// Heart-rate zones (Z1–Z5). Thresholds are % of an estimated max HR (220−age),
+// falling back to age 30 when we don't know it. The zone bar highlights the
+// zone a logged avg HR lands in — a rough but useful read of how hard it was.
+function runnerMaxHr() {
+  const age = (state.goals && Number(state.goals.age)) || (typeof getGoals === 'function' && Number(getGoals().age)) || 30;
+  return 220 - (age > 0 && age < 100 ? age : 30);
+}
+function hrZone(avgHr) {
+  if (!(avgHr > 0)) return 0;
+  const pct = avgHr / runnerMaxHr();
+  if (pct < 0.6) return 1;
+  if (pct < 0.7) return 2;
+  if (pct < 0.8) return 3;
+  if (pct < 0.9) return 4;
+  return 5;
+}
+const ZONE_COLORS = ['', 'var(--text-muted)', 'var(--blue)', 'var(--green)', 'var(--yellow)', 'var(--red)'];
 
 function cardioGoals() {
   const g = state.goals || {};
@@ -299,6 +328,9 @@ function renderCardio() {
   if (label) label.textContent = formatDate(cardioDate);
 
   renderCardioTypeTabs();
+  renderCardioRunTypes();
+  renderCardioZoneBar();
+  updateCardioSaveLabel();
   renderCardioWatchChip();
   renderCardioWatchWorkouts();
   renderCardioDayList();
@@ -321,6 +353,55 @@ function renderCardioTypeTabs() {
   if (distLabel) distLabel.textContent = `Distance (${CARDIO_TYPES[cardioType].unit})`;
   const distInput = $('#cardioDistance');
   if (distInput) distInput.placeholder = cardioType === 'swim' ? '1200' : '3.1';
+
+  // Run-only detail (intensity chips + HR/elevation/RPE) hides for ride/swim.
+  const isRun = cardioType === 'run';
+  const runTypes = $('#cardioRunTypes');
+  if (runTypes) runTypes.hidden = !isRun;
+  const runDetail = $('#cardioRunDetail');
+  if (runDetail) runDetail.hidden = !isRun;
+}
+
+// Intensity chips for the run being logged.
+function renderCardioRunTypes() {
+  const wrap = $('#cardioRunTypes');
+  if (!wrap) return;
+  wrap.innerHTML = Object.keys(RUN_TYPES).map(k => {
+    const cfg = RUN_TYPES[k];
+    const on = k === cardioRunType;
+    return `<button type="button" class="cardio-runtype${on ? ' active' : ''}" data-runtype="${k}"
+      style="${on ? `border-color:${cfg.color};color:${cfg.color}` : ''}">${cfg.label}</button>`;
+  }).join('');
+}
+
+// Live pace readout + "Save run · X.X mi" button echo, updated as you type.
+function updateCardioSaveLabel() {
+  const dist = parseFloat(($('#cardioDistance') || {}).value) || 0;
+  const dur = parseFloat(($('#cardioDuration') || {}).value) || 0;
+  const paceEl = $('#cardioPace');
+  if (paceEl) {
+    const p = paceFor({ type: cardioType, distance: dist, duration: dur });
+    paceEl.value = p ? p.text : '';
+  }
+  const btn = $('#cardioSaveBtn');
+  if (btn) {
+    const cfg = CARDIO_TYPES[cardioType];
+    const verb = cardioType === 'run' ? 'Save run' : `Log ${cfg.label.toLowerCase()}`;
+    btn.textContent = dist > 0 ? `${verb} · ${Math.round(dist * 100) / 100} ${cfg.unit}` : (cardioType === 'run' ? 'Save run' : 'Log session');
+  }
+}
+
+// Z1–Z5 bar; highlights the zone the entered avg HR lands in.
+function renderCardioZoneBar() {
+  const wrap = $('#cardioZoneBar');
+  if (!wrap) return;
+  const hr = parseFloat(($('#cardioHr') || {}).value) || 0;
+  const active = hrZone(hr);
+  wrap.innerHTML = `<span class="cardio-zone-label">HR zones</span>` +
+    [1, 2, 3, 4, 5].map(z => `
+      <span class="cardio-zone${z === active ? ' active' : ''}"
+        style="${z === active ? `background:${ZONE_COLORS[z]};border-color:${ZONE_COLORS[z]}` : ''}">Z${z}</span>`).join('') +
+    (hr > 0 ? `<span class="cardio-zone-hr">${Math.round(hr)} bpm</span>` : '');
 }
 
 // Cross-check against what the watch recorded, without ever creating a session
@@ -358,6 +439,13 @@ function renderCardioDayList() {
   list.innerHTML = sessions.map((s) => {
     const cfg = CARDIO_TYPES[s.type] || CARDIO_TYPES.run;
     const pace = paceFor(s);
+    const rt = s.runType && RUN_TYPES[s.runType];
+    const detailBits = [
+      rt ? `<span class="cardio-session-tag" style="color:${rt.color};border-color:${rt.color}">${rt.label}</span>` : '',
+      s.avgHr ? `<span class="cardio-session-meta">♥ ${s.avgHr}</span>` : '',
+      s.elevation ? `<span class="cardio-session-meta">↑ ${s.elevation} ft</span>` : '',
+      s.rpe ? `<span class="cardio-session-meta">RPE ${s.rpe}</span>` : '',
+    ].filter(Boolean).join('');
     return `
       <div class="cardio-session">
         <span class="cardio-session-icon">${cfg.icon}</span>
@@ -367,6 +455,7 @@ function renderCardioDayList() {
             <span class="cardio-session-dur">${formatDuration(s.duration)}</span>
             ${pace ? `<span class="cardio-session-pace">${pace.text}</span>` : ''}
           </div>
+          ${detailBits ? `<div class="cardio-session-detail">${detailBits}</div>` : ''}
           ${s.notes ? `<div class="cardio-session-notes">${esc(s.notes)}</div>` : ''}
         </div>
         <button class="cardio-session-del" data-del-cardio="${s.id}" title="Delete this session">&times;</button>
@@ -379,21 +468,34 @@ function renderCardioWeek() {
   if (!wrap) return;
   const g = cardioGoals();
   const stats = cardioWeekStats(cardioWeekStart(cardioDate));
-  const pct = g.weeklyMiles > 0 ? Math.min(100, Math.round((stats.runMiles / g.weeklyMiles) * 100)) : 0;
+  const pct = g.weeklyMiles > 0 ? Math.min(100, (stats.runMiles / g.weeklyMiles) * 100) : 0;
+  const toGo = Math.max(0, g.weeklyMiles - stats.runMiles);
+  const deg = Math.round((pct / 100) * 360);
   const tiles = [
-    { label: 'Run', value: stats.runMiles.toFixed(1), sub: `of ${g.weeklyMiles} mi target` },
     { label: 'Longest', value: stats.longestRun.toFixed(1), sub: 'mi single run' },
     { label: 'Ride', value: stats.byType.ride.distance.toFixed(1), sub: 'mi' },
     { label: 'Swim', value: Math.round(stats.byType.swim.distance), sub: 'yd' },
     { label: 'Time', value: formatDuration(stats.totalMinutes), sub: `${stats.days} day${stats.days === 1 ? '' : 's'}` },
   ];
-  wrap.innerHTML = tiles.map(t => `
-    <div class="cardio-week-tile">
-      <span class="cardio-week-label">${t.label}</span>
-      <span class="cardio-week-value">${t.value}</span>
-      <span class="cardio-week-sub">${t.sub}</span>
-    </div>`).join('') +
-    `<div class="cardio-week-bar"><div class="cardio-week-fill" style="width:${pct}%"></div></div>`;
+  // Mileage ring leads (handoff 4b/11b), the other stats sit beside it.
+  wrap.innerHTML = `
+    <div class="cardio-week-ring-wrap">
+      <div class="cardio-mileage-ring" style="--mile-deg:${deg}deg">
+        <span class="cardio-mileage-val">${stats.runMiles.toFixed(1)}</span>
+        <span class="cardio-mileage-goal">/ ${g.weeklyMiles} mi</span>
+      </div>
+      <div class="cardio-mileage-side">
+        <span class="cardio-mileage-lead">${toGo > 0 ? `${toGo.toFixed(1)} mi to go` : 'Target hit 🎉'}</span>
+        <div class="cardio-week-tiles">
+          ${tiles.map(t => `
+            <div class="cardio-week-tile">
+              <span class="cardio-week-label">${t.label}</span>
+              <span class="cardio-week-value">${t.value}</span>
+              <span class="cardio-week-sub">${t.sub}</span>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
 }
 
 function renderCardioRace() {
@@ -448,20 +550,36 @@ function addCardioSession() {
   if (!(distance > 0)) { showToast('Enter a distance greater than 0'); distEl.focus(); return; }
   if (!(duration > 0)) { showToast('Enter a duration in minutes'); durEl.focus(); return; }
 
-  state.cardio = state.cardio || [];
-  state.cardio.push({
+  const session = {
     id: 'c' + Date.now(),
     date: cardioDate,
     type: cardioType,
     distance: distance,
     duration: duration,
     notes: (notesEl.value || '').trim(),
-  });
+  };
+  // Run-only detail — stored only when present, so a ride/swim stays clean and
+  // an existing session without these fields is unaffected.
+  if (cardioType === 'run') {
+    session.runType = cardioRunType;
+    const hr = parseFloat(($('#cardioHr') || {}).value);
+    const elev = parseFloat(($('#cardioElev') || {}).value);
+    const rpe = parseInt(($('#cardioRpe') || {}).value);
+    if (hr > 0) session.avgHr = Math.round(hr);
+    if (elev > 0) session.elevation = Math.round(elev);
+    if (rpe > 0) session.rpe = rpe;
+  }
+
+  state.cardio = state.cardio || [];
+  state.cardio.push(session);
   saveData(state);
 
   distEl.value = '';
   durEl.value = '';
   notesEl.value = '';
+  ['#cardioHr', '#cardioElev'].forEach(sel => { const el = $(sel); if (el) el.value = ''; });
+  const rpe = $('#cardioRpe'); if (rpe) rpe.value = 5;
+  const rpeVal = $('#cardioRpeVal'); if (rpeVal) rpeVal.textContent = '5';
   const cfg = CARDIO_TYPES[cardioType];
   showToast(`Logged ${distance} ${cfg.unit} ${cfg.label.toLowerCase()}`);
   render();
@@ -497,6 +615,28 @@ function bindCardioEvents() {
 
   const save = $('#cardioSaveBtn');
   if (save) save.addEventListener('click', addCardioSession);
+
+  // Run intensity chips (delegated on the persistent view).
+  const runTypes = $('#cardioRunTypes');
+  if (runTypes) runTypes.addEventListener('click', e => {
+    const btn = e.target.closest('[data-runtype]');
+    if (!btn) return;
+    cardioRunType = btn.dataset.runtype;
+    renderCardioRunTypes();
+  });
+
+  // Live pace + "Save run · X mi" echo as distance/duration change.
+  const distEl = $('#cardioDistance');
+  if (distEl) distEl.addEventListener('input', updateCardioSaveLabel);
+  const durEl = $('#cardioDuration');
+  if (durEl) durEl.addEventListener('input', updateCardioSaveLabel);
+  // HR drives the live zone bar; RPE echoes its value.
+  const hrEl = $('#cardioHr');
+  if (hrEl) hrEl.addEventListener('input', renderCardioZoneBar);
+  const rpeEl = $('#cardioRpe');
+  if (rpeEl) rpeEl.addEventListener('input', () => {
+    const v = $('#cardioRpeVal'); if (v) v.textContent = rpeEl.value;
+  });
 
   const list = $('#cardioDayList');
   if (list) list.addEventListener('click', e => {

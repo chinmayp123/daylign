@@ -7132,3 +7132,100 @@ body.onboard-open { overflow: hidden; }
      the 🕑 button is the real control. */
   .today-anytime-handle { display: none; }
 }
+
+/* ========== Cardio run detail + mileage ring (handoff §3 / 4b/4c/11b) ========== */
+.cardio-runtypes { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.cardio-runtypes[hidden] { display: none; }
+.cardio-runtype {
+  min-height: 36px;
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.cardio-runtype:hover { color: var(--text-primary); }
+.cardio-runtype.active { background: var(--bg-card); }
+
+.cardio-rundetail[hidden] { display: none; }
+.cardio-pace-readout { color: var(--accent-hover); font-weight: 600; }
+
+.cardio-rpe-slider { width: 100%; accent-color: var(--accent); height: 36px; }
+
+.cardio-zone-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.cardio-zone-label { font-size: 11px; color: var(--text-muted); margin-right: 4px; }
+.cardio-zone {
+  flex: 1;
+  min-width: 40px;
+  text-align: center;
+  padding: 6px 0;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+.cardio-zone.active { color: #fff; }
+.cardio-zone-hr { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; margin-left: 4px; }
+
+/* Session list detail row */
+.cardio-session-detail { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.cardio-session-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 8px;
+  border: 1px solid;
+  border-radius: 6px;
+}
+.cardio-session-meta { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+/* Weekly mileage ring */
+.cardio-week-ring-wrap { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.cardio-mileage-ring {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: conic-gradient(var(--accent) var(--mile-deg), var(--bg-secondary) 0);
+}
+.cardio-mileage-ring::after {
+  content: '';
+  position: absolute;
+  inset: 11px;
+  border-radius: 50%;
+  background: var(--bg-card);
+}
+.cardio-mileage-val {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.cardio-mileage-goal { position: relative; z-index: 1; font-size: 12px; color: var(--text-muted); }
+.cardio-mileage-side { flex: 1; min-width: 200px; }
+.cardio-mileage-lead { display: block; font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px; }
+.cardio-week-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+@media (max-width: 640px) {
+  .cardio-week-tiles { grid-template-columns: repeat(2, 1fr); }
+}

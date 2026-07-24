@@ -419,6 +419,10 @@
         <div class="cardio-add-card">
           <div class="cardio-type-tabs" id="cardioTypeTabs"></div>
           <div class="cardio-watch-chip" id="cardioWatchChip" hidden></div>
+
+          <!-- Run intensity chips — runs only (populated by renderCardioRunTypes) -->
+          <div class="cardio-runtypes" id="cardioRunTypes" hidden></div>
+
           <div class="cardio-add-grid">
             <div class="cardio-field">
               <label id="cardioDistanceLabel" for="cardioDistance">Distance (mi)</label>
@@ -428,6 +432,32 @@
               <label for="cardioDuration">Duration (min)</label>
               <input type="number" id="cardioDuration" step="0.1" min="0" inputmode="decimal" placeholder="28">
             </div>
+            <div class="cardio-field">
+              <label for="cardioPace">Pace</label>
+              <input type="text" id="cardioPace" readonly placeholder="auto" class="cardio-pace-readout">
+            </div>
+          </div>
+
+          <!-- Run detail: HR + zone bar, elevation, RPE — runs only -->
+          <div class="cardio-rundetail" id="cardioRunDetail" hidden>
+            <div class="cardio-add-grid">
+              <div class="cardio-field">
+                <label for="cardioHr">Avg HR</label>
+                <input type="number" id="cardioHr" step="1" min="0" max="230" inputmode="numeric" placeholder="bpm">
+              </div>
+              <div class="cardio-field">
+                <label for="cardioElev">Elevation (ft)</label>
+                <input type="number" id="cardioElev" step="1" min="0" inputmode="numeric" placeholder="0">
+              </div>
+              <div class="cardio-field">
+                <label for="cardioRpe">Effort (RPE) · <span id="cardioRpeVal">5</span></label>
+                <input type="range" id="cardioRpe" min="1" max="10" step="1" value="5" class="cardio-rpe-slider">
+              </div>
+            </div>
+            <div class="cardio-zone-bar" id="cardioZoneBar"></div>
+          </div>
+
+          <div class="cardio-add-grid">
             <div class="cardio-field cardio-field-wide">
               <label for="cardioNotes">Notes</label>
               <input type="text" id="cardioNotes" placeholder="easy pace, felt strong" maxlength="120">
