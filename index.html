@@ -175,8 +175,9 @@
 
         <!-- Dashboard Grid -->
         <div class="dashboard-grid">
-          <!-- My Tasks Board -->
-          <div class="card my-tasks-board-card">
+          <!-- My Tasks Board — collapsed on mobile; the two-lane plan above is
+               the primary task view there. -->
+          <div class="card my-tasks-board-card collapsible" data-collapse="mobile" data-collapse-key="mytasks">
             <h2>My Tasks</h2>
             <div class="my-tasks-tabs" id="myTasksTabs"></div>
             <div class="my-tasks-board" id="myTasksBoard"></div>
@@ -194,8 +195,8 @@
             <div id="readinessCard"></div>
           </div>
 
-          <!-- Weight Trend -->
-          <div class="card weight-trend-card">
+          <!-- Weight Trend — collapsed on mobile (reference) -->
+          <div class="card weight-trend-card collapsible" data-collapse="mobile" data-collapse-key="weighttrend">
             <div class="weight-trend-head">
               <h2>Weight Trend</h2>
               <span class="weight-trend-meta" id="weightTrendMeta"></span>
@@ -203,8 +204,8 @@
             <div id="weightTrendChart"></div>
           </div>
 
-          <!-- Weekly Report -->
-          <div class="card weekly-report-card">
+          <!-- Weekly Report — collapsed on mobile (reference) -->
+          <div class="card weekly-report-card collapsible" data-collapse="mobile" data-collapse-key="weeklyreport">
             <div class="weight-trend-head">
               <h2>Weekly Report</h2>
               <span class="weight-trend-meta" id="weeklyReportMeta"></span>
@@ -1133,6 +1134,7 @@
   <script src="js/today.js"></script>
   <script src="js/diet-sheet.js"></script>
   <script src="js/weight-sheet.js"></script>
+  <script src="js/collapsible.js"></script>
   <script src="js/preferences.js"></script>
   <script src="js/ai-usage.js"></script>
   <script src="js/diet.js"></script>

@@ -3692,7 +3692,23 @@ body {
 }
 
 @media (max-width: 600px) {
-  .stats-grid { grid-template-columns: 1fr; }
+  /* 2×2 keeps the four stat tiles glanceable instead of four full-height rows. */
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  /* Coaching nudges become a horizontal swipe row — 4–5 cards take one row's
+     height instead of five stacked ones. */
+  .reminders-bar {
+    display: flex;
+    grid-template-columns: none;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+  .reminders-bar .reminder-card {
+    min-width: 82%;
+    flex: 0 0 82%;
+    scroll-snap-align: start;
+  }
   .header { flex-direction: column; gap: 12px; align-items: flex-start; }
   .header-left { display: flex; align-items: center; gap: 12px; width: 100%; }
   .form-row { grid-template-columns: 1fr; }
@@ -7551,3 +7567,45 @@ body.logfood-sheet-lock { overflow: hidden; }
   font-family: var(--font-body); font-size: 15px;
 }
 .weight-sheet-log input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+
+/* ========== Collapsible cards (mobile density) ========== */
+.card.collapsible > .collapsible-header {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.collapsible-chevron {
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.card.collapsible.is-collapsed .collapsible-chevron { transform: rotate(-90deg); }
+/* Collapsed: show only the header (first child), hide the rest. */
+.card.collapsible.is-collapsed > *:not(.collapsible-header) { display: none; }
+/* Trim the padding when collapsed so it reads as a tidy row, not an empty card */
+.card.collapsible.is-collapsed { padding-bottom: 14px; }
+
+/* Reminders swipe on phones — placed at end of file to win source order over
+   the base .reminders-bar grid rule. 4–5 nudges become one swipeable row. */
+@media (max-width: 600px) {
+  .reminders-bar {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap;
+    grid-template-columns: none;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    gap: 10px;
+    padding-bottom: 4px;
+  }
+  .reminders-bar .reminder-card {
+    min-width: 84%;
+    flex: 0 0 84%;
+    scroll-snap-align: start;
+  }
+}

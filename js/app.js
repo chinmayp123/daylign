@@ -466,6 +466,7 @@ function render() {
   if (typeof renderAiUsageReport === 'function') renderAiUsageReport();
   renderDiet();
   populateCategoryDropdowns();
+  if (typeof initCollapsibles === 'function') initCollapsibles();
 }
 
 function renderSidebarCategories() {
