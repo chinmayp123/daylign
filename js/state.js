@@ -45,6 +45,7 @@ function loadData() {
     removedFoods: safeParse('tf_removed_foods', []),
     weight: safeParse('tf_weight', {}),
     goals: safeParse('tf_goals', {}),
+    sleep: safeParse('tf_sleep', {}),
   };
 }
 
@@ -62,6 +63,7 @@ function saveData(data) {
   localStorage.setItem('tf_removed_foods', JSON.stringify(data.removedFoods || []));
   localStorage.setItem('tf_weight', JSON.stringify(data.weight || {}));
   localStorage.setItem('tf_goals', JSON.stringify(data.goals || {}));
+  localStorage.setItem('tf_sleep', JSON.stringify(data.sleep || {}));
 
   // Only advance the sync clock and push to the cloud once the initial cloud
   // reconciliation has settled. Saves that fire during initial load (e.g.
@@ -88,6 +90,7 @@ function applyFirebaseData(data) {
   state.removedFoods = data.removedFoods || [];
   state.weight = data.weight || {};
   state.goals = data.goals || {};
+  state.sleep = data.sleep || {};
   // Cache locally
   localStorage.setItem('tf_tasks', JSON.stringify(state.tasks));
   localStorage.setItem('tf_categories', JSON.stringify(state.categories));
@@ -102,6 +105,7 @@ function applyFirebaseData(data) {
   localStorage.setItem('tf_removed_foods', JSON.stringify(state.removedFoods));
   localStorage.setItem('tf_weight', JSON.stringify(state.weight));
   localStorage.setItem('tf_goals', JSON.stringify(state.goals));
+  localStorage.setItem('tf_sleep', JSON.stringify(state.sleep));
   localStorage.setItem('tf_last_updated', (data.lastUpdated || Date.now()).toString());
   // Re-render the app after a tick to let DOM settle
   if (typeof render === 'function') {

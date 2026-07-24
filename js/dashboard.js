@@ -52,7 +52,10 @@ function renderHealthStrip(today) {
   const totalBurn = watchBurn !== null ? Math.round(watchBurn) : workoutBurn + walkBurn;
   const net = cal - totalBurn;
   const exMin = (typeof getExternalExerciseMinutes === 'function') ? getExternalExerciseMinutes(today) : null;
-  const sleepH = (typeof getExternalSleep === 'function') ? getExternalSleep(today) : null;
+  // sleepHoursFor prefers a hand-logged night, falling back to the watch.
+  const sleepH = (typeof sleepHoursFor === 'function')
+    ? sleepHoursFor(today)
+    : ((typeof getExternalSleep === 'function') ? getExternalSleep(today) : null);
 
   const tiles = [
     { view: 'diet', label: 'Calories', value: cal, sub: `/ ${g.calories}`, pct: Math.min(100, (cal / g.calories) * 100), color: calOver ? 'var(--red)' : 'var(--accent)' },
@@ -61,7 +64,7 @@ function renderHealthStrip(today) {
     { view: 'diet', label: 'Water', value: `${water} oz`, sub: `/ ${g.water} oz`, pct: Math.min(100, (water / g.water) * 100), color: '#38bdf8' },
     ...(steps !== null ? [{ view: 'gym', label: 'Steps', value: steps.toLocaleString(), sub: `/ ${(g.steps || 8000).toLocaleString()}`, pct: Math.min(100, (steps / (g.steps || 8000)) * 100), color: '#22c55e' }] : []),
     ...(exMin !== null ? [{ view: 'gym', label: 'Exercise', value: `${exMin} min`, sub: `/ ${g.exerciseMin || 30} min`, pct: Math.min(100, (exMin / (g.exerciseMin || 30)) * 100), color: '#f59e0b' }] : []),
-    ...(sleepH !== null ? [{ view: 'gym', label: 'Sleep', value: `${sleepH}h`, sub: `/ ${g.sleep || 8}h`, pct: Math.min(100, (sleepH / (g.sleep || 8)) * 100), color: '#a78bfa' }] : []),
+    ...(sleepH !== null ? [{ view: 'training', label: 'Sleep', value: `${sleepH}h`, sub: `/ ${g.sleep || 8}h`, pct: Math.min(100, (sleepH / (g.sleep || 8)) * 100), color: '#a78bfa' }] : []),
     { view: 'gym', label: 'Weight', value: latestW !== null ? `${latestW} lbs` : '—', sub: latestW !== null ? `→ ${g.weight} lbs` : 'log a weigh-in',
       pct: null, note: latestW !== null ? `${Math.round(Math.abs(latestW - g.weight) * 10) / 10} lbs to go` : 'Tap to log your first', color: 'var(--purple)' },
   ];
@@ -209,9 +212,9 @@ function renderWeeklyReport() {
 
   // Sleep: watch-synced, averaged over nights with data
   let sleepDays = 0, sleepSum = 0;
-  if (typeof getExternalSleep === 'function') {
+  if (typeof sleepHoursFor === 'function' || typeof getExternalSleep === 'function') {
     days.forEach(day => {
-      const h = getExternalSleep(day);
+      const h = (typeof sleepHoursFor === 'function') ? sleepHoursFor(day) : getExternalSleep(day);
       if (h !== null) { sleepDays++; sleepSum += h; }
     });
   }

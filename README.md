@@ -144,6 +144,9 @@ js/
   app.js              — Entry point, navigation (switchView), event binding
   firebase-sync.js    — Firebase sync + external (Apple Health) reads
   profile.js          — Per-person profiles: first-launch gate, node paths, switching
+  training.js         — Training shell: Strength/Cardio mode toggle, combined week line
+  sleep.js            — Sleep logging + the Readiness score it feeds
+  preferences.js      — Settings: appearance, sync status, Anthropic key row
   onboarding.js       — First-run flow for new profiles (modules + core goals)
   dashboard.js        — Health strip, Weekly Report, weight trend, reminders, schedule
   tasks.js            — List view

@@ -183,6 +183,12 @@
             <div class="deadlines-list" id="deadlinesList"></div>
           </div>
 
+          <!-- Sleep + Readiness (rendered by js/sleep.js) -->
+          <div class="sleep-readiness-row">
+            <div id="sleepCard"></div>
+            <div id="readinessCard"></div>
+          </div>
+
           <!-- Weight Trend -->
           <div class="card weight-trend-card">
             <div class="weight-trend-head">
@@ -607,7 +613,13 @@
       <!-- Settings View -->
       <div class="view" id="settingsView">
         <div class="settings-wrap">
+
+
+          <section class="settings-group">
+
+            <h3 class="settings-group-label">Account</h3>
           <section class="settings-card">
+            <div class="settings-sync" id="settingsSync"></div>
             <h2>Who's using this device</h2>
             <p class="settings-desc">Signed in as <strong id="profileCurrentName">—</strong>. Each person's tasks, workouts, meals and weight are stored separately in the cloud. Switching clears this device's local copy and reloads the other person's data — theirs stays untouched.</p>
             <div class="settings-btn-row">
@@ -617,16 +629,39 @@
           </section>
 
           <section class="settings-card">
-            <h2>Categories &amp; Projects</h2>
-            <p class="settings-desc">Organize your tasks. These also appear in the sidebar on task views — this is the always-available place to add, rename or remove them.</p>
-            <div class="taxonomy-manager" id="taxonomyManager"></div>
+            <h2>Connect Apple Watch</h2>
+            <p class="settings-desc">Sync steps, active energy, exercise minutes, resting heart rate and sleep from Apple Health into Daylign — automatically, once a night. iPhone + Apple Watch only.</p>
+            <div class="watch-connect" id="watchConnect"></div>
           </section>
 
+          </section>
+
+          <section class="settings-group">
+
+            <h3 class="settings-group-label">Daily goals</h3>
           <section class="settings-card">
             <h2>Your goals</h2>
             <p class="settings-desc">Daily targets and your goal weight, in one place. These drive the rings, the coach and the weekly report.</p>
             <div class="goals-summary" id="goalsSummary"></div>
             <button class="btn-secondary" id="editGoalsSettingsBtn">Edit goals</button>
+          </section>
+
+          </section>
+
+          <section class="settings-group">
+
+            <h3 class="settings-group-label">Preferences</h3>
+          <section class="settings-card">
+            <div class="pref-row">
+              <div class="pref-row-text">
+                <span class="pref-row-title">Appearance</span>
+                <span class="pref-row-sub">Stored on this device</span>
+              </div>
+              <div class="segmented" id="themeSegmented">
+                <button type="button" class="segmented-btn" data-theme="dark">Dark</button>
+                <button type="button" class="segmented-btn" data-theme="light">Light</button>
+              </div>
+            </div>
           </section>
 
           <section class="settings-card">
@@ -636,9 +671,36 @@
           </section>
 
           <section class="settings-card">
-            <h2>Connect Apple Watch</h2>
-            <p class="settings-desc">Sync steps, active energy, exercise minutes, resting heart rate and sleep from Apple Health into Daylign — automatically, once a night. iPhone + Apple Watch only.</p>
-            <div class="watch-connect" id="watchConnect"></div>
+            <h2>Categories &amp; Projects</h2>
+            <p class="settings-desc">Organize your tasks. These also appear in the sidebar on task views — this is the always-available place to add, rename or remove them.</p>
+            <div class="taxonomy-manager" id="taxonomyManager"></div>
+          </section>
+
+          </section>
+
+          <section class="settings-group">
+
+            <h3 class="settings-group-label">AI features</h3>
+          <section class="settings-card">
+            <h2>Anthropic API key</h2>
+            <p class="settings-desc">Powers photo food logging and voice commands. <strong>Stored only on this device</strong> — never committed to the repo and never synced to the cloud, so each device pays for its own usage. Leave it empty and both features stay dormant.</p>
+            <div class="ai-key-status" id="aiKeyStatus"></div>
+            <div class="ai-key-form">
+              <input type="password" id="aiKeyInput" class="ai-key-input" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
+              <button class="btn-primary" id="aiKeySaveBtn" type="button">Save key</button>
+              <button class="btn-secondary" id="aiKeyRemoveBtn" type="button" hidden>Remove</button>
+            </div>
+          </section>
+
+          </section>
+
+          <section class="settings-group">
+
+            <h3 class="settings-group-label">Your data</h3>
+          <section class="settings-card">
+            <h2>Backup your data</h2>
+            <p class="settings-desc">Your data syncs to the cloud automatically, but the cloud keeps no history. Download a backup regularly so you always have a copy you control. Save it somewhere safe (Files, iCloud, email).</p>
+            <button class="btn-primary" id="exportBtn">Download backup</button>
           </section>
 
           <section class="settings-card">
@@ -648,18 +710,13 @@
             <div class="usage-report" id="usageReport"></div>
           </section>
 
-          <section class="settings-card">
-            <h2>Backup your data</h2>
-            <p class="settings-desc">Your data syncs to the cloud automatically, but the cloud keeps no history. Download a backup regularly so you always have a copy you control. Save it somewhere safe (Files, iCloud, email).</p>
-            <button class="btn-primary" id="exportBtn">Download backup</button>
-          </section>
-
           <section class="settings-card settings-danger">
             <h2>Restore from a backup</h2>
             <p class="settings-desc"><strong>This replaces everything</strong> — on this device and in the cloud (all your devices) — with the contents of a backup file. Only use it to recover lost data. Restoring an older file will delete anything newer. A safety copy of your current data is downloaded first, and you'll be asked to type <code>RESTORE</code> to confirm.</p>
             <button class="btn-danger" id="importBtn">Restore from file…</button>
             <input type="file" id="importFile" accept="application/json,.json" style="display:none">
           </section>
+        </section>
         </div>
       </div>
     </main>
@@ -999,6 +1056,8 @@
   <script src="js/gym.js"></script>
   <script src="js/cardio.js"></script>
   <script src="js/training.js"></script>
+  <script src="js/sleep.js"></script>
+  <script src="js/preferences.js"></script>
   <script src="js/diet.js"></script>
   <script src="js/food-photo.js"></script>
   <script src="js/voice.js"></script>

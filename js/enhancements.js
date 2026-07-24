@@ -17,6 +17,8 @@
     document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
     $$('.theme-nav-label').forEach(el => { el.textContent = light ? 'Dark mode' : 'Light mode'; });
     const st = $('#moreThemeState'); if (st) st.textContent = light ? 'On' : 'Off';
+    // Keep Settings' Appearance control honest when the sidebar toggle is used.
+    if (typeof window.renderThemeSegmented === 'function') window.renderThemeSegmented();
   }
   function toggleTheme() {
     const cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
@@ -29,6 +31,13 @@
     try { saved = localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark'; } catch (e) {}
     applyTheme(saved);
   }
+  // Settings' Appearance control needs to set an explicit theme rather than
+  // flip the current one. Exported so there is still exactly one theme path.
+  window.daylignSetTheme = function (theme) {
+    const next = theme === 'light' ? 'light' : 'dark';
+    try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+    applyTheme(next);
+  };
 
   // ---------- More sheet ----------
   function openMore() { const m = $('#moreSheet'); if (m) m.classList.add('open'); }

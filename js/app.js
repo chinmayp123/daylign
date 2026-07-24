@@ -145,6 +145,8 @@ function bindEvents() {
   bindGymEvents();
   if (typeof bindCardioEvents === 'function') bindCardioEvents();
   if (typeof bindTrainingEvents === 'function') bindTrainingEvents();
+  if (typeof bindSleepEvents === 'function') bindSleepEvents();
+  if (typeof bindPreferencesEvents === 'function') bindPreferencesEvents();
   bindDietEvents();
   bindGoalsEvents();
   if (typeof bindPhotoEvents === 'function') bindPhotoEvents();
@@ -412,6 +414,8 @@ function render() {
   renderGym();
   if (typeof renderCardio === 'function') renderCardio();
   if (typeof renderTraining === 'function') renderTraining();
+  if (typeof renderSleep === 'function') renderSleep();
+  if (typeof renderSettingsPrefs === 'function') renderSettingsPrefs();
   renderDiet();
   populateCategoryDropdowns();
 }
