@@ -114,6 +114,9 @@ async function analyzeMealPhoto(file) {
     return;
   }
 
+  // Record the call for the usage tracker (Settings → AI features).
+  if (typeof logAiCall === 'function' && data.usage) logAiCall('photo', FOOD_PHOTO_MODEL, data.usage);
+
   if (data.stop_reason === 'refusal') {
     resultEl.innerHTML = '<div class="photo-status error">The model declined to analyze this photo — try a clearer shot of the plate.</div>';
     return;

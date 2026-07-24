@@ -129,6 +129,9 @@ async function runVoiceCommand(text) {
     return;
   }
 
+  // Record the call for the usage tracker (Settings → AI features).
+  if (typeof logAiCall === 'function' && data.usage) logAiCall('voice', VOICE_MODEL, data.usage);
+
   if (data.stop_reason === 'refusal') {
     resultEl.innerHTML = '<div class="voice-status error">The model declined that request.</div>';
     return;

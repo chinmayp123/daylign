@@ -226,6 +226,7 @@ function saveToFirebase(data) {
     weight: data.weight || {},
     goals: data.goals || {},
     sleep: data.sleep || {},
+    aiUsage: data.aiUsage || {},
     lastUpdated: Date.now(),
   })
     .then(() => setSyncStatus('synced'))

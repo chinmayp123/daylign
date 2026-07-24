@@ -458,6 +458,7 @@ function render() {
   if (typeof renderSleep === 'function') renderSleep();
   if (typeof renderTodayPlan === 'function') renderTodayPlan();
   if (typeof renderSettingsPrefs === 'function') renderSettingsPrefs();
+  if (typeof renderAiUsageReport === 'function') renderAiUsageReport();
   renderDiet();
   populateCategoryDropdowns();
 }
