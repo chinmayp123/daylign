@@ -40,7 +40,7 @@
       <nav class="nav">
         <button class="nav-btn active" data-view="dashboard">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-          Dashboard
+          Today
         </button>
         <button class="nav-btn" data-view="tasks">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
@@ -55,13 +55,9 @@
           Calendar
         </button>
         <div class="nav-divider"></div>
-        <button class="nav-btn" data-view="gym">
+        <button class="nav-btn" data-view="training">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7v10"/><path d="M18 7v10"/><path d="M3 9v6"/><path d="M21 9v6"/><path d="M6 12h12"/><rect x="5" y="7" width="2" height="10" rx="1"/><rect x="17" y="7" width="2" height="10" rx="1"/><rect x="2" y="9" width="2" height="6" rx="0.5"/><rect x="20" y="9" width="2" height="6" rx="0.5"/></svg>
-          Gym
-        </button>
-        <button class="nav-btn" data-view="cardio">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4" r="1.8"/><path d="M8 21l3-6 4-2-2-5-4 2-2 3"/><path d="M15 13l3 3 1 5"/></svg>
-          Cardio
+          Training
         </button>
         <button class="nav-btn" data-view="diet">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/></svg>
@@ -104,7 +100,7 @@
           <button class="mobile-menu-btn" id="mobileMenuBtn">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
           </button>
-          <h1 id="viewTitle">Dashboard</h1>
+          <h1 id="viewTitle">Today</h1>
           <p class="header-date" id="headerDate"></p>
         </div>
         <div class="header-right">
@@ -315,7 +311,22 @@
       </div>
 
       <!-- Gym View -->
-      <div class="view" id="gymView">
+      <!-- Training View: Gym + Cardio merged behind one nav item. The shared
+           shell (weight readout, mode toggle, combined week) stays put; only the
+           pane below it swaps, so neither mode feels heavier than it did alone. -->
+      <div class="view" id="trainingView">
+        <div class="training-shell">
+          <div class="training-head">
+            <div class="training-toggle" id="trainingToggle" role="tablist" aria-label="Training mode">
+              <button class="training-mode-btn active" type="button" role="tab" data-mode="strength">Strength</button>
+              <button class="training-mode-btn" type="button" role="tab" data-mode="cardio">Cardio</button>
+            </div>
+            <div class="training-weight" id="trainingWeight"></div>
+          </div>
+          <div class="training-week" id="trainingWeek"></div>
+        </div>
+
+        <div class="training-pane" id="trainingStrength">
         <!-- Date Navigation -->
         <div class="gym-date-bar">
           <button class="gym-date-nav" id="gymPrevDay">&lt;</button>
@@ -382,11 +393,9 @@
           <div class="streak-stats" id="streakStats"></div>
           <div class="streak-heatmap-wrap"><div class="streak-heatmap" id="streakHeatmap"></div></div>
         </div>
-      </div>
+        </div><!-- /#trainingStrength -->
 
-      <!-- Diet View -->
-      <!-- Cardio View -->
-      <div class="view" id="cardioView">
+        <div class="training-pane" id="trainingCardio" hidden>
         <div class="gym-date-bar">
           <button class="gym-date-nav" id="cardioPrevDay">&lt;</button>
           <button class="gym-date-today" id="cardioToday">Today</button>
@@ -454,7 +463,8 @@
           <h2>Coach</h2>
           <div class="cardio-coach" id="cardioCoach"></div>
         </div>
-      </div>
+        </div><!-- /#trainingCardio -->
+      </div><!-- /#trainingView -->
 
       <div class="view" id="dietView">
         <!-- Diet Date Navigation -->
@@ -659,7 +669,7 @@
   <nav class="bottom-nav">
     <button class="nav-btn bottom-nav-btn active" data-view="dashboard">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-      <span>Home</span>
+      <span>Today</span>
     </button>
     <button class="nav-btn bottom-nav-btn" data-view="tasks">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
@@ -669,9 +679,9 @@
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
       <span>Board</span>
     </button>
-    <button class="nav-btn bottom-nav-btn" data-view="gym">
+    <button class="nav-btn bottom-nav-btn" data-view="training">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7v10"/><path d="M18 7v10"/><path d="M3 9v6"/><path d="M21 9v6"/><path d="M6 12h12"/><rect x="5" y="7" width="2" height="10" rx="1"/><rect x="17" y="7" width="2" height="10" rx="1"/><rect x="2" y="9" width="2" height="6" rx="0.5"/><rect x="20" y="9" width="2" height="6" rx="0.5"/></svg>
-      <span>Gym</span>
+      <span>Training</span>
     </button>
     <button class="nav-btn bottom-nav-btn" data-view="diet">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
@@ -688,10 +698,6 @@
     <div class="more-sheet">
       <div class="more-sheet-handle"></div>
       <div class="more-sheet-label">More</div>
-      <button class="more-item" data-view="cardio" type="button">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4" r="1.8"/><path d="M8 21l3-6 4-2-2-5-4 2-2 3"/><path d="M15 13l3 3 1 5"/></svg>
-        Cardio
-      </button>
       <button class="more-item" data-view="calendar" type="button">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         Calendar
@@ -992,6 +998,7 @@
   <script src="js/calendar.js"></script>
   <script src="js/gym.js"></script>
   <script src="js/cardio.js"></script>
+  <script src="js/training.js"></script>
   <script src="js/diet.js"></script>
   <script src="js/food-photo.js"></script>
   <script src="js/voice.js"></script>

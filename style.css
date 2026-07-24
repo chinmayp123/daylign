@@ -6509,3 +6509,143 @@ body.onboard-open { overflow: hidden; }
 .dg-macro-goal { font-size: 10px; color: var(--text-muted); font-weight: 500; }
 .dg-macro-label { font-size: 9px; color: var(--text-muted); margin-top: 1px; }
 .dg-macro-left { font-size: 9px; font-weight: 600; margin-top: 3px; }
+
+/* ========== Training shell (Gym + Cardio merged) ========== */
+/* Constant across both modes: only .training-pane swaps below it. */
+.training-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.training-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Segmented Strength / Cardio control */
+.training-toggle {
+  display: inline-flex;
+  padding: 4px;
+  gap: 4px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.training-toggle[hidden] { display: none; }
+
+.training-mode-btn {
+  min-height: 40px;
+  padding: 8px 22px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.training-mode-btn:hover { color: var(--text-primary); }
+.training-mode-btn.active {
+  background: rgba(109, 106, 248, 0.18);
+  color: var(--accent-hover);
+}
+.training-mode-btn[hidden] { display: none; }
+
+/* Compact body-weight readout — replaces needing to scroll to the weight card */
+.training-weight {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 8px 10px 8px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+}
+.training-weight[hidden] { display: none; }
+
+.training-weight-num {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.training-weight-unit { font-size: 11px; color: var(--text-muted); }
+.training-weight-delta {
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.training-weight-delta.good { color: var(--green); }
+.training-weight-delta.bad { color: var(--red); }
+
+.training-weight-log {
+  min-height: 32px;
+  margin-left: 4px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(109, 106, 248, 0.18);
+  color: var(--accent-hover);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.training-weight-log:hover { background: rgba(109, 106, 248, 0.28); }
+
+/* "This week  3 lifts · 4 runs · 🔥12" */
+.training-week {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.training-week-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.training-week-chips { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.training-week-chip {
+  padding: 5px 11px;
+  border-radius: 8px;
+  background: rgba(109, 106, 248, 0.14);
+  color: var(--accent-hover);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.training-week-chip.alt {
+  background: rgba(167, 139, 250, 0.14);
+  color: var(--purple);
+}
+.training-week-streak {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--yellow);
+  font-variant-numeric: tabular-nums;
+}
+
+.training-pane[hidden] { display: none; }
+
+@media (max-width: 640px) {
+  .training-head { gap: 10px; }
+  .training-toggle { flex: 1; }
+  /* Full-width segments on phones so both stay ≥44px and easy to hit */
+  .training-mode-btn { flex: 1; padding: 10px 12px; min-height: 44px; }
+  .training-week { padding: 10px 12px; }
+  .training-week-label { display: none; }
+}

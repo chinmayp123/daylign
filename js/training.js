@@ -1,0 +1,179 @@
+// ========== Training (Gym + Cardio behind one nav item) ==========
+// Gym and Cardio used to be two nav items, which cost a slot the mobile bottom
+// bar does not have. They are now two panes of one Training view: the shell
+// (mode toggle, body-weight readout, combined-week line) is constant and only
+// the pane below it swaps, so neither mode feels heavier than it did alone.
+//
+// Deliberately additive: the gym and cardio markup moved inside panes with
+// every id intact, so gym.js and cardio.js still render into exactly what they
+// always did and needed no changes.
+
+const TRAINING_MODE_KEY = 'daylign_training_mode';
+
+function trainingMode() {
+  return localStorage.getItem(TRAINING_MODE_KEY) === 'cardio' ? 'cardio' : 'strength';
+}
+
+// A mode whose module is switched off in Settings is not selectable — fall back
+// to whichever one is on instead of showing an empty pane.
+function effectiveTrainingMode() {
+  const gymOn = typeof moduleEnabled !== 'function' || moduleEnabled('gym');
+  const cardioOn = typeof moduleEnabled !== 'function' || moduleEnabled('cardio');
+  const saved = trainingMode();
+  if (saved === 'cardio' && !cardioOn) return 'strength';
+  if (saved === 'strength' && !gymOn) return 'cardio';
+  return saved;
+}
+
+function setTrainingMode(mode) {
+  localStorage.setItem(TRAINING_MODE_KEY, mode === 'cardio' ? 'cardio' : 'strength');
+  applyTrainingMode();
+  // The header's primary action follows the mode: Log Weight vs Log Session.
+  if (typeof updateHeaderActionBtn === 'function' && typeof currentView !== 'undefined') {
+    updateHeaderActionBtn(currentView);
+  }
+}
+
+function applyTrainingMode() {
+  const mode = effectiveTrainingMode();
+  const strength = document.getElementById('trainingStrength');
+  const cardio = document.getElementById('trainingCardio');
+  if (strength) strength.hidden = mode !== 'strength';
+  if (cardio) cardio.hidden = mode !== 'cardio';
+
+  const gymOn = typeof moduleEnabled !== 'function' || moduleEnabled('gym');
+  const cardioOn = typeof moduleEnabled !== 'function' || moduleEnabled('cardio');
+  document.querySelectorAll('#trainingToggle .training-mode-btn').forEach(btn => {
+    const on = btn.dataset.mode === mode;
+    btn.classList.toggle('active', on);
+    btn.setAttribute('aria-selected', on ? 'true' : 'false');
+    // With only one module on there is nothing to toggle between — hide the pair.
+    btn.hidden = btn.dataset.mode === 'cardio' ? !cardioOn : !gymOn;
+  });
+  const toggle = document.getElementById('trainingToggle');
+  if (toggle) toggle.hidden = !(gymOn && cardioOn);
+}
+
+// Compact body-weight readout in the shell: "163.2 lbs ↓0.6 · Log".
+// Uses the same smoothed trend series as the full weight card so the two can
+// never disagree.
+function renderTrainingWeight() {
+  const el = document.getElementById('trainingWeight');
+  if (!el) return;
+  const gymOn = typeof moduleEnabled !== 'function' || moduleEnabled('gym');
+  el.hidden = !gymOn;
+  if (!gymOn) return;
+
+  const entries = Object.keys(state.weight || {});
+  if (!entries.length || typeof weightTrendSeries !== 'function') {
+    el.innerHTML = '<button type="button" class="training-weight-log" data-training-log-weight>Log weight</button>';
+    return;
+  }
+  const trend = weightTrendSeries();
+  if (!trend.length) {
+    el.innerHTML = '<button type="button" class="training-weight-log" data-training-log-weight>Log weight</button>';
+    return;
+  }
+  const latest = trend[trend.length - 1][1];
+  const prev = trend.length > 1 ? trend[trend.length - 2][1] : null;
+  const delta = prev !== null ? Math.round((latest - prev) * 10) / 10 : null;
+  const goal = (typeof getGoals === 'function' && getGoals().weight) || 150;
+  // Direction-aware, same rule as the weight card: toward the goal is good.
+  const losing = latest > goal;
+  const good = delta !== null && (losing ? delta <= 0 : delta >= 0);
+
+  el.innerHTML = `
+    <span class="training-weight-num">${latest}</span>
+    <span class="training-weight-unit">lbs</span>
+    ${delta ? `<span class="training-weight-delta ${good ? 'good' : 'bad'}">${delta > 0 ? '↑' : '↓'}${Math.abs(delta)}</span>` : ''}
+    <button type="button" class="training-weight-log" data-training-log-weight>Log</button>
+  `;
+}
+
+// "3 lifts · 4 runs · 🔥12" — the point of the merge is that the week reads as
+// one story instead of two separate tabs.
+function trainingWeekSummary() {
+  const today = getTodayStr();
+  const window7 = new Set();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today + 'T00:00:00');
+    d.setDate(d.getDate() - i);
+    window7.add(toLocalDateStr(d));
+  }
+  const liftDays = new Set((state.gym || []).filter(e => window7.has(e.date)).map(e => e.date));
+  const sessions = (state.cardio || []).filter(s => window7.has(s.date));
+  // "Runs" means runs — a ride or a swim counted here would contradict the
+  // mileage next to it, which only sums running. Other types still feed the
+  // streak below, since they are training either way.
+  const runs = sessions.filter(s => s.type === 'run');
+  const runMiles = runs.reduce((n, s) => n + (Number(s.distance) || 0), 0);
+  const crossTrain = sessions.length - runs.length;
+
+  // Current training streak, counting any logged lift or cardio session.
+  // Yesterday still counts so a morning view doesn't read as a broken streak.
+  const active = new Set([...(state.gym || []).map(e => e.date), ...(state.cardio || []).map(s => s.date)]);
+  let streak = 0;
+  const cursor = new Date(today + 'T00:00:00');
+  if (!active.has(today)) cursor.setDate(cursor.getDate() - 1);
+  while (active.has(toLocalDateStr(cursor))) { streak++; cursor.setDate(cursor.getDate() - 1); }
+
+  return { lifts: liftDays.size, runs: runs.length, runMiles, crossTrain, streak };
+}
+
+function renderTrainingWeek() {
+  const el = document.getElementById('trainingWeek');
+  if (!el) return;
+  const s = trainingWeekSummary();
+  const gymOn = typeof moduleEnabled !== 'function' || moduleEnabled('gym');
+  const cardioOn = typeof moduleEnabled !== 'function' || moduleEnabled('cardio');
+
+  const chips = [];
+  if (gymOn) chips.push(`<span class="training-week-chip">${s.lifts} lift${s.lifts === 1 ? '' : 's'}</span>`);
+  if (cardioOn) {
+    const miles = s.runMiles > 0 ? ` · ${s.runMiles.toFixed(1)} mi` : '';
+    chips.push(`<span class="training-week-chip alt">${s.runs} run${s.runs === 1 ? '' : 's'}${miles}</span>`);
+    if (s.crossTrain > 0) {
+      chips.push(`<span class="training-week-chip alt">${s.crossTrain} cross</span>`);
+    }
+  }
+  if (s.streak > 0) chips.push(`<span class="training-week-streak">🔥 ${s.streak}</span>`);
+
+  el.innerHTML = `<span class="training-week-label">This week</span><span class="training-week-chips">${chips.join('')}</span>`;
+}
+
+// Just the numbers in the shell. Split out so gym.js/cardio.js can refresh it
+// after a save without re-running the mode/visibility logic.
+function renderTrainingShell() {
+  renderTrainingWeight();
+  renderTrainingWeek();
+}
+
+function renderTraining() {
+  if (!document.getElementById('trainingView')) return;
+  renderTrainingShell();
+  applyTrainingMode();
+}
+
+function bindTrainingEvents() {
+  const toggle = document.getElementById('trainingToggle');
+  if (toggle) {
+    toggle.addEventListener('click', e => {
+      const btn = e.target.closest('.training-mode-btn');
+      if (btn) setTrainingMode(btn.dataset.mode);
+    });
+  }
+  // Delegated: the readout is re-rendered on every render(), so a direct
+  // listener on the button would be lost each time.
+  const weight = document.getElementById('trainingWeight');
+  if (weight) {
+    weight.addEventListener('click', e => {
+      if (!e.target.closest('[data-training-log-weight]')) return;
+      setTrainingMode('strength');
+      const input = document.getElementById('weightInput');
+      if (input) {
+        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        input.focus();
+      }
+    });
+  }
+}

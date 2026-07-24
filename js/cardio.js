@@ -474,7 +474,8 @@ function deleteCardioSession(id) {
 }
 
 function bindCardioEvents() {
-  const view = $('#cardioView');
+  // Cardio's markup now lives in the Cardio pane of the merged Training view.
+  const view = $('#trainingCardio');
   if (!view) return;
 
   const dateInput = $('#cardioDate');

@@ -144,6 +144,7 @@ function bindEvents() {
   // Gym & Diet
   bindGymEvents();
   if (typeof bindCardioEvents === 'function') bindCardioEvents();
+  if (typeof bindTrainingEvents === 'function') bindTrainingEvents();
   bindDietEvents();
   bindGoalsEvents();
   if (typeof bindPhotoEvents === 'function') bindPhotoEvents();
@@ -192,14 +193,13 @@ function bindEvents() {
 // ========== Views ==========
 // The header's top-right button adapts to the current view: it logs weight in
 // the Gym, logs food in Diet, and creates a task everywhere else.
-const HEADER_ACTION_LABELS = { gym: 'Log Weight', cardio: 'Log Session', diet: 'Log Food' };
+const HEADER_ACTION_LABELS = { diet: 'Log Food' };
 
 function headerPrimaryAction() {
-  if (currentView === 'gym') {
-    const el = $('#weightInput');
-    if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
-  } else if (currentView === 'cardio') {
-    const el = $('#cardioDistance');
+  if (currentView === 'training') {
+    // Follows the active mode, so the button always means the thing on screen.
+    const cardio = typeof effectiveTrainingMode === 'function' && effectiveTrainingMode() === 'cardio';
+    const el = $(cardio ? '#cardioDistance' : '#weightInput');
     if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
   } else if (currentView === 'diet') {
     const el = $('#dietFoodName');
@@ -320,6 +320,11 @@ function updateHeaderActionBtn(view) {
   if (!btn) return;
   if (view === 'settings') { btn.style.display = 'none'; return; }
   btn.style.display = '';
+  if (view === 'training') {
+    const cardio = typeof effectiveTrainingMode === 'function' && effectiveTrainingMode() === 'cardio';
+    btn.textContent = cardio ? 'Log Session' : 'Log Weight';
+    return;
+  }
   btn.textContent = HEADER_ACTION_LABELS[view] || '+ New Task';
 }
 
@@ -330,15 +335,24 @@ const TASKMETA_VIEWS = ['dashboard', 'tasks', 'board', 'calendar'];
 function switchView(view) {
   // Guard against landing on a module the user has turned off (e.g. a saved
   // last-view, or a stale command-palette entry).
-  if (typeof moduleEnabled === 'function' && ['gym', 'cardio', 'diet'].indexOf(view) !== -1 && !moduleEnabled(view)) {
-    view = 'dashboard';
+  // Gym and Cardio are now two modes of one Training view. Old saved views,
+  // command-palette entries and voice commands still say 'gym'/'cardio', so
+  // translate them into Training plus the matching mode.
+  if (view === 'gym' || view === 'cardio') {
+    if (typeof setTrainingMode === 'function') setTrainingMode(view === 'cardio' ? 'cardio' : 'strength');
+    view = 'training';
+  }
+  if (typeof moduleEnabled === 'function') {
+    // Training survives as long as either of its two modules is on.
+    if (view === 'training' && !moduleEnabled('gym') && !moduleEnabled('cardio')) view = 'dashboard';
+    if (view === 'diet' && !moduleEnabled('diet')) view = 'dashboard';
   }
   currentView = view;
   localStorage.setItem('tf_view', view);
   $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   $$('.view').forEach(v => v.classList.remove('active'));
 
-  const titles = { dashboard: 'Dashboard', tasks: 'All Tasks', board: 'Board', calendar: 'Calendar', gym: 'Gym', cardio: 'Cardio', diet: 'Diet', settings: 'Settings' };
+  const titles = { dashboard: 'Today', tasks: 'All Tasks', board: 'Board', calendar: 'Calendar', training: 'Training', diet: 'Diet', settings: 'Settings' };
   $('#viewTitle').textContent = titles[view];
   $(`#${view}View`).classList.add('active');
   updateHeaderActionBtn(view);
@@ -359,10 +373,13 @@ function switchView(view) {
 // hides; the data stays in the cloud and returns when re-enabled.
 function applyModuleNav() {
   if (typeof moduleEnabled !== 'function') return;
-  ['gym', 'cardio', 'diet'].forEach(key => {
+  ['diet'].forEach(key => {
     const on = moduleEnabled(key);
     document.querySelectorAll(`[data-view="${key}"]`).forEach(el => { el.hidden = !on; });
   });
+  // Training's nav item stays as long as either module behind it is on.
+  const trainingOn = moduleEnabled('gym') || moduleEnabled('cardio');
+  document.querySelectorAll('[data-view="training"]').forEach(el => { el.hidden = !trainingOn; });
   // Weight trend lives in the Gym module — drop its dashboard card when Gym is off.
   const weightCard = document.querySelector('.weight-trend-card');
   if (weightCard) weightCard.hidden = !moduleEnabled('gym');
@@ -394,6 +411,7 @@ function render() {
   renderCalendar();
   renderGym();
   if (typeof renderCardio === 'function') renderCardio();
+  if (typeof renderTraining === 'function') renderTraining();
   renderDiet();
   populateCategoryDropdowns();
 }

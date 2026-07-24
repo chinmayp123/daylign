@@ -200,7 +200,7 @@
   }
 
   // ---------- Command palette (\u2318K) ----------
-  const VIEWS = [['dashboard','Dashboard'],['tasks','All Tasks'],['board','Board'],['calendar','Calendar'],['gym','Gym'],['diet','Diet'],['settings','Settings']];
+  const VIEWS = [['dashboard','Today'],['tasks','All Tasks'],['board','Board'],['calendar','Calendar'],['training','Training'],['diet','Diet'],['settings','Settings']];
   let cmdRows = [], cmdSel = 0;
   function ensurePalette() {
     if ($('#cmdPalette')) return;
@@ -237,7 +237,7 @@
       Object.keys(state.customFoods || {}).filter(f => f.toLowerCase().includes(query)).slice(0, 5)
         .forEach(f => rows.push({ group: 'Foods', label: f, sub: 'log in Diet', run: () => { closePalette(); if (typeof switchView === 'function') switchView('diet'); const inp = $('#dietFoodName'); if (inp) { inp.value = f; inp.dispatchEvent(new Event('input', { bubbles: true })); inp.focus(); } } }));
       [...new Set((state.gym || []).map(e => e.exercise))].filter(x => x && x.toLowerCase().includes(query)).slice(0, 5)
-        .forEach(x => rows.push({ group: 'Exercises', label: x, sub: 'open Gym', run: () => { closePalette(); if (typeof switchView === 'function') switchView('gym'); const inp = $('#gymExerciseName'); if (inp) { inp.value = x; inp.focus(); } } }));
+        .forEach(x => rows.push({ group: 'Exercises', label: x, sub: 'open Training', run: () => { closePalette(); if (typeof switchView === 'function') switchView('gym'); const inp = $('#gymExerciseName'); if (inp) { inp.value = x; inp.focus(); } } }));
       rows.push({ group: 'Command', label: `Run \u201c${q.trim()}\u201d as a command`, sub: 'e.g. log 40 oz water, add task pay rent tomorrow', cmd: true, run: () => { closePalette(); if (typeof runVoiceCommand === 'function') runVoiceCommand(q.trim()); } });
     }
     cmdRows = rows; cmdSel = 0;

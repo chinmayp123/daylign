@@ -13,7 +13,9 @@ function voiceKey() {
   return (typeof getAnthropicKey === 'function') ? getAnthropicKey() : (localStorage.getItem('tf_anthropic_key') || '');
 }
 
-const VOICE_VIEWS = ['dashboard', 'tasks', 'board', 'calendar', 'gym', 'diet', 'settings'];
+// 'gym' and 'cardio' stay listed as aliases — switchView maps them onto
+// Training's two modes, so older phrasings keep working.
+const VOICE_VIEWS = ['dashboard', 'tasks', 'board', 'calendar', 'training', 'gym', 'cardio', 'diet', 'settings'];
 
 const VOICE_SCHEMA = {
   type: 'object',
