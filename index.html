@@ -213,9 +213,12 @@
           </div>
 
           <!-- Daily Schedule -->
-          <div class="card schedule-card">
+          <div class="card schedule-card" id="scheduleCard">
             <div class="schedule-header">
-              <h2 id="scheduleTitle">Today's Schedule</h2>
+              <button type="button" class="schedule-collapse-btn" id="scheduleCollapseBtn" aria-label="Show or hide the schedule">
+                <h2 id="scheduleTitle">Today's Schedule</h2>
+                <span class="schedule-chevron">▾</span>
+              </button>
               <div class="schedule-nav">
                 <button class="schedule-nav-btn" id="schedulePrev">&lt;</button>
                 <button class="schedule-nav-btn schedule-today-btn" id="scheduleToday">Today</button>

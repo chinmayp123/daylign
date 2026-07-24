@@ -153,6 +153,35 @@ function bindEvents() {
   if (typeof bindPhotoEvents === 'function') bindPhotoEvents();
   if (typeof bindVoiceEvents === 'function') bindVoiceEvents();
 
+  // Tap a date label to open that view's native date picker — no hunting for a
+  // tiny input. Pairs each label with its date input.
+  [['#dietDateLabel', '#dietDate'], ['#gymDateLabel', '#gymDate'], ['#cardioDateLabel', '#cardioDate']]
+    .forEach(([labelSel, inputSel]) => {
+      const label = $(labelSel);
+      const input = $(inputSel);
+      if (label && input) label.addEventListener('click', () => {
+        if (typeof input.showPicker === 'function') { try { input.showPicker(); return; } catch (e) {} }
+        input.focus();
+        input.click();
+      });
+    });
+
+  // Schedule card: collapsed by default on phones (the two-lane plan already
+  // shows today's tasks), expandable with the header toggle. Remembered per
+  // device so a re-open reflects your choice.
+  const scheduleCard = $('#scheduleCard');
+  const scheduleToggle = $('#scheduleCollapseBtn');
+  if (scheduleCard) {
+    const isPhone = window.matchMedia('(max-width: 640px)').matches;
+    const saved = localStorage.getItem('daylign_schedule_collapsed');
+    const collapsed = saved === null ? isPhone : saved === '1';
+    scheduleCard.classList.toggle('is-collapsed', collapsed);
+    if (scheduleToggle) scheduleToggle.addEventListener('click', () => {
+      const now = scheduleCard.classList.toggle('is-collapsed');
+      try { localStorage.setItem('daylign_schedule_collapsed', now ? '1' : '0'); } catch (e) {}
+    });
+  }
+
   // Add category / project
   $('#addCategoryBtn').addEventListener('click', handleAddCategory);
   $('#addProjectBtn').addEventListener('click', handleAddProject);
