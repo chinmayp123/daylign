@@ -539,15 +539,17 @@ function renderDiet() {
   const meals = ['breakfast', 'lunch', 'dinner', 'snack'];
   const mealLabels = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snack: 'Snack' };
 
+  // Every meal is listed, even empty ones (design_handoff_daylign_v2 section 4:
+  // "Empty meals still show (0 cal + add row)"). A day's plan reads as a whole
+  // this way — an empty Dinner is information, and it gives you somewhere to
+  // tap. Hiding it made the log look finished when it wasn't.
   const mealGroups = meals.map(meal => ({
     meal,
     label: mealLabels[meal],
     entries: dayEntries.filter(e => e.meal === meal),
-  })).filter(g => g.entries.length > 0);
+  }));
 
-  if (!mealGroups.length) {
-    $('#dietMealsList').innerHTML = '<div class="empty-state"><p>No food logged</p></div>';
-  } else {
+  {
     $('#dietMealsList').innerHTML = mealGroups.map(g => {
       const mealMacros = g.entries.reduce((s, e) => {
         s.calories += (e.calories || 0);
@@ -556,15 +558,17 @@ function renderDiet() {
         s.fat += (e.fat || 0);
         return s;
       }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
+      const isEmpty = g.entries.length === 0;
       return `
-        <div class="diet-meal-group">
+        <div class="diet-meal-group${isEmpty ? ' is-empty' : ''}">
           <div class="diet-meal-header">
             <span class="diet-meal-name">${g.label}</span>
             <span class="diet-meal-cal">
               <span class="diet-meal-cal-val">${Math.round(mealMacros.calories)} cal</span>
+              ${isEmpty ? '' : `
               <span class="diet-meal-macro">${Math.round(mealMacros.protein)}g P</span>
               <span class="diet-meal-macro">${Math.round(mealMacros.carbs)}g C</span>
-              <span class="diet-meal-macro">${Math.round(mealMacros.fat)}g F</span>
+              <span class="diet-meal-macro">${Math.round(mealMacros.fat)}g F</span>`}
             </span>
           </div>
           ${g.entries.map(e => {
@@ -584,9 +588,24 @@ function renderDiet() {
                 </div>
               </div>`;
           }).join('')}
+          <button type="button" class="diet-meal-add" data-add-meal="${g.meal}">+ Add to ${g.label}</button>
         </div>`;
     }).join('');
   }
+
+  // "Add to <meal>" jumps to the log form with that meal preselected, so the
+  // row you tapped is the row the food lands in.
+  $$('.diet-meal-add').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const select = $('#dietMeal');
+      if (select) select.value = btn.dataset.addMeal;
+      const name = $('#dietFoodName');
+      if (name) {
+        name.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        name.focus();
+      }
+    });
+  });
 
   // Delete food
   $$('.diet-delete-food').forEach(btn => {

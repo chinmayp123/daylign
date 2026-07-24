@@ -6929,3 +6929,30 @@ body.onboard-open { overflow: hidden; }
 }
 .readiness-unit { position: relative; z-index: 1; font-size: 10px; color: var(--text-muted); }
 .readiness-advice { font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+
+/* Full day log: every meal listed, empty ones included (handoff 7b) */
+.diet-meal-group.is-empty .diet-meal-name { color: var(--text-muted); }
+.diet-meal-group.is-empty .diet-meal-cal-val { color: var(--text-muted); }
+
+.diet-meal-add {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 8px;
+  padding: 10px 14px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.diet-meal-add:hover {
+  border-color: var(--accent);
+  color: var(--accent-hover);
+  background: var(--accent-glow);
+}
