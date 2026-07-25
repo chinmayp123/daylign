@@ -23,20 +23,23 @@ function renderBoard() {
   const containers = { todo: $('#boardTodo'), 'in-progress': $('#boardProgress'), done: $('#boardDone') };
   const counts = { todo: $('#boardTodoCount'), 'in-progress': $('#boardProgressCount'), done: $('#boardDoneCount') };
 
-  const renderCard = (t) => {
+  // hideCategory: when cards are grouped by category the folder header already
+  // names it, so repeating it in each card footer is just noise — drop it.
+  const renderCard = (t, hideCategory) => {
     const cat = state.categories.find(c => c.id === t.category);
     const proj = t.project ? state.projects.find(p => p.id === t.project) : null;
     const completedLine = t.status === 'done' && t.completedAt
       ? `<div class="board-card-completed">Completed ${new Date(t.completedAt + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>`
+      : '';
+    const footer = (!hideCategory && cat)
+      ? `<div class="board-card-footer"><span class="board-card-category"><span class="category-dot" style="background:${cat.color}"></span>${cat.name}</span></div>`
       : '';
     return `
       <div class="board-card" data-id="${t.id}">
         <div class="board-card-name">${esc(t.name)}</div>
         ${proj ? `<span class="board-card-project" style="color:${proj.color};background:${proj.color}15"><span class="category-dot" style="background:${proj.color}"></span>${proj.name}</span>` : ''}
         ${completedLine}
-        <div class="board-card-footer">
-          ${cat ? `<span class="board-card-category"><span class="category-dot" style="background:${cat.color}"></span>${cat.name}</span>` : '<span></span>'}
-        </div>
+        ${footer}
       </div>`;
   };
 
@@ -89,11 +92,17 @@ function renderBoard() {
             <span class="board-folder-count">${group.tasks.length}</span>
           </div>
           <div class="board-folder-body">
-            ${group.tasks.map(renderCard).join('')}
+            ${group.tasks.map(t => renderCard(t, !useProjectGrouping)).join('')}
           </div>
         </div>`;
     }).join('');
   });
+
+  // Keep the mobile column-switch counts in sync on every render — not just on
+  // nav-button clicks — so completing, adding, or dragging a task updates the
+  // To Do / Doing / Done tallies immediately.
+  const bmsCounts = { todo: $('#bmsTodo'), 'in-progress': $('#bmsProgress'), done: $('#bmsDone') };
+  statuses.forEach(s => { if (bmsCounts[s] && counts[s]) bmsCounts[s].textContent = counts[s].textContent; });
 
   $$('.board-folder-header').forEach(header => {
     header.addEventListener('click', (e) => {
