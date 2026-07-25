@@ -7609,3 +7609,57 @@ body.logfood-sheet-lock { overflow: hidden; }
     scroll-snap-align: start;
   }
 }
+
+/* ========== Inline quick-add per meal (ref 3b / handoff §5) ========== */
+.diet-meal-addwrap { margin-top: 8px; }
+.diet-inline-search { margin-top: 8px; }
+.diet-inline-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  box-sizing: border-box;
+  background: var(--bg-input);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 15px;
+}
+.diet-inline-input:focus { outline: none; box-shadow: 0 0 0 3px var(--accent-glow); }
+.diet-inline-results { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
+.diet-inline-empty { font-size: 12px; color: var(--text-muted); padding: 8px 4px; }
+.diet-inline-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+}
+.diet-inline-row:hover { background: var(--bg-hover); border-color: var(--accent); }
+.diet-inline-name { font-size: 14px; font-weight: 600; color: var(--text-primary); flex: 1; min-width: 0; }
+.diet-inline-badge {
+  font-size: 10px; font-weight: 700; margin-left: 6px;
+  padding: 1px 6px; border-radius: 5px;
+  background: var(--accent-glow); color: var(--accent-hover);
+}
+.diet-inline-badge.shared { background: rgba(167,139,250,0.16); color: var(--purple); }
+.diet-inline-macros { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.diet-inline-plus {
+  width: 26px; height: 26px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 7px; background: rgba(109,106,248,0.18);
+  color: var(--accent-hover); font-size: 18px; font-weight: 700;
+}
+
+/* On phones the Log Food card is reached via the header button (opens the sheet)
+   and per-meal inline quick-add — the always-visible inline copy is just extra
+   scroll, so hide it in the page. The sheet lifts the same node into
+   .logfood-sheet-body, which is outside .diet-layout, so it stays usable. */
+@media (max-width: 900px) {
+  .diet-layout > .diet-log-card { display: none; }
+}

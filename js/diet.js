@@ -479,6 +479,51 @@ const FOOD_DATABASE = {
 
 let dietBackfillNotified = false;
 let recentFoodsOpen = null; // per-meal open/collapsed state, survives re-renders
+let dietInlineOpenMeal = null; // which meal's inline quick-add is open, survives re-renders
+
+// Render inline search results under a meal's quick-add.
+function renderInlineResults(wrap, query) {
+  const box = wrap.querySelector('.diet-inline-results');
+  if (!box) return;
+  const q = (query || '').trim();
+  if (!q) { box.innerHTML = ''; return; }
+  const results = searchFoodDatabase(q);
+  if (!results.length) {
+    box.innerHTML = '<div class="diet-inline-empty">No match — use the full Log Food form for a custom entry.</div>';
+    return;
+  }
+  box.innerHTML = results.map((r, i) => {
+    const d = r.data || {};
+    const badge = r.custom ? '<span class="diet-inline-badge">My Food</span>' : r.shared ? '<span class="diet-inline-badge shared">Shared</span>' : '';
+    return `<button type="button" class="diet-inline-row" data-inline-idx="${i}">
+      <span class="diet-inline-name">${esc(r.name)}${badge}</span>
+      <span class="diet-inline-macros">${Math.round(d.calories || 0)} cal · ${Math.round(d.protein || 0)}P ${Math.round(d.carbs || 0)}C ${Math.round(d.fat || 0)}F</span>
+      <span class="diet-inline-plus">+</span>
+    </button>`;
+  }).join('');
+  box.querySelectorAll('.diet-inline-row').forEach((rowEl, i) => {
+    rowEl.addEventListener('click', () => quickAddToMeal(wrap.dataset.meal, results[i]));
+  });
+}
+
+// One-tap add a searched food to a specific meal, at one serving.
+function quickAddToMeal(meal, result) {
+  const d = result.data || {};
+  state.diet.push({
+    date: dietViewDate,
+    meal: meal,
+    food: result.name,
+    servings: 1,
+    calories: Number(d.calories) || 0,
+    protein: Number(d.protein) || 0,
+    carbs: Number(d.carbs) || 0,
+    fat: Number(d.fat) || 0,
+  });
+  saveData(state);
+  if (typeof showToast === 'function') showToast(`✓ ${result.name} → ${meal}`);
+  dietInlineOpenMeal = meal; // keep the search open on this meal for the next add
+  renderDiet();
+}
 
 function renderDiet() {
   const dateInput = $('#dietDate');
@@ -588,22 +633,44 @@ function renderDiet() {
                 </div>
               </div>`;
           }).join('')}
-          <button type="button" class="diet-meal-add" data-add-meal="${g.meal}">+ Add to ${g.label}</button>
+          <div class="diet-meal-addwrap" data-meal="${g.meal}">
+            <button type="button" class="diet-meal-add" data-add-meal="${g.meal}">+ Add to ${g.label}</button>
+            <div class="diet-inline-search" hidden>
+              <input type="text" class="diet-inline-input" placeholder="Search food to add to ${g.label.toLowerCase()}…" autocomplete="off">
+              <div class="diet-inline-results"></div>
+            </div>
+          </div>
         </div>`;
     }).join('');
   }
 
-  // "Add to <meal>" jumps to the log form with that meal preselected, so the
-  // row you tapped is the row the food lands in.
+  // Inline quick-add: tapping "Add to <meal>" opens a small search right under
+  // that meal — type, tap a result, it's added to THAT meal in place. No jump
+  // to the form (design_handoff §5 / ref 3b one-tap add).
   $$('.diet-meal-add').forEach(btn => {
     btn.addEventListener('click', () => {
-      const select = $('#dietMeal');
-      if (select) select.value = btn.dataset.addMeal;
-      const name = $('#dietFoodName');
-      if (name) {
-        name.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        name.focus();
-      }
+      const wrap = btn.closest('.diet-meal-addwrap');
+      const search = wrap.querySelector('.diet-inline-search');
+      const input = wrap.querySelector('.diet-inline-input');
+      const open = !search.hidden;
+      if (open) { search.hidden = true; dietInlineOpenMeal = null; return; }
+      search.hidden = false;
+      dietInlineOpenMeal = btn.dataset.addMeal;
+      input.focus();
+    });
+  });
+
+  // Re-open the inline search on whichever meal was active before a re-render
+  // (so adding one food leaves the search ready for the next).
+  if (dietInlineOpenMeal) {
+    const wrap = document.querySelector(`.diet-meal-addwrap[data-meal="${dietInlineOpenMeal}"]`);
+    if (wrap) { wrap.querySelector('.diet-inline-search').hidden = false; }
+  }
+
+  $$('.diet-inline-input').forEach(input => {
+    input.addEventListener('input', () => {
+      const wrap = input.closest('.diet-meal-addwrap');
+      renderInlineResults(wrap, input.value);
     });
   });
 
