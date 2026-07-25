@@ -7663,3 +7663,29 @@ body.logfood-sheet-lock { overflow: hidden; }
 @media (max-width: 900px) {
   .diet-layout > .diet-log-card { display: none; }
 }
+
+/* ========== Tasks page mobile density ========== */
+@media (max-width: 600px) {
+  /* Three filter/sort selects on one row instead of wrapping to two.
+     display:contents lifts the selects out of their group wrappers so they
+     become direct grid items sharing the row equally. */
+  .tasks-toolbar {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    flex-wrap: nowrap;
+    margin-bottom: 14px;
+  }
+  .filter-group, .sort-group { display: contents; }
+  .filter-group select, .sort-group select {
+    width: 100%;
+    min-width: 0;
+    padding: 8px 10px;
+    font-size: 12px;
+    text-overflow: ellipsis;
+  }
+  /* Tighter rows; drop the low-value "Created" date on phones so the meta
+     line stays on one line (category · due · done still show). */
+  .task-row { padding: 11px 14px; gap: 12px; }
+  .task-created { display: none; }
+}
