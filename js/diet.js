@@ -601,6 +601,9 @@ function mealUsuals(meal, limit) {
 
 // Which logged entry's servings stepper is expanded (survives re-render).
 let dietEditOpenIdx = null;
+// "Skip or shrink today" advice is collapsed by default — it's retrospective,
+// secondary info, so it shouldn't shout. Remembers its open state per session.
+let dietAdviceOpen = false;
 
 // Food Library sub-page: Recent Foods, My Food Bank, Diet History and manual
 // entry live here now, off the main Diet screen. Toggled by a class on #dietView.
@@ -1849,22 +1852,26 @@ function renderYesterdayAdvice() {
   if (overFat > 0) overBits.push(`${overFat}g fat`);
 
   el.classList.add('has-content');
+  el.classList.toggle('open', dietAdviceOpen);
   el.innerHTML = `
-    <div class="diet-review-header">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
-      <span class="diet-review-title">Skip or shrink today</span>
-      <span class="diet-review-sub">${dayName} ran over by ${overBits.join(' · ')}</span>
-    </div>
-    <div class="diet-yesterday-list">
+    <button type="button" class="diet-advice-head" id="dietAdviceToggle">
+      <svg class="diet-advice-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
+      <span class="diet-advice-title">Skip or shrink today</span>
+      <span class="diet-advice-count">${top.length}</span>
+    </button>
+    <div class="diet-advice-body">
+      <div class="diet-advice-sub">${dayName} ran over by ${overBits.join(' · ')}</div>
       ${top.map(f => `
-        <div class="diet-yesterday-item">
-          <div class="diet-yesterday-item-head">
-            <span class="diet-yesterday-name">${esc(f.food)}</span>
-            <span class="diet-review-culprit-meal">${esc(f.meal || '')}</span>
-          </div>
-          <div class="diet-yesterday-reason">${f.reason}</div>
+        <div class="diet-advice-item">
+          <span class="diet-advice-name">${esc(f.food)}</span><span class="diet-advice-meal">${esc(f.meal || '')}</span>
+          <div class="diet-advice-reason">${f.reason}</div>
         </div>`).join('')}
     </div>`;
+  const adviceToggle = el.querySelector('#dietAdviceToggle');
+  if (adviceToggle) adviceToggle.addEventListener('click', () => {
+    dietAdviceOpen = !dietAdviceOpen;
+    el.classList.toggle('open', dietAdviceOpen);
+  });
 }
 
 // ========== End-of-day Review ==========

@@ -4762,38 +4762,40 @@ button:not(:disabled):active {
   padding: 10px 14px;
 }
 
-.diet-yesterday-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.diet-yesterday-item {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--red);
-  border-radius: var(--radius-sm);
-  padding: 10px 14px;
-}
-
-.diet-yesterday-item-head {
+/* Collapsed by default: one calm summary row that expands to a light list.
+   No red bars, no bold cards — this is retrospective info, not an alarm. */
+.diet-advice-head {
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-body);
 }
-
-.diet-yesterday-name {
-  font-size: 13px;
+.diet-advice-chevron { color: var(--text-muted); flex: 0 0 auto; transition: transform 0.18s ease; }
+.diet-yesterday.open .diet-advice-chevron { transform: rotate(90deg); }
+.diet-advice-title { font-size: 12.5px; font-weight: 600; color: var(--text-secondary); flex: 1; min-width: 0; }
+.diet-advice-count {
+  flex: 0 0 auto;
+  font-size: 11px;
   font-weight: 700;
-  color: var(--text-primary);
+  color: var(--text-muted);
+  background: var(--bg-primary);
+  border-radius: 999px;
+  padding: 1px 8px;
 }
-
-.diet-yesterday-reason {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-top: 3px;
-  line-height: 1.45;
-}
+.diet-advice-body { display: none; flex-direction: column; padding: 4px 2px 0; }
+.diet-yesterday.open .diet-advice-body { display: flex; }
+.diet-advice-sub { font-size: 11.5px; color: var(--text-muted); padding: 6px 10px 4px; }
+.diet-advice-item { padding: 8px 10px; border-top: 1px solid var(--border); }
+.diet-advice-name { font-size: 12.5px; font-weight: 600; color: var(--text-primary); }
+.diet-advice-meal { font-size: 10.5px; color: var(--text-muted); margin-left: 6px; text-transform: capitalize; }
+.diet-advice-reason { font-size: 11.5px; color: var(--text-secondary); margin-top: 2px; line-height: 1.4; }
 
 /* ---- Streak card ---- */
 .streak-card {
