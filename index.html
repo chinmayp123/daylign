@@ -521,8 +521,10 @@
           <input type="date" id="dietDate" class="gym-date-input">
         </div>
         <div class="diet-layout">
+          <!-- Food Library page: manual log form + Snap + key (back button first) -->
+          <button type="button" class="diet-library-back diet-lib-section" id="closeFoodLibraryBtn">&larr; Back to today</button>
           <!-- Log Food Panel -->
-          <div class="card diet-log-card">
+          <div class="card diet-log-card diet-lib-section">
             <h2>Log Food</h2>
             <div class="diet-food-form">
               <div class="diet-search-wrapper">
@@ -635,8 +637,10 @@
             <div class="diet-review" id="dietReview"></div>
           </div>
 
-          <!-- My Foods + Diet History — collapsed on mobile (reference/quick-add) -->
-          <div class="card diet-history-card collapsible" data-collapse="mobile" data-collapse-key="diethistory">
+          <button type="button" class="diet-library-open" id="openFoodLibraryBtn">Recent foods, history &amp; manual entry &rarr;</button>
+
+          <!-- Food Library page: recent foods, food bank, diet history -->
+          <div class="card diet-history-card diet-lib-section">
             <h2>Recent Foods</h2>
             <div class="diet-custom-list" id="dietCustomList">
               <div class="empty-state"><p>Foods you log will show up here for quick re-adding</p></div>

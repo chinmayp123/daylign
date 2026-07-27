@@ -152,6 +152,7 @@ function bindEvents() {
   if (typeof bindLogFoodSheet === 'function') bindLogFoodSheet();
   if (typeof bindWeightSheet === 'function') bindWeightSheet();
   if (typeof bindPhotoEvents === 'function') bindPhotoEvents();
+  if (typeof bindFoodLibrary === 'function') bindFoodLibrary();
   if (typeof bindVoiceEvents === 'function') bindVoiceEvents();
 
   // Tap a date label to open that view's native date picker — no hunting for a
@@ -226,7 +227,7 @@ function bindEvents() {
 // ========== Views ==========
 // The header's top-right button adapts to the current view: it logs weight in
 // the Gym, logs food in Diet, and creates a task everywhere else.
-const HEADER_ACTION_LABELS = { diet: 'Log Food' };
+const HEADER_ACTION_LABELS = { diet: 'Food Library' };
 
 function headerPrimaryAction() {
   if (currentView === 'training') {
@@ -239,15 +240,9 @@ function headerPrimaryAction() {
     const el = $(cardio ? '#cardioDistance' : '#weightInput');
     if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
   } else if (currentView === 'diet') {
-    // On a phone, open the Log Food sheet so you never scroll to the bottom of
-    // the day to add a food. On desktop the form is already in a visible rail —
-    // just focus it.
-    if (typeof logFoodSheetApplies === 'function' && logFoodSheetApplies()
-        && typeof openLogFoodSheet === 'function' && openLogFoodSheet()) {
-      return;
-    }
-    const el = $('#dietFoodName');
-    if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
+    // Logging now lives inline on each meal (usuals tiles, search, snap). The
+    // header button opens the Food Library — recent foods, history, manual entry.
+    if (typeof openFoodLibrary === 'function') openFoodLibrary();
   } else {
     openModal();
   }
@@ -380,6 +375,10 @@ function switchView(view) {
   // The Log Food sheet holds the real diet card node while open. Close it (which
   // returns the card home) before navigating, so it is never left in the sheet.
   if (typeof isLogFoodSheetOpen === 'function' && isLogFoodSheetOpen()) closeLogFoodSheet();
+
+  // Always land on the main Diet day, never mid-Food-Library, when navigating.
+  const dv = document.getElementById('dietView');
+  if (dv) dv.classList.remove('lib-open');
 
   // Guard against landing on a module the user has turned off (e.g. a saved
   // last-view, or a stale command-palette entry).

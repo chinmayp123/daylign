@@ -7,6 +7,13 @@ const FOOD_PHOTO_KEY = 'tf_anthropic_key';
 
 let photoItems = null; // items awaiting confirmation
 let lastPhotoDataUrl = null; // thumbnail of the most recent analyzed photo
+// When Snap is launched from a specific meal row, log to that meal and render
+// the confirm UI inline there instead of the Log Food card's #photoResult.
+let photoTargetMeal = null;
+let photoResultSel = null;
+function photoResultBox() {
+  return (photoResultSel && document.querySelector(photoResultSel)) || $('#photoResult');
+}
 
 function getAnthropicKey() {
   return localStorage.getItem(FOOD_PHOTO_KEY) || '';
@@ -58,7 +65,7 @@ const PHOTO_SCHEMA = {
 
 async function analyzeMealPhoto(file) {
   const key = getAnthropicKey();
-  const resultEl = $('#photoResult');
+  const resultEl = photoResultBox();
   resultEl.innerHTML = '<div class="photo-status"><span class="photo-spinner"></span>Analyzing your plate&hellip;</div>';
 
   let dataUrl;
@@ -154,7 +161,7 @@ function defaultMealForNow() {
 }
 
 function renderPhotoConfirm() {
-  const resultEl = $('#photoResult');
+  const resultEl = photoResultBox();
   if (!photoItems || !photoItems.length) { resultEl.innerHTML = ''; return; }
   const totals = photoItems.reduce((a, it) => ({
     calories: a.calories + it.calories, protein: a.protein + it.protein,
@@ -187,34 +194,36 @@ function renderPhotoConfirm() {
           </div>
         </div>`).join('')}
       <div class="photo-confirm-actions">
-        <select id="photoMeal">
+        ${photoTargetMeal
+          ? `<span class="photo-confirm-meal">→ ${photoTargetMeal[0].toUpperCase() + photoTargetMeal.slice(1)}</span>`
+          : `<select id="photoMeal">
           ${['breakfast', 'lunch', 'dinner', 'snack'].map(m =>
             `<option value="${m}" ${m === defaultMealForNow() ? 'selected' : ''}>${m[0].toUpperCase() + m.slice(1)}</option>`).join('')}
-        </select>
+        </select>`}
         <button type="button" class="btn-primary" id="photoAddAllBtn">Add all to log</button>
         <button type="button" class="photo-discard-btn" id="photoDiscardBtn">Discard</button>
       </div>
       <p class="photo-confirm-note">Estimates from the photo — tweak anything that looks off before saving.</p>
     </div>`;
 
-  $$('#photoResult .photo-item-name').forEach(inp => {
+  resultEl.querySelectorAll('.photo-item-name').forEach(inp => {
     inp.addEventListener('input', () => { photoItems[inp.dataset.idx].food = inp.value; });
   });
-  $$('#photoResult .photo-item-macros input').forEach(inp => {
+  resultEl.querySelectorAll('.photo-item-macros input').forEach(inp => {
     inp.addEventListener('input', () => { photoItems[inp.dataset.idx][inp.dataset.macro] = Number(inp.value) || 0; });
   });
-  $$('#photoResult .photo-item-del').forEach(btn => {
+  resultEl.querySelectorAll('.photo-item-del').forEach(btn => {
     btn.addEventListener('click', () => { photoItems.splice(Number(btn.dataset.idx), 1); renderPhotoConfirm(); });
   });
-  const addBtn = $('#photoAddAllBtn');
+  const addBtn = resultEl.querySelector('#photoAddAllBtn');
   if (addBtn) addBtn.addEventListener('click', savePhotoItems);
-  const discardBtn = $('#photoDiscardBtn');
-  if (discardBtn) discardBtn.addEventListener('click', () => { photoItems = null; $('#photoResult').innerHTML = ''; });
+  const discardBtn = resultEl.querySelector('#photoDiscardBtn');
+  if (discardBtn) discardBtn.addEventListener('click', () => { photoItems = null; photoResultBox().innerHTML = ''; photoTargetMeal = null; photoResultSel = null; });
 }
 
 function savePhotoItems() {
   if (!photoItems || !photoItems.length) return;
-  const meal = ($('#photoMeal') && $('#photoMeal').value) || defaultMealForNow();
+  const meal = photoTargetMeal || ($('#photoMeal') && $('#photoMeal').value) || defaultMealForNow();
   const date = (typeof dietViewDate !== 'undefined' && dietViewDate) || getTodayStr();
   for (const it of photoItems) {
     const food = it.food.trim();
@@ -229,10 +238,45 @@ function savePhotoItems() {
   }
   const n = photoItems.length;
   photoItems = null;
-  $('#photoResult').innerHTML = '';
+  photoResultBox().innerHTML = '';
+  photoTargetMeal = null;
+  photoResultSel = null;
   saveData(state);
   renderDiet();
   showToast(`✓ Logged ${n} item${n === 1 ? '' : 's'} from your photo`);
+}
+
+// Launch the photo flow from a specific meal row: log to that meal, render the
+// confirm UI inline there. If no API key yet, show an inline paste field first.
+function startMealPhoto(meal) {
+  photoTargetMeal = meal;
+  photoResultSel = `.diet-inline-photo[data-photo-meal="${meal}"]`;
+  if (!getAnthropicKey()) { renderInlinePhotoKeyPrompt(); return; }
+  const input = $('#photoFileInput');
+  if (input) input.click();
+}
+
+function renderInlinePhotoKeyPrompt() {
+  const box = photoResultBox();
+  if (!box) { showToast('Add your Anthropic key in Settings → AI features to use Snap'); return; }
+  box.innerHTML = `
+    <div class="photo-inline-key">
+      <input type="password" class="photo-inline-key-input" placeholder="Paste Anthropic key (sk-ant-…)" autocomplete="off">
+      <button type="button" class="btn-primary photo-inline-key-save">Save &amp; snap</button>
+      <p class="photo-key-note">Stored only on this device — never synced. Get one at console.anthropic.com.</p>
+    </div>`;
+  const inp = box.querySelector('.photo-inline-key-input');
+  if (inp) inp.focus();
+  const save = box.querySelector('.photo-inline-key-save');
+  if (save) save.addEventListener('click', () => {
+    const v = inp.value.trim();
+    if (!v.startsWith('sk-ant-')) { showToast('That does not look like an Anthropic key (sk-ant-…)'); return; }
+    localStorage.setItem(FOOD_PHOTO_KEY, v);
+    box.innerHTML = '';
+    showToast('✓ Key saved on this device');
+    const input = $('#photoFileInput');
+    if (input) input.click();
+  });
 }
 
 function bindPhotoEvents() {
@@ -247,6 +291,9 @@ function bindPhotoEvents() {
   }
 
   snapBtn.addEventListener('click', () => {
+    // Card's own Snap logs via the meal dropdown, confirm renders in #photoResult.
+    photoTargetMeal = null;
+    photoResultSel = null;
     if (!getAnthropicKey()) {
       $('#photoKeySetup').hidden = false;
       $('#photoKeyInput').focus();

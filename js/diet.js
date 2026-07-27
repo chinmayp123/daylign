@@ -574,6 +574,27 @@ function mealUsuals(meal, limit) {
 // Which logged entry's servings stepper is expanded (survives re-render).
 let dietEditOpenIdx = null;
 
+// Food Library sub-page: Recent Foods, My Food Bank, Diet History and manual
+// entry live here now, off the main Diet screen. Toggled by a class on #dietView.
+function openFoodLibrary() {
+  const v = document.getElementById('dietView');
+  if (!v) return;
+  v.classList.add('lib-open');
+  window.scrollTo(0, 0);
+}
+function closeFoodLibrary() {
+  const v = document.getElementById('dietView');
+  if (!v) return;
+  v.classList.remove('lib-open');
+  window.scrollTo(0, 0);
+}
+function bindFoodLibrary() {
+  const open = document.getElementById('openFoodLibraryBtn');
+  const close = document.getElementById('closeFoodLibraryBtn');
+  if (open) open.addEventListener('click', openFoodLibrary);
+  if (close) close.addEventListener('click', closeFoodLibrary);
+}
+
 function renderDiet() {
   const dateInput = $('#dietDate');
   if (!dateInput) return;
@@ -701,11 +722,17 @@ function renderDiet() {
           }).join('')}
           ${usualsHtml}
           <div class="diet-meal-addwrap" data-meal="${g.meal}">
-            <button type="button" class="diet-meal-add" data-add-meal="${g.meal}">${addLabel}</button>
+            <div class="diet-meal-addrow">
+              <button type="button" class="diet-meal-add" data-add-meal="${g.meal}">${addLabel}</button>
+              <button type="button" class="diet-meal-snap" data-snap-meal="${g.meal}" title="Snap a photo of this meal" aria-label="Snap a photo for ${g.label}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              </button>
+            </div>
             <div class="diet-inline-search" hidden>
               <input type="text" class="diet-inline-input" placeholder="Search food to add to ${g.label.toLowerCase()}…" autocomplete="off">
               <div class="diet-inline-results"></div>
             </div>
+            <div class="diet-inline-photo" data-photo-meal="${g.meal}"></div>
           </div>
         </div>`;
     }).join('');
@@ -719,6 +746,13 @@ function renderDiet() {
       const u = (usualsByMeal[meal] || [])[Number(btn.dataset.usualIdx)];
       if (!u) return;
       quickAddToMeal(meal, { name: u.name, data: u.per }, false);
+    });
+  });
+
+  // Snap a meal, per meal: photo → Claude → confirm inline → logs to this meal.
+  $$('.diet-meal-snap').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (typeof startMealPhoto === 'function') startMealPhoto(btn.dataset.snapMeal);
     });
   });
 
