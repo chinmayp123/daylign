@@ -741,9 +741,9 @@ function renderDiet() {
                   <span>${Math.round(e.fat || 0)}g F</span>
                 </div>
                 <div class="diet-entry-edit"${dietEditOpenIdx === idx ? '' : ' hidden'}>
-                  <button type="button" class="diet-serv-step" data-step="-1" data-idx="${idx}" aria-label="Fewer servings">−</button>
+                  <button type="button" class="diet-serv-step" data-step="-0.5" data-idx="${idx}" aria-label="Fewer servings">−</button>
                   <span class="diet-serv-val">${servVal}</span>
-                  <button type="button" class="diet-serv-step" data-step="1" data-idx="${idx}" aria-label="More servings">+</button>
+                  <button type="button" class="diet-serv-step" data-step="0.5" data-idx="${idx}" aria-label="More servings">+</button>
                   <span class="diet-serv-caption">servings</span>
                 </div>
               </div>`;
@@ -805,7 +805,8 @@ function renderDiet() {
       if (!e) return;
       const cur = Number(e.servings) > 0 ? Number(e.servings) : 1;
       let next = cur + Number(btn.dataset.step);
-      if (next < 1) next = 1;
+      next = Math.round(next * 2) / 2; // snap to nearest 0.5, avoids float drift
+      if (next < 0.5) next = 0.5;      // half serving is the floor
       if (next === cur) return;
       const ratio = next / cur;
       e.servings = next;
