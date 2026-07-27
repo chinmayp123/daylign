@@ -489,7 +489,35 @@ function renderInlineResults(wrap, query) {
   if (!q) { box.innerHTML = ''; return; }
   const results = searchFoodDatabase(q);
   if (!results.length) {
-    box.innerHTML = '<div class="diet-inline-empty">No match — use the full Log Food form for a custom entry.</div>';
+    // No match in DB/bank/shared — let them add it as a brand-new food right
+    // here: enter macros, it logs to this meal AND is remembered for next time.
+    const meal = wrap.dataset.meal;
+    const label = meal ? meal[0].toUpperCase() + meal.slice(1) : 'meal';
+    box.innerHTML = `
+      <div class="diet-inline-custom">
+        <div class="diet-inline-custom-title">Add “${esc(q)}” as a new food</div>
+        <div class="diet-inline-custom-macros">
+          <input type="number" class="dic-in dic-cal" placeholder="cal" min="0" inputmode="numeric">
+          <input type="number" class="dic-in dic-p" placeholder="P" min="0" step="0.1" inputmode="decimal">
+          <input type="number" class="dic-in dic-c" placeholder="C" min="0" step="0.1" inputmode="decimal">
+          <input type="number" class="dic-in dic-f" placeholder="F" min="0" step="0.1" inputmode="decimal">
+        </div>
+        <button type="button" class="btn-primary dic-add">Add to ${label}</button>
+      </div>`;
+    const addBtn = box.querySelector('.dic-add');
+    if (addBtn) addBtn.addEventListener('click', () => {
+      const macros = {
+        calories: Number(box.querySelector('.dic-cal').value) || 0,
+        protein: Number(box.querySelector('.dic-p').value) || 0,
+        carbs: Number(box.querySelector('.dic-c').value) || 0,
+        fat: Number(box.querySelector('.dic-f').value) || 0,
+      };
+      if (!macros.calories && !macros.protein && !macros.carbs && !macros.fat) {
+        showToast('Add at least calories or a macro'); return;
+      }
+      if (typeof rememberFood === 'function') rememberFood(q, macros, 1);
+      quickAddToMeal(meal, { name: q, data: macros }, false);
+    });
     return;
   }
   box.innerHTML = results.map((r, i) => {
@@ -703,7 +731,7 @@ function renderDiet() {
               <div class="diet-food-entry" data-entry-idx="${idx}">
                 <div class="diet-food-entry-main">
                   <span class="diet-food-name">${esc(e.food)}</span>
-                  <span class="diet-food-servings">${e.servings !== 1 ? e.servings + 'x' : ''}</span>
+                  <button type="button" class="diet-serv-pill" data-idx="${idx}" title="Tap to change servings">${servVal}×</button>
                   <button class="diet-delete-food" data-diet-idx="${idx}">&times;</button>
                 </div>
                 <div class="diet-food-macros">
