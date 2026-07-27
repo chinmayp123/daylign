@@ -6518,30 +6518,33 @@ body.onboard-open { overflow: hidden; }
 
 .dg-net { text-align: center; font-size: 12px; color: var(--text-secondary); margin: 8px 0 16px; }
 
-.dg-macros { display: flex; gap: 8px; }
-.dg-macro {
-  flex: 1;
+/* Macros as horizontal progress bars (MacroFactor/MFP-style) — more scannable
+   and compact than rings; the calorie ring stays the single hero gauge. */
+.dg-macros { display: flex; flex-direction: column; gap: 14px; margin-top: 2px; }
+.dg-bar-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+.dg-bar-label { font-size: 12.5px; font-weight: 600; color: var(--text-secondary); }
+.dg-bar-nums { font-size: 12.5px; color: var(--text-primary); white-space: nowrap; }
+.dg-bar-nums b { font-weight: 700; }
+.dg-bar-goal { color: var(--text-muted); font-weight: 500; }
+.dg-bar-left { margin-left: 10px; font-size: 11.5px; font-weight: 600; }
+.dg-bar-track {
+  height: 8px;
   background: var(--bg-input);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 11px 6px;
-  text-align: center;
+  border-radius: 999px;
+  overflow: hidden;
 }
-.dg-macro-ring {
-  width: 48px; height: 48px; margin: 0 auto;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
+.dg-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  min-width: 2px;
+  transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
-.dg-macro-hole {
-  width: 37px; height: 37px; border-radius: 50%;
-  background: var(--bg-input);
-  display: flex; align-items: center; justify-content: center;
-}
-.dg-macro-hole span { font-size: 11px; font-weight: 700; }
-.dg-macro-val { font-size: 13px; font-weight: 700; margin-top: 7px; color: var(--text-primary); }
-.dg-macro-goal { font-size: 10px; color: var(--text-muted); font-weight: 500; }
-.dg-macro-label { font-size: 9px; color: var(--text-muted); margin-top: 1px; }
-.dg-macro-left { font-size: 9px; font-weight: 600; margin-top: 3px; }
 
 /* ========== Training shell (Gym + Cardio merged) ========== */
 /* Constant across both modes: only .training-pane swaps below it. */

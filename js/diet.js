@@ -601,9 +601,10 @@ function mealUsuals(meal, limit) {
 
 // Which logged entry's servings stepper is expanded (survives re-render).
 let dietEditOpenIdx = null;
-// "Skip or shrink today" advice is collapsed by default — it's retrospective,
-// secondary info, so it shouldn't shout. Remembers its open state per session.
-let dietAdviceOpen = false;
+// "Skip or shrink today" advice shows expanded by default so it's actually
+// useful — just in a calm, light style rather than bold red cards. Still
+// collapsible via the chevron; remembers its state per session.
+let dietAdviceOpen = true;
 
 // Food Library sub-page: Recent Foods, My Food Bank, Diet History and manual
 // entry live here now, off the main Diet screen. Toggled by a class on #dietView.
@@ -1584,13 +1585,12 @@ function renderDietGoals(totals) {
     const left = m.goal - m.current;
     const leftTxt = left >= 0 ? `${left}g left` : `${-left}g over`;
     return `
-      <div class="dg-macro">
-        <div class="dg-macro-ring" style="background:conic-gradient(${m.color} 0 ${pct}%, var(--border) ${pct}% 100%)">
-          <div class="dg-macro-hole"><span class="tnum" style="color:${m.color}">${pct}%</span></div>
+      <div class="dg-bar">
+        <div class="dg-bar-head">
+          <span class="dg-bar-label">${m.label}</span>
+          <span class="dg-bar-nums"><b class="tnum">${m.current}</b><span class="dg-bar-goal"> / ${m.goal}g</span><span class="dg-bar-left tnum" style="color:${m.color}">${leftTxt}</span></span>
         </div>
-        <div class="dg-macro-val tnum">${m.current}<span class="dg-macro-goal"> / ${m.goal}g</span></div>
-        <div class="dg-macro-label">${m.label}</div>
-        <div class="dg-macro-left tnum" style="color:${m.color}">${leftTxt}</div>
+        <div class="dg-bar-track"><div class="dg-bar-fill" style="width:${pct}%;background:${m.color}"></div></div>
       </div>`;
   }).join('');
 
