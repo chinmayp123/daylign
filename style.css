@@ -7613,6 +7613,66 @@ body.logfood-sheet-lock { overflow: hidden; }
 /* ========== Inline quick-add per meal (ref 3b / handoff §5) ========== */
 .diet-meal-addwrap { margin-top: 8px; }
 .diet-inline-search { margin-top: 8px; }
+
+/* Your Usuals — one-tap food tiles per meal (effort under the hood, calm surface) */
+.diet-usuals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.diet-usual-tile {
+  min-height: 34px;
+  padding: 7px 12px;
+  background: var(--accent-glow);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  color: var(--accent-hover);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.diet-usual-tile:hover { background: var(--accent); color: #fff; }
+.diet-usual-tile:active { transform: scale(0.96); }
+
+/* Editable logged entry — tap the row to reveal a servings stepper */
+.diet-food-entry-main { cursor: pointer; }
+.diet-entry-edit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+/* display:flex above would otherwise defeat the [hidden] attribute */
+.diet-entry-edit[hidden] { display: none; }
+.diet-serv-step {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.diet-serv-step:hover { border-color: var(--accent); color: var(--accent-hover); }
+.diet-serv-val {
+  min-width: 24px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+.diet-serv-caption {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
 .diet-inline-input {
   width: 100%;
   min-height: 44px;

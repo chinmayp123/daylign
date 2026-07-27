@@ -507,7 +507,7 @@ function renderInlineResults(wrap, query) {
 }
 
 // One-tap add a searched food to a specific meal, at one serving.
-function quickAddToMeal(meal, result) {
+function quickAddToMeal(meal, result, keepSearchOpen) {
   const d = result.data || {};
   state.diet.push({
     date: dietViewDate,
@@ -521,9 +521,58 @@ function quickAddToMeal(meal, result) {
   });
   saveData(state);
   if (typeof showToast === 'function') showToast(`✓ ${result.name} → ${meal}`);
-  dietInlineOpenMeal = meal; // keep the search open on this meal for the next add
+  // Tiles pass keepSearchOpen=false so a one-tap add doesn't pop the search box.
+  if (keepSearchOpen !== false) dietInlineOpenMeal = meal;
   renderDiet();
 }
+
+// Per-serving macros for a food: prefer the food bank / built-in DB / shared
+// bank; otherwise derive from a logged entry (its macros ÷ its servings).
+function perServingMacros(name, entry) {
+  const lower = (name || '').toLowerCase();
+  const bankedEntry = Object.entries(state.customFoods).find(([k]) => k.toLowerCase() === lower);
+  const banked = (bankedEntry && bankedEntry[1]) || FOOD_DATABASE[lower] || (typeof sharedFoods !== 'undefined' && sharedFoods[lower]);
+  if (banked) return banked;
+  if (!entry) return null;
+  const n = Number(entry.servings) > 0 ? Number(entry.servings) : 1;
+  return {
+    calories: Math.round((entry.calories || 0) / n),
+    protein: Math.round(((entry.protein || 0) / n) * 10) / 10,
+    carbs: Math.round(((entry.carbs || 0) / n) * 10) / 10,
+    fat: Math.round(((entry.fat || 0) / n) * 10) / 10,
+    serving: '1 serving',
+  };
+}
+
+// "Your Usuals" for a meal: the foods you log MOST for that meal, most-frequent
+// first (newest entry breaks ties and supplies the macros). Powers the one-tap
+// tiles so a routine day is logged without searching or typing.
+function mealUsuals(meal, limit) {
+  limit = limit || 4;
+  const byFood = {};
+  for (let i = 0; i < state.diet.length; i++) {
+    const e = state.diet[i];
+    if (e.meal !== meal) continue;
+    const name = (e.food || '').trim();
+    if (!name) continue;
+    const lower = name.toLowerCase();
+    if (typeof isRemovedFood === 'function' && isRemovedFood(lower)) continue;
+    let rec = byFood[lower];
+    if (!rec) rec = byFood[lower] = { name, score: 0, lastIdx: -1 };
+    rec.score += 1;
+    rec.name = name;   // newest casing wins
+    rec.lastIdx = i;   // newest entry: macros + tiebreak
+  }
+  return Object.keys(byFood)
+    .map(k => byFood[k])
+    .sort((a, b) => b.score - a.score || b.lastIdx - a.lastIdx)
+    .slice(0, limit)
+    .map(rec => ({ name: rec.name, per: perServingMacros(rec.name, state.diet[rec.lastIdx]) }))
+    .filter(u => u.per);
+}
+
+// Which logged entry's servings stepper is expanded (survives re-render).
+let dietEditOpenIdx = null;
 
 function renderDiet() {
   const dateInput = $('#dietDate');
@@ -594,6 +643,7 @@ function renderDiet() {
     entries: dayEntries.filter(e => e.meal === meal),
   }));
 
+  const usualsByMeal = {};
   {
     $('#dietMealsList').innerHTML = mealGroups.map(g => {
       const mealMacros = g.entries.reduce((s, e) => {
@@ -604,6 +654,15 @@ function renderDiet() {
         return s;
       }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
       const isEmpty = g.entries.length === 0;
+      // Your Usuals: your most-logged foods for THIS meal — one tap to log.
+      const usuals = mealUsuals(g.meal, 4);
+      usualsByMeal[g.meal] = usuals;
+      const usualsHtml = usuals.length ? `
+          <div class="diet-usuals">
+            ${usuals.map((u, i) => `<button type="button" class="diet-usual-tile" data-usual-meal="${g.meal}" data-usual-idx="${i}">${esc(u.name)}</button>`).join('')}
+          </div>` : '';
+      // With usuals present, search is the fallback ("Something else"), not the default.
+      const addLabel = usuals.length ? '+ Something else' : `+ Add to ${g.label}`;
       return `
         <div class="diet-meal-group${isEmpty ? ' is-empty' : ''}">
           <div class="diet-meal-header">
@@ -618,8 +677,9 @@ function renderDiet() {
           </div>
           ${g.entries.map(e => {
             const idx = state.diet.indexOf(e);
+            const servVal = Number(e.servings) > 0 ? Number(e.servings) : 1;
             return `
-              <div class="diet-food-entry">
+              <div class="diet-food-entry" data-entry-idx="${idx}">
                 <div class="diet-food-entry-main">
                   <span class="diet-food-name">${esc(e.food)}</span>
                   <span class="diet-food-servings">${e.servings !== 1 ? e.servings + 'x' : ''}</span>
@@ -631,10 +691,17 @@ function renderDiet() {
                   <span>${Math.round(e.carbs || 0)}g C</span>
                   <span>${Math.round(e.fat || 0)}g F</span>
                 </div>
+                <div class="diet-entry-edit"${dietEditOpenIdx === idx ? '' : ' hidden'}>
+                  <button type="button" class="diet-serv-step" data-step="-1" data-idx="${idx}" aria-label="Fewer servings">−</button>
+                  <span class="diet-serv-val">${servVal}</span>
+                  <button type="button" class="diet-serv-step" data-step="1" data-idx="${idx}" aria-label="More servings">+</button>
+                  <span class="diet-serv-caption">servings</span>
+                </div>
               </div>`;
           }).join('')}
+          ${usualsHtml}
           <div class="diet-meal-addwrap" data-meal="${g.meal}">
-            <button type="button" class="diet-meal-add" data-add-meal="${g.meal}">+ Add to ${g.label}</button>
+            <button type="button" class="diet-meal-add" data-add-meal="${g.meal}">${addLabel}</button>
             <div class="diet-inline-search" hidden>
               <input type="text" class="diet-inline-input" placeholder="Search food to add to ${g.label.toLowerCase()}…" autocomplete="off">
               <div class="diet-inline-results"></div>
@@ -643,6 +710,52 @@ function renderDiet() {
         </div>`;
     }).join('');
   }
+
+  // Your Usuals: tap a tile to log that food to the meal at one serving — no
+  // search, no form. keepSearchOpen=false so the search box stays closed.
+  $$('.diet-usual-tile').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const meal = btn.dataset.usualMeal;
+      const u = (usualsByMeal[meal] || [])[Number(btn.dataset.usualIdx)];
+      if (!u) return;
+      quickAddToMeal(meal, { name: u.name, data: u.per }, false);
+    });
+  });
+
+  // Tap a logged entry to reveal its servings stepper (log-first-fix-later).
+  $$('#dietMealsList .diet-food-entry-main').forEach(main => {
+    main.addEventListener('click', (ev) => {
+      if (ev.target.closest('.diet-delete-food')) return;
+      const row = main.closest('.diet-food-entry');
+      const idx = Number(row.dataset.entryIdx);
+      dietEditOpenIdx = (dietEditOpenIdx === idx) ? null : idx;
+      const edit = row.querySelector('.diet-entry-edit');
+      if (edit) edit.hidden = dietEditOpenIdx !== idx;
+    });
+  });
+
+  // Servings +/- rescales that entry's macros in proportion and re-saves.
+  $$('#dietMealsList .diet-serv-step').forEach(btn => {
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const idx = Number(btn.dataset.idx);
+      const e = state.diet[idx];
+      if (!e) return;
+      const cur = Number(e.servings) > 0 ? Number(e.servings) : 1;
+      let next = cur + Number(btn.dataset.step);
+      if (next < 1) next = 1;
+      if (next === cur) return;
+      const ratio = next / cur;
+      e.servings = next;
+      e.calories = Math.round((e.calories || 0) * ratio);
+      e.protein = Math.round(((e.protein || 0) * ratio) * 10) / 10;
+      e.carbs = Math.round(((e.carbs || 0) * ratio) * 10) / 10;
+      e.fat = Math.round(((e.fat || 0) * ratio) * 10) / 10;
+      dietEditOpenIdx = idx; // keep the stepper open across the re-render
+      saveData(state);
+      renderDiet();
+    });
+  });
 
   // Inline quick-add: tapping "Add to <meal>" opens a small search right under
   // that meal — type, tap a result, it's added to THAT meal in place. No jump
@@ -678,6 +791,7 @@ function renderDiet() {
   $$('.diet-delete-food').forEach(btn => {
     btn.addEventListener('click', () => {
       state.diet.splice(Number(btn.dataset.dietIdx), 1);
+      dietEditOpenIdx = null; // indices shift after a splice — don't reopen the wrong row
       saveData(state);
       renderDiet();
     });
