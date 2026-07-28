@@ -1,10 +1,10 @@
 // ========== Tasks List View ==========
-const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
+const ARCHIVE_AFTER_MS = 7 * 24 * 60 * 60 * 1000; // done tasks auto-archive after 1 week
 
 function isArchived(t) {
   if (t.status !== 'done' || !t.completedAt) return false;
   const completed = new Date(t.completedAt + 'T00:00:00');
-  return (Date.now() - completed.getTime()) >= TWO_WEEKS_MS;
+  return (Date.now() - completed.getTime()) >= ARCHIVE_AFTER_MS;
 }
 
 function renderTasksView() {

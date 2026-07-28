@@ -44,7 +44,7 @@ function renderBoard() {
   };
 
   statuses.forEach(status => {
-    // Hide auto-archived tasks (done 2+ weeks ago) so the Done column doesn't
+    // Hide auto-archived tasks (done 1+ week ago) so the Done column doesn't
     // pile up forever — same rule the Tasks view uses. They're not deleted;
     // they stay in Tasks → Archived.
     let tasks = state.tasks.filter(t => t.status === status && !(typeof isArchived === 'function' && isArchived(t)));

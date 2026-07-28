@@ -62,7 +62,7 @@ Shared building blocks worth reusing rather than reinventing: `.card`, `.btn-pri
 ### Tasks
 - **Board** (Kanban, drag-and-drop, category folders) and **List** views
 - Subtask checklists, priorities, due dates, projects with custom colors
-- Auto-archive of tasks completed 2+ weeks ago
+- Auto-archive of tasks completed 1+ week ago
 
 ### Calendar
 - Month/week views with US holidays, custom color-coded events, and task dots on due dates
