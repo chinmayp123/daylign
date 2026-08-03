@@ -328,6 +328,7 @@ function renderCardio() {
   const label = $('#cardioDateLabel');
   if (label) label.textContent = formatDate(cardioDate);
 
+  renderCardioQuick();
   renderCardioTypeTabs();
   renderCardioRunTypes();
   renderCardioZoneBar();
@@ -683,4 +684,109 @@ function bindCardioEvents() {
     renderCardio();
   }
   [raceSel, raceDate, weekly].forEach(el => { if (el) el.addEventListener('change', saveRaceGoals); });
+}
+
+// ========== Quick log ("same as usual") ==========
+// Logging a daily ride used to mean: pick a type, type a distance, type a
+// duration, then save — every single day, for a session that never changes.
+// That friction is why the log stayed empty. This derives your usual session
+// from history and logs it in one tap; the streak is the payoff for a habit
+// that happens daily.
+
+// The session you actually repeat: most-used type, then the most common
+// duration/distance logged for it. Null until there's something to learn from.
+function cardioUsual() {
+  const log = (state.cardio || []).filter(s => s && s.type && Number(s.duration) > 0);
+  if (!log.length) return null;
+  const recent = log.slice(-30);
+  const byType = {};
+  recent.forEach(s => { byType[s.type] = (byType[s.type] || 0) + 1; });
+  const type = Object.keys(byType).sort((a, b) => byType[b] - byType[a])[0];
+  const ofType = recent.filter(s => s.type === type);
+  const mode = (vals) => {
+    const f = {};
+    vals.forEach(v => { f[v] = (f[v] || 0) + 1; });
+    return Number(Object.keys(f).sort((a, b) => f[b] - f[a] || Number(b) - Number(a))[0]) || 0;
+  };
+  return {
+    type,
+    duration: mode(ofType.map(s => Math.round(Number(s.duration) || 0))),
+    distance: mode(ofType.map(s => Math.round((Number(s.distance) || 0) * 100) / 100)),
+    count: ofType.length,
+  };
+}
+
+// Consecutive days with a session. Today not being logged yet doesn't break
+// the streak — it only breaks once a full day is missed.
+function cardioStreak() {
+  const days = new Set((state.cardio || []).filter(s => s && s.date).map(s => s.date));
+  if (!days.size) return 0;
+  const today = getTodayStr();
+  let cursor = days.has(today) ? today : offsetDateStr(today, -1);
+  if (!days.has(cursor)) return 0;
+  let n = 0;
+  while (days.has(cursor)) { n++; cursor = offsetDateStr(cursor, -1); }
+  return n;
+}
+
+function logUsualCardio() {
+  const u = cardioUsual();
+  if (!u) return;
+  state.cardio = state.cardio || [];
+  state.cardio.push({
+    id: 'c' + Date.now(),
+    date: cardioDate,
+    type: u.type,
+    distance: u.distance || 0,
+    duration: u.duration || 0,
+    notes: '',
+  });
+  saveData(state);
+  const cfg = CARDIO_TYPES[u.type] || { label: u.type };
+  showToast(`✓ ${u.duration} min ${cfg.label.toLowerCase()} logged`);
+  render();
+}
+
+function renderCardioQuick() {
+  const host = document.getElementById('cardioQuick');
+  if (!host) return;
+  const u = cardioUsual();
+  if (!u || !u.duration) { host.innerHTML = ''; return; }
+
+  const cfg = CARDIO_TYPES[u.type] || { label: u.type, icon: '🏃', unit: '' };
+  const todays = (state.cardio || []).filter(s => s && s.date === cardioDate && s.type === u.type);
+  const done = todays.length > 0;
+  const streak = cardioStreak();
+  const isToday = cardioDate === getTodayStr();
+  const distTxt = u.distance ? ` · ${u.distance} ${cfg.unit}` : '';
+
+  host.innerHTML = `
+    <div class="card cq-card">
+      <div class="cq-top">
+        <div class="cq-label">${isToday ? 'Today' : formatDate(cardioDate)}</div>
+        ${streak > 0 ? `<div class="cq-streak" title="consecutive days">🔥 ${streak} day${streak === 1 ? '' : 's'}</div>` : ''}
+      </div>
+      ${done ? `
+        <div class="cq-done">
+          <span class="cq-done-check">✓</span>
+          <div class="cq-done-body">
+            <div class="cq-done-title">${cfg.icon} ${todays.length > 1 ? `${todays.length} sessions` : `${Math.round(todays[0].duration)} min ${cfg.label.toLowerCase()}`} logged</div>
+            <div class="cq-done-sub">Nice — that's the habit kept.</div>
+          </div>
+        </div>
+        <button type="button" class="cq-again" id="cardioQuickBtn">+ Log another ${cfg.label.toLowerCase()}</button>
+      ` : `
+        <button type="button" class="cq-btn" id="cardioQuickBtn">
+          <span class="cq-btn-icon">${cfg.icon}</span>
+          <span class="cq-btn-text">
+            <span class="cq-btn-main">Log ${u.duration} min ${cfg.label.toLowerCase()}</span>
+            <span class="cq-btn-sub">your usual${distTxt}</span>
+          </span>
+          <span class="cq-btn-go">＋</span>
+        </button>
+      `}
+    </div>`;
+
+  const btn = document.getElementById('cardioQuickBtn');
+  if (btn) btn.addEventListener('click', logUsualCardio);
 }
