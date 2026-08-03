@@ -729,13 +729,15 @@ function cardioStreak() {
   return n;
 }
 
-function logUsualCardio() {
+function logUsualCardio(dateStr) {
   const u = cardioUsual();
   if (!u) return;
   state.cardio = state.cardio || [];
   state.cardio.push({
     id: 'c' + Date.now(),
-    date: cardioDate,
+    // Today's dashboard button always logs today; the Cardio pane logs the day
+    // you're viewing.
+    date: dateStr || cardioDate,
     type: u.type,
     distance: u.distance || 0,
     duration: u.duration || 0,
@@ -789,4 +791,38 @@ function renderCardioQuick() {
 
   const btn = document.getElementById('cardioQuickBtn');
   if (btn) btn.addEventListener('click', logUsualCardio);
+}
+
+// Compact one-tap version for the Today dashboard. A daily habit that lives
+// behind a nav tab doesn't get logged — this puts it where you already look.
+// Respects the Cardio module toggle, like every other cross-view surface.
+function renderTodayCardio() {
+  const host = document.getElementById('todayCardio');
+  if (!host) return;
+  if (typeof moduleEnabled === 'function' && !moduleEnabled('cardio')) { host.innerHTML = ''; return; }
+
+  const u = cardioUsual();
+  if (!u || !u.duration) { host.innerHTML = ''; return; }
+
+  const cfg = CARDIO_TYPES[u.type] || { label: u.type, icon: '🏃', unit: '' };
+  const today = getTodayStr();
+  const done = (state.cardio || []).some(s => s && s.date === today && s.type === u.type);
+  const streak = cardioStreak();
+  const streakChip = streak > 0 ? `<span class="tc-streak">🔥 ${streak}</span>` : '';
+
+  host.innerHTML = done
+    ? `<div class="today-cardio is-done">
+         <span class="tc-icon tc-check">✓</span>
+         <span class="tc-text"><b>${u.duration} min ${esc(cfg.label.toLowerCase())}</b> done today</span>
+         ${streakChip}
+       </div>`
+    : `<button type="button" class="today-cardio" id="todayCardioBtn">
+         <span class="tc-icon">${cfg.icon}</span>
+         <span class="tc-text"><b>${u.duration} min ${esc(cfg.label.toLowerCase())}</b> — tap to log</span>
+         ${streakChip}
+         <span class="tc-go">＋</span>
+       </button>`;
+
+  const btn = document.getElementById('todayCardioBtn');
+  if (btn) btn.addEventListener('click', () => logUsualCardio(getTodayStr()));
 }

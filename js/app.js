@@ -454,6 +454,7 @@ function render() {
   renderGym();
   if (typeof renderStrength === 'function') renderStrength();
   if (typeof renderCardio === 'function') renderCardio();
+  if (typeof renderTodayCardio === 'function') renderTodayCardio();
   if (typeof renderTraining === 'function') renderTraining();
   if (typeof renderSleep === 'function') renderSleep();
   if (typeof renderTodayPlan === 'function') renderTodayPlan();
