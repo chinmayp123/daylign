@@ -50,6 +50,30 @@ function applyLayout() {
     css += '@media (min-width: 901px){' + wideSels.join(',') + '{grid-column:1 / -1;}}';
   }
   tag.textContent = css;
+
+  // Reconcile which CONTAINER each widget lives in. CSS `order` only sorts
+  // siblings, so moving a card past the boundary between the stacked sections
+  // and the two-column grid means physically relocating the node — and that
+  // has to be re-applied on every load, because the HTML always starts out in
+  // its original arrangement.
+  const rootEl = document.getElementById('dashboardView');
+  const gridEl = rootEl && rootEl.querySelector('.dashboard-grid');
+  const cont = p.container || {};
+  if (rootEl && gridEl) {
+    order.forEach(key => {
+      const want = cont[key];
+      if (!want) return;
+      const el = layoutElFor(key);
+      if (!el) return;
+      if (want === 'root' && el.parentElement !== rootEl) rootEl.insertBefore(el, gridEl);
+      else if (want === 'grid' && el.parentElement !== gridEl) gridEl.appendChild(el);
+    });
+  }
+}
+
+function layoutElFor(key) {
+  const w = DASH_WIDGETS.find(x => x.key === key);
+  return w ? document.querySelector(w.sel) : null;
 }
 
 // ---------- edit mode ----------
@@ -83,26 +107,33 @@ function toggleLayoutEdit(on) {
 
   const btn = document.getElementById('layoutEditBtn');
   if (btn) btn.textContent = layoutEditing ? 'Done' : 'Edit layout';
+  renderHiddenTray();
 }
 
 function moveWidget(key, dir) {
   const order = layoutOrder();
   const i = order.indexOf(key);
-  if (i === -1) return;
-  // Only swap with a neighbour that shares a container — ordering across
-  // containers is not something CSS `order` can express.
-  const el = document.querySelector((DASH_WIDGETS.find(w => w.key === key) || {}).sel);
-  if (!el) return;
-  const parent = el.parentElement;
-  let j = i + dir;
-  while (j >= 0 && j < order.length) {
-    const other = document.querySelector((DASH_WIDGETS.find(w => w.key === order[j]) || {}).sel);
-    if (other && other.parentElement === parent) break;
-    j += dir;
-  }
-  if (j < 0 || j >= order.length) return;
+  const j = i + dir;
+  if (i === -1 || j < 0 || j >= order.length) return;
+
+  const el = layoutElFor(key);
+  const other = layoutElFor(order[j]);
+  if (!el || !other) return;
 
   const before = captureRects();
+
+  // Crossing between the stacked sections and the grid: move the node itself,
+  // then remember the new home so a reload doesn't undo it.
+  if (el.parentElement !== other.parentElement) {
+    if (dir < 0) other.parentElement.insertBefore(el, other);
+    else other.parentElement.insertBefore(el, other.nextSibling);
+    const rootEl = document.getElementById('dashboardView');
+    const p2 = readPrefs();
+    p2.container = p2.container || {};
+    p2.container[key] = (el.parentElement === rootEl) ? 'root' : 'grid';
+    writePrefs(p2);
+  }
+
   order.splice(i, 1);
   order.splice(j, 0, key);
   const p = readPrefs();
@@ -110,6 +141,7 @@ function moveWidget(key, dir) {
   writePrefs(p);
   applyLayout();
   flipFrom(before);
+  renderHiddenTray();
 }
 
 // ---------- FLIP animation ----------
@@ -189,6 +221,40 @@ function attachLayoutDrag(handle, key) {
   handle.addEventListener('pointercancel', end);
 }
 
+// ---------- hidden widgets tray ----------
+// Hiding a widget used to be a one-way door from the dashboard — the only way
+// back was buried in Settings. In edit mode the hidden ones now sit at the
+// bottom as ghosts you can restore in place.
+function renderHiddenTray() {
+  const rootEl = document.getElementById('dashboardView');
+  if (!rootEl) return;
+  let tray = document.getElementById('layoutHiddenTray');
+
+  if (!layoutEditing) { if (tray) tray.remove(); return; }
+
+  if (!tray) {
+    tray = document.createElement('div');
+    tray.id = 'layoutHiddenTray';
+    tray.className = 'layout-tray';
+    rootEl.appendChild(tray);
+  }
+  tray.style.order = '9999';
+
+  const hidden = readPrefs().hidden || [];
+  if (!hidden.length) {
+    tray.innerHTML = '<div class="layout-tray-title">Hidden widgets</div>' +
+      '<p class="layout-tray-empty">Nothing hidden. Tap ✕ on any widget to tuck it away — it will show up here.</p>';
+    return;
+  }
+  tray.innerHTML = '<div class="layout-tray-title">Hidden widgets <span>' + hidden.length + '</span></div>' +
+    '<div class="layout-tray-items">' + hidden.map(k => {
+      const w = DASH_WIDGETS.find(x => x.key === k);
+      if (!w) return '';
+      return '<button type="button" class="layout-restore" data-lay-show="' + k + '">' +
+        '<span class="layout-restore-plus">+</span>' + esc(w.label) + '</button>';
+    }).join('') + '</div>';
+}
+
 // ---------- named layouts ----------
 function savedLayouts() {
   const p = readPrefs();
@@ -266,7 +332,19 @@ function bindLayoutEditor() {
       const h = new Set(p.hidden || []);
       h.add(hide.dataset.layHide);
       setPref('hidden', Array.from(h));
-      if (typeof showToast === 'function') showToast('Hidden — re-enable in Settings');
+      renderHiddenTray();
+      if (typeof showToast === 'function') showToast('Hidden — restore it from the tray below');
+    }
+    const show = e.target.closest('[data-lay-show]');
+    if (show) {
+      const p = readPrefs();
+      const h = new Set(p.hidden || []);
+      h.delete(show.dataset.layShow);
+      setPref('hidden', Array.from(h));
+      // The widget is back in the DOM flow, so it needs its handle again.
+      if (layoutEditing) { toggleLayoutEdit(false); toggleLayoutEdit(true); }
+      renderHiddenTray();
+      if (typeof showToast === 'function') showToast('Restored');
     }
     if (apply) applyNamedLayout(apply.dataset.layApply);
     if (del) deleteNamedLayout(del.dataset.layDel);
