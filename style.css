@@ -8569,3 +8569,153 @@ body.app-loading #syncProgress { opacity: 1; }
   .brief-row { flex-direction: column; gap: 3px; }
   .brief-label { flex: none; }
 }
+
+/* ==========================================================================
+   Polish pass — depth, motion and feedback. Purely additive: no layout,
+   spacing or component structure changes, so nothing can shift or break.
+   Every hover effect is gated behind a real pointer so touch devices never
+   get stuck in a hover state after a tap.
+   ========================================================================== */
+
+:root {
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 0.16s;
+  --dur: 0.22s;
+}
+
+/* ---- Cards: a hairline top highlight reads as a lit edge, and a 1px lift on
+   hover gives the surface somewhere to go. ---- */
+.card {
+  position: relative;
+  transition: border-color var(--dur) var(--ease-out),
+              transform var(--dur) var(--ease-out),
+              box-shadow var(--dur) var(--ease-out);
+}
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 14px;
+  right: 14px;
+  height: 1px;
+  border-radius: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.07), transparent);
+  pointer-events: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .card:hover {
+    border-color: #2c2c3d;
+    transform: translateY(-1px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.32);
+  }
+}
+
+/* ---- Primary buttons: a top-lit gradient instead of a flat fill ---- */
+.btn-primary {
+  background: linear-gradient(180deg, var(--accent-hover), var(--accent));
+  transition: filter var(--dur-fast) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn-primary:hover {
+    filter: brightness(1.07);
+    transform: translateY(-1px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 8px 22px rgba(109, 106, 248, 0.34);
+  }
+}
+.btn-primary:active { transform: translateY(0) scale(0.985); }
+
+/* ---- Secondary / chip-style controls get consistent feedback ---- */
+.btn-secondary,
+.gym-date-nav,
+.gym-date-today,
+.water-btn,
+.my-tasks-tab,
+.cardio-type-btn,
+.training-mode-btn {
+  transition: border-color var(--dur-fast) var(--ease-out),
+              background var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn-secondary:hover,
+  .gym-date-nav:hover,
+  .gym-date-today:hover,
+  .water-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent-hover);
+  }
+}
+
+/* ---- Small stat tiles: lift with the same language as cards ---- */
+@media (hover: hover) and (pointer: fine) {
+  .health-tile,
+  .ins-tile,
+  .str-pr,
+  .pr-card,
+  .brief-stat,
+  .str-tile,
+  .mo-tile {
+    transition: transform var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
+  }
+  .health-tile:hover,
+  .ins-tile:hover,
+  .str-pr:hover,
+  .brief-stat:hover,
+  .str-tile:hover {
+    transform: translateY(-2px);
+    border-color: #2c2c3d;
+  }
+}
+
+/* ---- Rows that are actually clickable should say so ---- */
+@media (hover: hover) and (pointer: fine) {
+  .task-row,
+  .board-card,
+  .str-mv:not(.is-locked),
+  .diet-food-entry,
+  .board-folder-header,
+  .recent-meal-header {
+    transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+  }
+  .task-row:hover,
+  .board-card:hover,
+  .str-mv:not(.is-locked):hover,
+  .board-folder-header:hover,
+  .recent-meal-header:hover {
+    background: var(--bg-hover);
+  }
+}
+
+/* ---- Glass: the mobile bottom nav already blurs; give the More sheet and the
+   profile gate the same treatment so overlays feel like one material. ---- */
+.more-sheet,
+.profile-gate-card {
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+/* ---- Charts: a hovered column should highlight without moving ---- */
+@media (hover: hover) and (pointer: fine) {
+  .vol-bar:hover,
+  .sleep-bar-fill:hover,
+  .weight-bar:hover,
+  .mb-fill:hover { filter: brightness(1.3); }
+}
+
+/* ---- Inputs: a softer, more deliberate focus ring ---- */
+input:focus,
+select:focus,
+textarea:focus {
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* Everything above is neutralised automatically by the global
+   prefers-reduced-motion rule, so no per-rule handling is needed. */
