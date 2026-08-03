@@ -215,6 +215,15 @@ let activeBoardFilter = null;
 let boardFoldersCollapsed = {};
 let scheduleDate = new Date();
 let calViewMode = 'month';
+// Blank set rows for the gym form. Count comes from the device preference
+// (Settings -> Workout defaults) so it is honoured everywhere the form resets.
+function defaultGymSets() {
+  let n = 1;
+  try { n = (typeof readPrefs === 'function') ? Math.max(1, Math.min(10, readPrefs().defaultSets || 1)) : 1; } catch (e) { n = 1; }
+  const rows = [];
+  for (let i = 0; i < n; i++) rows.push({ reps: '', weight: '' });
+  return rows;
+}
 let gymSets = [{ reps: '', weight: '' }];
 let gymViewDate = getTodayStr();
 let dietViewDate = getTodayStr();

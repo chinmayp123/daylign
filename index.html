@@ -774,7 +774,49 @@
 
           </section>
 
+                    </section>
+
           <section class="settings-group">
+
+            <h3 class="settings-group-label">Appearance &amp; layout</h3>
+          <section class="settings-card">
+            <h2>Accent colour</h2>
+            <p class="settings-desc">Tints buttons, charts and highlights across the app. Saved on this device.</p>
+            <div class="accent-picker" id="accentPicker"></div>
+          </section>
+
+          <section class="settings-card">
+            <h2>Dashboard widgets</h2>
+            <p class="settings-desc">Uncheck anything you don't want on the Today screen. Nothing is deleted — the data stays and the card comes back the moment you re-check it.</p>
+            <div class="pref-toggles" id="widgetToggles"></div>
+          </section>
+
+          <section class="settings-card">
+            <h2>Workout defaults</h2>
+            <p class="settings-desc">Starting values for the Strength logger.</p>
+            <div class="pref-fields">
+              <div class="pref-field">
+                <label for="prefRestSeconds">Rest timer (seconds)</label>
+                <input type="number" id="prefRestSeconds" min="10" max="600" step="5" inputmode="numeric">
+              </div>
+              <div class="pref-field">
+                <label for="prefDefaultSets">Set rows to start with</label>
+                <input type="number" id="prefDefaultSets" min="1" max="10" step="1" inputmode="numeric">
+              </div>
+            </div>
+          </section>
+
+          <section class="settings-card">
+            <h2>Accessibility</h2>
+            <p class="settings-desc">Your device's own Reduce Motion setting is already respected — these are extra overrides.</p>
+            <div class="pref-toggles">
+              <label class="pref-toggle"><input type="checkbox" id="prefReduceMotion"><span>Reduce motion</span></label>
+              <label class="pref-toggle"><input type="checkbox" id="prefLargeText"><span>Larger text</span></label>
+              <label class="pref-toggle"><input type="checkbox" id="prefShowActions"><span>Always show delete buttons</span></label>
+            </div>
+          </section>
+
+<section class="settings-group">
 
             <h3 class="settings-group-label">Your data</h3>
           <section class="settings-card">
@@ -1159,6 +1201,7 @@
   <script src="js/strength.js"></script>
   <script src="js/coach.js"></script>
   <script src="js/brief.js"></script>
+  <script src="js/settings-prefs.js"></script>
   <script src="js/insights.js"></script>
   <script src="js/sleep.js"></script>
   <script src="js/today.js"></script>

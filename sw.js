@@ -1,7 +1,7 @@
 // Daylign service worker — network-first with cache fallback.
 // Online: every request hits the network (no stale code), responses refresh the cache.
 // Offline: the cached app shell serves, and data loads from localStorage.
-const CACHE = 'daylign-v43';
+const CACHE = 'daylign-v45';
 const ASSETS = [
   '.',
   'index.html',
@@ -20,6 +20,7 @@ const ASSETS = [
   'js/strength.js',
   'js/coach.js',
   'js/brief.js',
+  'js/settings-prefs.js',
   'js/insights.js',
   'js/sleep.js',
   'js/today.js',

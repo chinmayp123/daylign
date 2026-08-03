@@ -710,7 +710,7 @@ function bindGymEvents() {
 
     saveData(state);
     $('#gymExerciseName').value = '';
-    gymSets = [{ reps: '', weight: '' }];
+    gymSets = (typeof defaultGymSets === 'function') ? defaultGymSets() : [{ reps: '', weight: '' }];
     gymBodyweight = false;
     renderGym();
   });
