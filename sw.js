@@ -1,7 +1,7 @@
 // Daylign service worker — network-first with cache fallback.
 // Online: every request hits the network (no stale code), responses refresh the cache.
 // Offline: the cached app shell serves, and data loads from localStorage.
-const CACHE = 'daylign-v48';
+const CACHE = 'daylign-v49';
 const ASSETS = [
   '.',
   'index.html',
@@ -68,8 +68,15 @@ self.addEventListener('fetch', (e) => {
   // Only handle same-origin GETs — Firebase/API traffic passes straight through
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
 
+  // `fetch(e.request)` uses the DEFAULT cache mode, which consults the browser
+  // HTTP cache first. GitHub Pages serves these assets with max-age=600, so for
+  // ten minutes after a deploy that cache answers with the OLD file, the SW
+  // never reaches the server, and it then stores that stale copy in its own
+  // cache too — an update could be invisible even after a reload. Forcing
+  // 'no-cache' revalidates with the server every time; unchanged files come
+  // back as a cheap 304, so this costs almost nothing but guarantees freshness.
   e.respondWith(
-    fetch(e.request)
+    fetch(new Request(e.request.url, { cache: 'no-cache', credentials: 'same-origin' }))
       .then((res) => {
         if (res.ok) {
           const copy = res.clone();
