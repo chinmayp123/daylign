@@ -452,6 +452,7 @@ function render() {
   renderBoard();
   renderCalendar();
   renderGym();
+  if (typeof renderStrength === 'function') renderStrength();
   if (typeof renderCardio === 'function') renderCardio();
   if (typeof renderTraining === 'function') renderTraining();
   if (typeof renderSleep === 'function') renderSleep();
