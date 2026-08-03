@@ -4680,7 +4680,15 @@ button:not(:disabled):active {
 
 /* ---- Mobile header: wrap instead of overflow ---- */
 @media (max-width: 600px) {
-  .main { padding: 16px; }
+  /* padding-bottom is spelled out because the `padding` shorthand here used to
+     reset it to 16px, overriding the bottom-nav clearance set earlier in this
+     file. The fixed nav is ~92px tall and the voice FAB reaches 134px up the
+     screen, so with only 16px the last card on EVERY view sat trapped beneath
+     them — unreachable, and on iOS the page just rubber-banded back. */
+  .main {
+    padding: 16px;
+    padding-bottom: calc(146px + env(safe-area-inset-bottom, 0px));
+  }
   .header h1 { font-size: 24px; }
   .header-right {
     width: 100%;
