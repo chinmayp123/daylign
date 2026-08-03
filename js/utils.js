@@ -23,6 +23,52 @@ function formatDate(dateStr) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+// ========== Empty states ==========
+// A blank panel that just says "No tasks" is a dead end. These give the same
+// information with a glyph, a reason, and (where one exists) the action that
+// fills the space — so an empty screen reads as "here's what to do next"
+// rather than "something is missing".
+const EMPTY_ICONS = {
+  tasks: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>',
+  calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  dumbbell: '<path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/>',
+  food: '<path d="M3 2v7a3 3 0 003 3 3 3 0 003-3V2M6 2v6M18 2c-1.7 1.3-2.5 3.2-2.5 5.5 0 1.9.8 3.1 2.5 3.5v11"/>',
+  activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+  bookmark: '<path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>',
+  search: '<circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/>',
+  check: '<path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/>',
+};
+
+// opts: { icon, title, hint, actionLabel, action }
+function emptyState(opts) {
+  const o = opts || {};
+  const glyph = EMPTY_ICONS[o.icon] || EMPTY_ICONS.tasks;
+  return `
+    <div class="empty-state${o.compact ? ' is-compact' : ''}">
+      <svg class="empty-state-icon" width="26" height="26" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${glyph}</svg>
+      <p class="empty-state-title">${esc(o.title || '')}</p>
+      ${o.hint ? `<p class="empty-state-hint">${esc(o.hint)}</p>` : ''}
+      ${o.actionLabel && o.action ? `<button type="button" class="empty-state-action" data-empty-action="${esc(o.action)}">${esc(o.actionLabel)}</button>` : ''}
+    </div>`;
+}
+
+// One delegated handler for every empty-state call to action.
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-empty-action]');
+  if (!btn) return;
+  const action = btn.dataset.emptyAction;
+  if (action === 'new-task' && typeof openModal === 'function') openModal();
+  if (action === 'log-exercise') {
+    const el = document.getElementById('gymExerciseName');
+    if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
+  }
+  if (action === 'log-food') {
+    const el = document.querySelector('.diet-meal-add');
+    if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.click(); }
+  }
+});
+
 // Sum calories/protein/carbs/fat across a list of food-log entries. Missing
 // macros count as 0. Returns a fresh totals object. Used everywhere the diet
 // view tallies a day, a meal, or a history row.

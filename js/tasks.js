@@ -50,7 +50,9 @@ function renderTasksView() {
   });
 
   $('#tasksList').innerHTML = tasks.length ? tasks.map(t => renderTaskRow(t, today)).join('')
-    : `<div class="empty-state"><p>${statusF === 'archived' ? 'No archived tasks' : 'No tasks match your filters'}</p></div>`;
+    : (statusF === 'archived'
+      ? emptyState({ icon: 'bookmark', title: 'No archived tasks', hint: 'Tasks auto-archive a week after you finish them.' })
+      : emptyState({ icon: 'search', title: 'No matches', hint: 'No tasks match your current filters.', actionLabel: '+ New task', action: 'new-task' }));
 
   bindTaskRowEvents('#tasksList');
 

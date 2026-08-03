@@ -57,7 +57,7 @@ function renderBoard() {
     counts[status].textContent = tasks.length;
 
     if (!tasks.length) {
-      containers[status].innerHTML = '<div class="empty-state"><p>No tasks</p></div>';
+      containers[status].innerHTML = emptyState({ icon: 'tasks', title: 'Nothing here', compact: true });
       return;
     }
 

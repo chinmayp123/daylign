@@ -353,7 +353,7 @@ function renderDashboard() {
         <span class="deadline-date ${isOverdue ? 'overdue' : ''}" ${!isOverdue && itemColor ? `style="color:${itemColor}"` : ''}>${dateStr}</span>
         <span class="deadline-name">${esc(t.name)}</span>
       </div>`;
-  }).join('') : '<div class="empty-state"><p>No upcoming deadlines</p></div>';
+  }).join('') : emptyState({ icon: 'calendar', title: 'Nothing due', hint: 'Tasks with a due date show up here as the day approaches.' });
 }
 
 // ========== My Tasks Board (Dashboard) ==========
@@ -394,7 +394,7 @@ function renderMyTasksBoard(taskPool) {
   });
 
   if (!filtered.length) {
-    $('#myTasksBoard').innerHTML = '<div class="empty-state"><p>No active tasks</p></div>';
+    $('#myTasksBoard').innerHTML = emptyState({ icon: 'check', title: 'All clear', hint: 'No active tasks right now.', actionLabel: '+ New task', action: 'new-task' });
     return;
   }
 

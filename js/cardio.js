@@ -469,7 +469,7 @@ function renderCardioDayList() {
   if (!list) return;
   const sessions = cardioSessionsFor(cardioDate);
   if (!sessions.length) {
-    list.innerHTML = '<div class="empty-state"><p>Nothing logged for this day</p></div>';
+    list.innerHTML = emptyState({ icon: 'activity', title: 'Nothing logged', hint: 'Use the one-tap button above to log your usual session.' });
     return;
   }
   const burn = cardioBurnForDate(cardioDate);

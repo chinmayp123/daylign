@@ -268,7 +268,7 @@ function renderDiet() {
   const bankEntries = Object.entries(state.customFoods).sort((a, b) => a[0].localeCompare(b[0]));
 
   if (!recentFoods.length && !bankEntries.length) {
-    $('#dietCustomList').innerHTML = '<div class="empty-state"><p>Foods you log will show up here for quick re-adding</p></div>';
+    $('#dietCustomList').innerHTML = emptyState({ icon: 'bookmark', title: 'No saved foods yet', hint: 'Anything you log is remembered here for one-tap re-adding.' });
   } else {
     const chevron = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,6 15,12 9,18"/></svg>';
     const foodItem = (name, per, attrs) => `
@@ -375,7 +375,7 @@ function renderDiet() {
   // History (last 14 unique days)
   const historyDays = [...new Set(state.diet.map(e => e.date))].sort().reverse().filter(d => d !== dietViewDate).slice(0, 14);
   if (!historyDays.length) {
-    $('#dietHistoryList').innerHTML = '<div class="empty-state"><p>No diet history</p></div>';
+    $('#dietHistoryList').innerHTML = emptyState({ icon: 'calendar', title: 'No history yet', hint: 'Log a day of meals and it will appear here.' });
   } else {
     $('#dietHistoryList').innerHTML = historyDays.map(day => {
       const entries = state.diet.filter(e => e.date === day);

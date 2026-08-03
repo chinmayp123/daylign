@@ -8122,3 +8122,105 @@ body.logfood-sheet-lock { overflow: hidden; }
   font-size: 15px;
   font-weight: 700;
 }
+
+/* ========== Empty states (js/utils.js emptyState) ========== */
+.empty-state-icon {
+  color: var(--text-muted);
+  opacity: .55;
+  margin-bottom: 10px;
+  animation: emptyIn .4s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+@keyframes emptyIn {
+  from { opacity: 0; transform: translateY(4px) scale(.94); }
+  to   { opacity: .55; transform: none; }
+}
+.empty-state-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0;
+}
+.empty-state-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  max-width: 32ch;
+  margin: 5px auto 0;
+}
+.empty-state-action {
+  margin-top: 14px;
+  min-height: 36px;
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color .2s, color .2s, background .2s;
+}
+.empty-state-action:hover {
+  border-color: var(--accent);
+  color: var(--accent-hover);
+  background: var(--accent-glow);
+}
+/* Board columns are narrow — the same component, dialled down */
+.empty-state.is-compact { padding: 22px 12px; }
+.empty-state.is-compact .empty-state-icon { width: 20px; height: 20px; margin-bottom: 6px; }
+.empty-state.is-compact .empty-state-title { font-size: 12px; }
+
+/* ========== Skeleton loaders ========== */
+/* Shown while the first cloud read is still in flight, so a fresh device gets
+   structure instead of zeros that snap to real numbers a second later. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  color: transparent !important;
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+  animation: skeletonSweep 1.4s ease-in-out infinite;
+}
+@keyframes skeletonSweep { to { transform: translateX(100%); } }
+.skeleton-line { height: 12px; margin-bottom: 8px; }
+.skeleton-line.w-40 { width: 40%; }
+.skeleton-line.w-60 { width: 60%; }
+.skeleton-line.w-80 { width: 80%; }
+.skeleton-card { height: 84px; margin-bottom: 12px; }
+
+/* Thin top progress bar during the initial sync — universal "we're working"
+   signal that costs no layout space. */
+#syncProgress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 4000;
+  background: transparent;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .25s ease;
+}
+body.app-loading #syncProgress { opacity: 1; }
+#syncProgress::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 38%;
+  border-radius: 0 2px 2px 0;
+  background: linear-gradient(90deg, transparent, var(--accent), var(--accent-hover));
+  animation: syncSlide 1.1s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+@keyframes syncSlide {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}

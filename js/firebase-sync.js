@@ -260,6 +260,8 @@ function migrateOwnerData() {
 // Must run only after a profile is chosen — see requireProfile in js/profile.js.
 function initFirebaseSync(onDataReceived) {
   setSyncStatus('connecting');
+  // Drives the top progress bar + any skeletons until the first read settles.
+  document.body.classList.add('app-loading');
   DATA_REF = db.ref(profileDataPath());
   loadExternalData();
   loadSharedFoods();
@@ -294,6 +296,7 @@ function startFirebaseSync(onDataReceived) {
         saveToFirebase(state);
       }
       appReconciled = true;
+      document.body.classList.remove('app-loading');
       setSyncStatus('synced');
       // Now that cloud state (if any) has loaded, decide whether a freshly
       // created profile still needs onboarding. Runs after sync so a returning
@@ -308,6 +311,8 @@ function startFirebaseSync(onDataReceived) {
       // are recognized as newer and preserved on the next successful load.
       firebaseReady = false;
       appReconciled = true;
+      // A stuck progress bar is worse than none — clear it on failure too.
+      document.body.classList.remove('app-loading');
       setSyncStatus('error', 'Could not reach the cloud: ' + (err && err.message ? err.message : 'unknown error') + '. Changes save on this device only — reopen when online to sync.');
       // Offline first-run still deserves onboarding — it saves locally and
       // syncs when the connection returns.
