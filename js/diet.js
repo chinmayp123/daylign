@@ -659,13 +659,7 @@ function renderDiet() {
   const dayEntries = state.diet.filter(e => e.date === dietViewDate);
 
   // Totals
-  const totals = dayEntries.reduce((acc, e) => {
-    acc.calories += (e.calories || 0);
-    acc.protein += (e.protein || 0);
-    acc.carbs += (e.carbs || 0);
-    acc.fat += (e.fat || 0);
-    return acc;
-  }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
+  const totals = sumMacros(dayEntries);
 
   // Goal tracker
   renderDietGoals(totals);
@@ -699,13 +693,7 @@ function renderDiet() {
   const usualsByMeal = {};
   {
     $('#dietMealsList').innerHTML = mealGroups.map(g => {
-      const mealMacros = g.entries.reduce((s, e) => {
-        s.calories += (e.calories || 0);
-        s.protein += (e.protein || 0);
-        s.carbs += (e.carbs || 0);
-        s.fat += (e.fat || 0);
-        return s;
-      }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
+      const mealMacros = sumMacros(g.entries);
       const isEmpty = g.entries.length === 0;
       // Your Usuals: your most-logged foods for THIS meal — one tap to log.
       const usuals = mealUsuals(g.meal, 4);
@@ -1020,13 +1008,7 @@ function renderDiet() {
   } else {
     $('#dietHistoryList').innerHTML = historyDays.map(day => {
       const entries = state.diet.filter(e => e.date === day);
-      const dayTotals = entries.reduce((acc, e) => {
-        acc.calories += (e.calories || 0);
-        acc.protein += (e.protein || 0);
-        acc.carbs += (e.carbs || 0);
-        acc.fat += (e.fat || 0);
-        return acc;
-      }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
+      const dayTotals = sumMacros(entries);
       return `
         <div class="diet-history-day" data-diet-day="${day}">
           <div class="diet-history-day-header">

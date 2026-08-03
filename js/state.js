@@ -50,22 +50,30 @@ function loadData() {
   };
 }
 
+// Single source of truth for persisting app state to localStorage. Both
+// saveData and applyFirebaseData write the same 15 keys — keeping the list in
+// one place stops the two copies from drifting (which would silently stop a
+// whole slice of data from being cached/synced).
+function writeStateToLocal(d) {
+  localStorage.setItem('tf_tasks', JSON.stringify(d.tasks));
+  localStorage.setItem('tf_categories', JSON.stringify(d.categories));
+  localStorage.setItem('tf_gym', JSON.stringify(d.gym));
+  localStorage.setItem('tf_cardio', JSON.stringify(d.cardio || []));
+  localStorage.setItem('tf_modules', JSON.stringify(d.modules || {}));
+  localStorage.setItem('tf_diet', JSON.stringify(d.diet));
+  localStorage.setItem('tf_custom_foods', JSON.stringify(d.customFoods));
+  localStorage.setItem('tf_water', JSON.stringify(d.water));
+  localStorage.setItem('tf_projects', JSON.stringify(d.projects));
+  localStorage.setItem('tf_events', JSON.stringify(d.events));
+  localStorage.setItem('tf_removed_foods', JSON.stringify(d.removedFoods || []));
+  localStorage.setItem('tf_weight', JSON.stringify(d.weight || {}));
+  localStorage.setItem('tf_goals', JSON.stringify(d.goals || {}));
+  localStorage.setItem('tf_sleep', JSON.stringify(d.sleep || {}));
+  localStorage.setItem('tf_ai_usage', JSON.stringify(d.aiUsage || {}));
+}
+
 function saveData(data) {
-  localStorage.setItem('tf_tasks', JSON.stringify(data.tasks));
-  localStorage.setItem('tf_categories', JSON.stringify(data.categories));
-  localStorage.setItem('tf_gym', JSON.stringify(data.gym));
-  localStorage.setItem('tf_cardio', JSON.stringify(data.cardio || []));
-  localStorage.setItem('tf_modules', JSON.stringify(data.modules || {}));
-  localStorage.setItem('tf_diet', JSON.stringify(data.diet));
-  localStorage.setItem('tf_custom_foods', JSON.stringify(data.customFoods));
-  localStorage.setItem('tf_water', JSON.stringify(data.water));
-  localStorage.setItem('tf_projects', JSON.stringify(data.projects));
-  localStorage.setItem('tf_events', JSON.stringify(data.events));
-  localStorage.setItem('tf_removed_foods', JSON.stringify(data.removedFoods || []));
-  localStorage.setItem('tf_weight', JSON.stringify(data.weight || {}));
-  localStorage.setItem('tf_goals', JSON.stringify(data.goals || {}));
-  localStorage.setItem('tf_sleep', JSON.stringify(data.sleep || {}));
-  localStorage.setItem('tf_ai_usage', JSON.stringify(data.aiUsage || {}));
+  writeStateToLocal(data);
 
   // Only advance the sync clock and push to the cloud once the initial cloud
   // reconciliation has settled. Saves that fire during initial load (e.g.
@@ -94,22 +102,8 @@ function applyFirebaseData(data) {
   state.goals = data.goals || {};
   state.sleep = data.sleep || {};
   state.aiUsage = data.aiUsage || {};
-  // Cache locally
-  localStorage.setItem('tf_tasks', JSON.stringify(state.tasks));
-  localStorage.setItem('tf_categories', JSON.stringify(state.categories));
-  localStorage.setItem('tf_gym', JSON.stringify(state.gym));
-  localStorage.setItem('tf_cardio', JSON.stringify(state.cardio));
-  localStorage.setItem('tf_modules', JSON.stringify(state.modules || {}));
-  localStorage.setItem('tf_diet', JSON.stringify(state.diet));
-  localStorage.setItem('tf_custom_foods', JSON.stringify(state.customFoods));
-  localStorage.setItem('tf_water', JSON.stringify(state.water));
-  localStorage.setItem('tf_projects', JSON.stringify(state.projects));
-  localStorage.setItem('tf_events', JSON.stringify(state.events));
-  localStorage.setItem('tf_removed_foods', JSON.stringify(state.removedFoods));
-  localStorage.setItem('tf_weight', JSON.stringify(state.weight));
-  localStorage.setItem('tf_goals', JSON.stringify(state.goals));
-  localStorage.setItem('tf_sleep', JSON.stringify(state.sleep));
-  localStorage.setItem('tf_ai_usage', JSON.stringify(state.aiUsage));
+  // Cache locally (same 15 keys saveData writes — one shared writer)
+  writeStateToLocal(state);
   localStorage.setItem('tf_last_updated', (data.lastUpdated || Date.now()).toString());
   // Re-render the app after a tick to let DOM settle
   if (typeof render === 'function') {

@@ -11,12 +11,6 @@ function getTodayStr() {
   return toLocalDateStr(new Date());
 }
 
-function getTodayOffset(days) {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return toLocalDateStr(d);
-}
-
 function esc(str) {
   const div = document.createElement('div');
   div.textContent = str;
@@ -27,6 +21,19 @@ function formatDate(dateStr) {
   if (!dateStr) return '';
   const d = new Date(dateStr + 'T00:00:00');
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// Sum calories/protein/carbs/fat across a list of food-log entries. Missing
+// macros count as 0. Returns a fresh totals object. Used everywhere the diet
+// view tallies a day, a meal, or a history row.
+function sumMacros(entries) {
+  return (entries || []).reduce((acc, e) => {
+    acc.calories += (e.calories || 0);
+    acc.protein += (e.protein || 0);
+    acc.carbs += (e.carbs || 0);
+    acc.fat += (e.fat || 0);
+    return acc;
+  }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
 }
 
 // Animate a numeric element from its current value to a target (count-up/down)
