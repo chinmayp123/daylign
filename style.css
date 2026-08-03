@@ -8924,3 +8924,22 @@ html.layout-editing .layout-item.is-dragging {
 }
 .layout-restore:hover { background: var(--accent); color: #fff; transform: translateY(-1px); }
 .layout-restore-plus { font-size: 15px; font-weight: 700; line-height: 1; }
+
+/* Header search button — the command palette's touch entry point */
+.header-search-btn {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: border-color .16s ease, color .16s ease;
+}
+.header-search-btn:hover { border-color: var(--accent); color: var(--accent-hover); }
+/* On wide screens the always-visible task search box already covers this. */
+@media (min-width: 901px) { .header-search-btn { display: none; } }

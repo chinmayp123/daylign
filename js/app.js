@@ -149,6 +149,16 @@ function bindEvents() {
   if (typeof bindPreferencesEvents === 'function') bindPreferencesEvents();
   if (typeof bindSettingsPrefs === 'function') bindSettingsPrefs();
   if (typeof bindLayoutEditor === 'function') bindLayoutEditor();
+  // Search entry points for touch — the palette was Cmd/Ctrl-K only.
+  ['openSearchBtn', 'moreSearchBtn'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) b.addEventListener('click', () => {
+      if (typeof closeMore === 'function') closeMore();
+      const sheet = document.getElementById('moreSheet');
+      if (sheet) sheet.classList.remove('open');
+      if (typeof window.openPalette === 'function') window.openPalette();
+    });
+  });
   bindDietEvents();
   bindGoalsEvents();
   if (typeof bindBoardDropTargets === 'function') bindBoardDropTargets();

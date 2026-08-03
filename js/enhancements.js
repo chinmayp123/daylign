@@ -235,6 +235,13 @@
     setTimeout(() => input.focus(), 30);
   }
   function closePalette() { const p = $('#cmdPalette'); if (p) p.classList.remove('open'); }
+  // Row labels are user data (task and food names), so they must be escaped.
+  function escLabel(v) { return (typeof esc === 'function') ? esc(String(v)) : String(v); }
+  // Exposed because the palette used to be reachable ONLY via Cmd/Ctrl-K —
+  // a key that does not exist on a phone, which made the entire search feature
+  // invisible on the device this app is mainly used on.
+  window.openPalette = openPalette;
+  window.closePalette = closePalette;
   function renderPaletteResults(q) {
     const query = (q || '').trim().toLowerCase();
     const rows = [];
@@ -247,6 +254,13 @@
         .forEach(f => rows.push({ group: 'Foods', label: f, sub: 'log in Diet', run: () => { closePalette(); if (typeof switchView === 'function') switchView('diet'); const inp = $('#dietFoodName'); if (inp) { inp.value = f; inp.dispatchEvent(new Event('input', { bubbles: true })); inp.focus(); } } }));
       [...new Set((state.gym || []).map(e => e.exercise))].filter(x => x && x.toLowerCase().includes(query)).slice(0, 5)
         .forEach(x => rows.push({ group: 'Exercises', label: x, sub: 'open Training', run: () => { closePalette(); if (typeof switchView === 'function') switchView('gym'); const inp = $('#gymExerciseName'); if (inp) { inp.value = x; inp.focus(); } } }));
+      // Cardio was searchable nowhere \u2014 "ride" or "run" now finds the log.
+      [...new Set((state.cardio || []).map(c => c && c.type).filter(Boolean))]
+        .filter(t => t.toLowerCase().includes(query)).slice(0, 3)
+        .forEach(t => rows.push({
+          group: 'Cardio', label: t.charAt(0).toUpperCase() + t.slice(1), sub: 'open Training',
+          run: () => { closePalette(); if (typeof switchView === 'function') switchView('cardio'); },
+        }));
       rows.push({ group: 'Command', label: `Run \u201c${q.trim()}\u201d as a command`, sub: 'e.g. log 40 oz water, add task pay rent tomorrow', cmd: true, run: () => { closePalette(); if (typeof runVoiceCommand === 'function') runVoiceCommand(q.trim()); } });
     }
     cmdRows = rows; cmdSel = 0;
@@ -257,7 +271,7 @@
       const head = r.group !== lastGroup ? `<div class="cmd-group">${r.group}</div>` : '';
       lastGroup = r.group;
       return head + `<div class="cmd-row${i === 0 ? ' sel' : ''}${r.cmd ? ' cmd-run' : ''}" data-idx="${i}">
-          <span class="cmd-row-label">${r.label}</span>${r.sub ? `<span class="cmd-row-sub">${r.sub}</span>` : ''}</div>`;
+          <span class="cmd-row-label">${escLabel(r.label)}</span>${r.sub ? `<span class="cmd-row-sub">${escLabel(r.sub)}</span>` : ''}</div>`;
     }).join('');
     $$('.cmd-row', host).forEach(el => {
       el.addEventListener('mouseenter', () => setPaletteSel(Number(el.dataset.idx)));
