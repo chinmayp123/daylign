@@ -469,6 +469,7 @@ function render() {
   renderCalendar();
   renderGym();
   if (typeof renderStrength === 'function') renderStrength();
+  if (typeof renderCoach === 'function') renderCoach();
   if (typeof renderCardio === 'function') renderCardio();
   if (typeof renderTodayCardio === 'function') renderTodayCardio();
   if (typeof renderTraining === 'function') renderTraining();

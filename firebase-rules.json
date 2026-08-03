@@ -1,0 +1,88 @@
+{
+  "_comment": [
+    "TARGET RULES for Daylign — requires Firebase Auth to be added to the app first.",
+    "Paste into: Firebase console -> Realtime Database -> Rules.",
+    "",
+    "PREREQUISITES (do these BEFORE pasting, or you will lock yourself out):",
+    "  1. Enable a sign-in provider (Authentication -> Sign-in method).",
+    "     Google or Email/Password both work. Anonymous is NOT enough on its own:",
+    "     anyone can mint an anonymous token, so it only stops casual scraping.",
+    "  2. Sign in once in the app, copy your uid from Authentication -> Users.",
+    "  3. In the database, create this mapping by hand (one node per person):",
+    "        profileOwners/chinmay = \"<your-uid>\"",
+    "     This is what binds a named profile to an account WITHOUT having to",
+    "     migrate users/chinmay to a uid-keyed path (that data must not move).",
+    "  4. For the iPhone Health Shortcuts, append an auth token to every URL:",
+    "        .../external/steps/2026-08-03.json?auth=<DATABASE_SECRET>",
+    "     Get it at Project Settings -> Service Accounts -> Database secrets.",
+    "     Legacy but still functional, and it is the only practical way for a",
+    "     Shortcut to authenticate."
+  ],
+
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "profileOwners": {
+      ".read": "auth != null",
+      ".write": false
+    },
+
+    "profiles": {
+      ".read": "auth != null",
+      "$profileId": {
+        ".write": "auth != null && auth.uid === root.child('profileOwners/' + $profileId).val()",
+        ".validate": "newData.isString() && newData.val().length <= 60"
+      }
+    },
+
+    "users": {
+      "$profileId": {
+        ".read":  "auth != null && auth.uid === root.child('profileOwners/' + $profileId).val()",
+        ".write": "auth != null && auth.uid === root.child('profileOwners/' + $profileId).val()",
+        ".validate": "newData.hasChildren()",
+        "lastUpdated": { ".validate": "newData.isNumber()" }
+      }
+    },
+
+    "external": {
+      "$metric": {
+        "$date": {
+          ".read":  "auth != null",
+          ".write": "auth != null",
+          ".validate": "newData.isNumber() && $date.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"
+        }
+      },
+      "u": {
+        "$profileId": {
+          ".read":  "auth != null && auth.uid === root.child('profileOwners/' + $profileId).val()",
+          ".write": "auth != null && auth.uid === root.child('profileOwners/' + $profileId).val()"
+        }
+      },
+      "workouts": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+
+    "foodBank": {
+      ".read": "auth != null",
+      "$foodKey": {
+        ".write": "auth != null",
+        ".validate": "newData.hasChildren(['name', 'calories'])",
+        "name":     { ".validate": "newData.isString() && newData.val().length <= 120" },
+        "calories": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000" },
+        "protein":  { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "carbs":    { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "fat":      { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "fiber":    { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "$other":   { ".validate": false }
+      }
+    },
+
+    "lifestack": {
+      ".read":  "auth != null",
+      ".write": false
+    }
+  }
+}

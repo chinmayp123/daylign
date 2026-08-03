@@ -1,0 +1,82 @@
+{
+  "_comment": [
+    "INTERIM HARDENING — safe to paste RIGHT NOW. Nothing in the app or the",
+    "iPhone Shortcuts breaks, because nothing here requires authentication.",
+    "",
+    "What this DOES stop:",
+    "  - Wholesale deletion. Every write must produce data that still exists,",
+    "    so a DELETE, a null write, or a `{}` overwrite is rejected. This is the",
+    "    'someone wipes all my health data' scenario.",
+    "  - Destroying the frozen pre-profiles backup at /lifestack (now read-only).",
+    "  - Junk in the shared food bank (shape + range validation).",
+    "  - Garbage dates / non-numeric values in the health node.",
+    "",
+    "What this does NOT stop — be clear-eyed:",
+    "  - Reading. Your data stays publicly readable by anyone with the URL,",
+    "    which is published in the GitHub repo. Only real auth fixes that.",
+    "  - Overwriting a value with different-but-valid data.",
+    "",
+    "This is a seatbelt, not a lock. Move to firebase-rules.json (which needs",
+    "Firebase Auth added to the app) when you can."
+  ],
+
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "profiles": {
+      ".read": true,
+      "$profileId": {
+        ".write": "newData.exists()",
+        ".validate": "newData.isString() && newData.val().length <= 60"
+      }
+    },
+
+    "users": {
+      "$profileId": {
+        ".read": true,
+        ".write": "newData.exists()",
+        ".validate": "newData.hasChildren()"
+      }
+    },
+
+    "external": {
+      ".read": true,
+      "$metric": {
+        "$date": {
+          ".write": "newData.exists()",
+          ".validate": "newData.isNumber() && newData.val() >= 0 && $date.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"
+        }
+      },
+      "u": {
+        "$profileId": {
+          ".read": true,
+          ".write": "newData.exists()"
+        }
+      },
+      "workouts": {
+        "$date": { ".write": "newData.exists()" }
+      }
+    },
+
+    "foodBank": {
+      ".read": true,
+      "$foodKey": {
+        ".write": "newData.exists()",
+        ".validate": "newData.hasChildren(['name', 'calories'])",
+        "name":     { ".validate": "newData.isString() && newData.val().length <= 120" },
+        "calories": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000" },
+        "protein":  { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "carbs":    { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "fat":      { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "fiber":    { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "$other":   { ".validate": false }
+      }
+    },
+
+    "lifestack": {
+      ".read": true,
+      ".write": false
+    }
+  }
+}
