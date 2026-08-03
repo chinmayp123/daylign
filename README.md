@@ -52,6 +52,24 @@ Shared building blocks worth reusing rather than reinventing: `.card`, `.btn-pri
 
 ## Features
 
+### Coach
+- **Daily brief** on Today — one prioritised focus chosen across recovery,
+  overdue commitments, training gaps, chronic protein shortfall and plateaus,
+  plus training/nutrition/task lines and this-week-vs-last deltas
+- **Training coach** at the top of Training — should you train today, what to
+  do (your least-trained muscle group, with a movement from your own log),
+  whether volume should rise, whether to deload, and what to fix in recovery
+- Rule-based, not an LLM call: runs offline, costs nothing, needs no API key,
+  and every verdict shows the numbers behind it. Both surfaces share one
+  engine so they cannot contradict each other.
+
+### Insights
+- Cross-domain analytics: calories, protein, training volume, sets by muscle
+  group, water, body weight, sleep and task completion
+- Week / Month / Year / All ranges, CSV export
+- Series with too little history render a "keep logging" state instead of a
+  misleading chart; missing days become gaps, never false zeros
+
 ### Dashboard
 - Task stats (total, in progress, completed, overdue) with project filtering
 - **Health strip** — today's calories, net calories (food minus training + walking burn), protein, water, steps, exercise minutes, sleep, and weight, each vs. goal
@@ -75,6 +93,12 @@ Shared building blocks worth reusing rather than reinventing: `.card`, `.btn-pri
 - **Consistency** — day streak, weekly count, and a 16-week GitHub-style heatmap
 - Built-in rest timer
 
+### Strength analytics
+- Estimated 1RM (Epley) for loaded lifts, max reps for bodyweight movements —
+  chosen automatically per exercise
+- Plateau detection with a concrete target to break it, progression curve,
+  personal records, and weekly muscle balance (push / pull / legs / core)
+
 ### Cardio
 - Log **runs, rides and swims** as sessions (distance + duration), with pace computed in each discipline's own units — min/mi, mph, min/100yd
 - **Weekly volume** — run mileage vs target, longest single run, ride and swim totals, training days
@@ -95,6 +119,17 @@ Shared building blocks worth reusing rather than reinventing: `.card`, `.btn-pri
 
 ### Apple Health / Apple Watch
 - An iPhone Shortcut writes steps, active energy, exercise minutes, resting HR, and sleep into a separate Firebase node the app reads; watch-measured active burn replaces the estimate everywhere. Full setup in **`HEALTH-SYNC.md`**.
+
+---
+
+### Customisation
+- **Dashboard layout editor** — drag to reorder (pointer events, works on
+  touch), hide widgets and restore them from a tray, save and switch named
+  layouts
+- **Settings** — light/dark theme, six accent colours, per-widget visibility,
+  workout defaults (rest timer, starting set rows), accessibility overrides
+  (reduce motion, larger text, always-show delete controls)
+- Device preferences are stored locally and deliberately not synced
 
 ---
 
@@ -134,31 +169,115 @@ To test on a phone, open `http://<your-computer-lan-ip>:8080` on the same Wi-Fi.
 
 ```
 index.html            — All markup (one .view per screen)
-style.css             — All styles + :root design tokens
-sw.js                 — Service worker (offline / PWA)
-manifest.webmanifest  — PWA manifest
+style.css             — All styles + :root design tokens (~8.9k lines)
+sw.js                 — Service worker (offline / PWA). Revalidates with the
+                        server on every request so a deploy is never masked by
+                        the HTTP cache. Bump CACHE on every ship.
+manifest.json         — PWA manifest
 HEALTH-SYNC.md        — Apple Health / Watch shortcut setup
+firebase-rules*.json  — Drafted DB security rules (NOT yet applied — see below)
+
 js/
-  state.js            — Data model, localStorage persistence, defaults
-  utils.js            — DOM helpers ($ / $$), dates, holidays, toasts
-  app.js              — Entry point, navigation (switchView), event binding
-  firebase-sync.js    — Firebase sync + external (Apple Health) reads
-  profile.js          — Per-person profiles: first-launch gate, node paths, switching
-  training.js         — Training shell: Strength/Cardio mode toggle, combined week line
-  sleep.js            — Sleep logging + the Readiness score it feeds
-  preferences.js      — Settings: appearance, sync status, Anthropic key row
-  onboarding.js       — First-run flow for new profiles (modules + core goals)
-  dashboard.js        — Health strip, Weekly Report, weight trend, reminders, schedule
-  tasks.js            — List view
-  board.js            — Kanban board
-  calendar.js         — Month/week calendar + events
-  modal.js            — Task create/edit modal
-  gym.js              — Workout logging, trend weight, coach, streaks, PRs
-  cardio.js           — Run/ride/swim sessions, pace, weekly volume, race prediction
-  diet.js             — Food tracking, database, API lookups, goals, water
-  food-photo.js       — Photo food logging (Claude vision)
-  voice.js            — Voice / natural-language commands (Web Speech + Claude)
+  Core
+    state.js          — Data model, the 15 synced keys, localStorage persistence
+    utils.js          — $ / $$, dates, toasts, sumMacros, empty states,
+                        keyboard-access promotion, global error handlers
+    app.js            — Entry point, switchView, render(), event binding
+    firebase-sync.js  — Cloud sync + external (Apple Health) reads
+    profile.js        — Per-person profiles: first-launch gate, node paths
+    onboarding.js     — First-run flow for new profiles
+
+  Tasks & planning
+    tasks.js          — List view + auto-archive rule (isArchived, 1 week)
+    board.js          — Kanban board
+    calendar.js       — Month/week calendar + events
+    modal.js          — Task create/edit modal
+    today.js          — Today plan lanes (Scheduled / Anytime)
+    dashboard.js      — Health strip, weekly report, weight trend, reminders
+
+  Training
+    gym.js            — Strength logging, body weight, burn, streaks,
+                        MUSCLE_GROUPS map, rest timer
+    cardio.js         — Sessions, pace, weekly volume, race prediction,
+                        one-tap "same as usual" logging + streak
+    training.js       — Training shell: Strength/Cardio mode toggle, rail
+    strength.js       — Progression analytics: est. 1RM (Epley), plateau
+                        detection, PRs, muscle balance
+    sleep.js          — Sleep logging + the readiness score it feeds
+    coach.js          — Training decision surface (train/rest, what, volume,
+                        deload, recovery)
+    brief.js          — Daily brief on Today: one prioritised focus across
+                        training, nutrition and tasks. Shares coach.js's engine
+                        so the two can never contradict each other.
+
+  Diet (split from one 2k-line file; load order matters)
+    diet-data.js      — FOOD_DATABASE + diet state vars
+    diet-core.js      — Quick-add, "Your Usuals", Food Library toggle
+    diet-view.js      — renderDiet: meal log, tiles, servings steppers
+    diet-food.js      — Search, food bank, manual entry form
+    diet-goals.js     — Goals, recommendations, advice, review, water
+
+  Cross-cutting
+    insights.js       — Analytics view: 8 charts, Week/Month/Year/All, CSV export
+    layout.js         — Dashboard layout editor (pointer-event drag, saved layouts)
+    settings-prefs.js — Device prefs: accent, widget visibility, workout
+                        defaults, accessibility
+    preferences.js    — Settings: theme segmented control, sync status, AI key
+    enhancements.js   — Today hero, command palette (Cmd/Ctrl-K), theme boot
+    collapsible.js    — Reusable collapse-on-mobile card behaviour
+    weight-sheet.js   — Weight-trend bottom sheet
+    ai-usage.js       — Anthropic token/cost tracker
+    food-photo.js     — Photo food logging (Claude vision)
+    voice.js          — Voice / natural-language commands
 ```
+
+## Architecture notes
+
+**No build step.** Every file is a plain `<script>` in `index.html` and shares
+one global scope — there are no ES modules, no imports and no bundler. Two
+consequences that matter when editing:
+
+- **Load order is significant.** `state.js` and `utils.js` must come before
+  anything that uses `state`, `$` or `esc`. The five `diet-*.js` files must
+  stay in their listed order; they were split from a single file purely by
+  slicing at function boundaries.
+- **Anything added must be registered in three places**: a `<script>` tag in
+  `index.html`, an entry in `sw.js` `ASSETS` (or it breaks offline), and
+  usually a call inside `render()` in `app.js`.
+
+**Rendering.** `render()` in `app.js` calls every view's renderer
+unconditionally; views are shown/hidden with CSS, not unmounted. Renderers
+rebuild their section with `innerHTML` and re-attach listeners, so:
+
+- Listeners attached to elements *inside* a rewritten section are discarded
+  with the old nodes — that is not a leak.
+- Listeners attached to *persistent* containers from inside a renderer DO
+  accumulate. `bindBoardDropTargets()` exists because that bug shipped once.
+- DOM order must not be relied on for anything persistent; `layout.js` applies
+  CSS `order` instead of moving nodes, because a re-render would undo the move.
+
+**Persistence.** `writeStateToLocal()` in `state.js` is the single writer for
+all 15 localStorage keys; `saveData()` and `applyFirebaseData()` both go
+through it so the two can't drift. Both callers guard it — a full or disabled
+localStorage must never abort the cloud write.
+
+**Preferences vs state.** Device-local settings (theme, accent, widget
+visibility, layouts) live in `localStorage` under `daylign_prefs` and are
+deliberately NOT synced — they describe one device. Everything in the 15-key
+state object syncs.
+
+## Known gaps
+
+- **The Firebase database has no security rules.** It is world-readable and
+  world-writable; anyone with the URL can read or delete all data. Rules are
+  drafted in `firebase-rules.json` (needs Firebase Auth added first) and
+  `firebase-rules-interim.json` (safe to apply today, blocks deletion).
+  This is the single most important outstanding item.
+- Drag-and-drop on the Board and Schedule uses HTML5 DnD, which fires no
+  events from touch on iOS — those are mouse-only. `layout.js` uses pointer
+  events and does work on touch.
+- No automated tests.
+- Notifications are not implemented (iOS web push needs a server).
 
 ## License
 
