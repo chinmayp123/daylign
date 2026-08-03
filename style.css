@@ -14,7 +14,10 @@
   --border: #232330;
   --text-primary: #f2f2f7;
   --text-secondary: #a5a5bd;
-  --text-muted: #73738c;
+  /* Lifted from #73738c (3.97:1 on --bg-card, below WCAG AA 4.5:1). This token
+     is used 229 times, 118 of them at 10-12px, so it is small text and must
+     clear the body threshold — #8a8aa3 is ~5.0:1. */
+  --text-muted: #8a8aa3;
   --accent: #6d6af8;
   --accent-hover: #8b8afc;
   --accent-glow: rgba(109, 106, 248, 0.16);
@@ -2724,6 +2727,9 @@ body {
 .gym-add-actions {
   display: flex;
   gap: 8px;
+  /* Four buttons (+Set, two rest timers, Add Exercise) don't fit on a 320px
+     iPhone SE — without wrapping they pushed the page 3px wide. */
+  flex-wrap: wrap;
 }
 
 .gym-add-set-btn {
@@ -8223,4 +8229,47 @@ body.app-loading #syncProgress { opacity: 1; }
 @keyframes syncSlide {
   0%   { transform: translateX(-100%); }
   100% { transform: translateX(300%); }
+}
+
+/* ========== Touch target minimums (WCAG 2.5.5 / Apple HIG 44pt) ========== */
+/* These controls are visually small by design, so instead of resizing them
+   (which would reflow the rows they sit in) an invisible ::after expands the
+   tappable area to 44x44 around the existing glyph. */
+.task-check,
+.subtask-remove,
+.diet-delete-food,
+.diet-custom-del,
+.schedule-event-remove,
+.sidebar-del-btn,
+.diet-serv-step,
+.modal-close {
+  position: relative;
+}
+.task-check::after,
+.subtask-remove::after,
+.diet-delete-food::after,
+.diet-custom-del::after,
+.schedule-event-remove::after,
+.sidebar-del-btn::after,
+.diet-serv-step::after,
+.modal-close::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+  /* purely a hit area — never paints, never blocks the row beneath */
+  background: transparent;
+}
+
+/* A destructive control that only appears on :hover is unreachable on touch.
+   Keep them permanently visible (dimmed) on coarse pointers. */
+@media (hover: none), (pointer: coarse) {
+  .schedule-event-remove,
+  .sidebar-del-btn,
+  .diet-custom-del {
+    opacity: 0.65 !important;
+  }
 }

@@ -217,9 +217,20 @@ function bindEvents() {
   });
   $('#importFile').addEventListener('change', importBackup);
 
-  // Keyboard
+  // Keyboard. Escape used to close only the task modal, leaving the goals,
+  // taxonomy and voice overlays dismissable by mouse alone.
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeModal();
+    if (e.key !== 'Escape') return;
+    closeModal();
+    if (typeof closeGoalsModal === 'function') closeGoalsModal();
+    if (typeof closeTaxonomyModal === 'function') closeTaxonomyModal();
+    const voice = document.getElementById('voicePanel');
+    if (voice && !voice.hidden && typeof closeVoicePanel === 'function') closeVoicePanel();
+    // Mobile sidebar is an overlay too — Escape should back out of it.
+    const sb = document.querySelector('.sidebar');
+    if (sb && sb.classList.contains('open')) sb.classList.remove('open');
+    const ov = document.querySelector('.sidebar-overlay');
+    if (ov) ov.classList.remove('active');
   });
 }
 
@@ -463,6 +474,9 @@ function render() {
   renderDiet();
   populateCategoryDropdowns();
   if (typeof initCollapsibles === 'function') initCollapsibles();
+  // Re-promote click-handled divs to keyboard-reachable controls — every
+  // render replaces their markup, so this has to run after, not once.
+  if (typeof enhanceKeyboardAccess === 'function') enhanceKeyboardAccess();
 }
 
 function renderSidebarCategories() {

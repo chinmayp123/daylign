@@ -23,6 +23,43 @@ function formatDate(dateStr) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+// ========== Keyboard access for click-handled elements ==========
+// Much of the UI is rendered as <div>s carrying click handlers (task rows,
+// board cards, health tiles, meal entries...), which makes those actions
+// mouse/touch-only. Rewriting ~25 render sites into <button>s would mean
+// re-doing their CSS and risking layout regressions across every view, so
+// instead this promotes them centrally after each render: they become
+// focusable, announce as buttons, and respond to Enter/Space.
+const KEYBOARD_CLICKABLE = [
+  '.task-row', '.task-check', '.board-card', '.board-folder-header',
+  '.archived-toggle', '.health-tile', '.my-task-card', '.my-task-check',
+  '.schedule-event', '.diet-food-entry-main', '.recent-meal-header',
+  '.diet-custom-item', '.diet-history-day', '.str-mv', '.today-sched-row',
+  '.today-sched-check', '.project-item', '.category-item', '.cal-day',
+].join(', ');
+
+function enhanceKeyboardAccess() {
+  document.querySelectorAll(KEYBOARD_CLICKABLE).forEach(el => {
+    const tag = el.tagName;
+    if (tag === 'BUTTON' || tag === 'A' || tag === 'INPUT') return;
+    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+    if (!el.hasAttribute('role')) el.setAttribute('role', 'button');
+  });
+}
+
+// Enter/Space activate them, matching native button behaviour.
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+  const t = e.target;
+  if (!t || !t.closest) return;
+  const tag = t.tagName;
+  if (tag === 'BUTTON' || tag === 'A' || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  const el = t.closest(KEYBOARD_CLICKABLE);
+  if (!el) return;
+  e.preventDefault();
+  el.click();
+});
+
 // ========== Empty states ==========
 // A blank panel that just says "No tasks" is a dead end. These give the same
 // information with a glyph, a reason, and (where one exists) the action that
@@ -109,6 +146,9 @@ function showToast(message) {
   if (!host) {
     host = document.createElement('div');
     host.id = 'toastHost';
+    // Confirmations are the app's main feedback channel — announce them.
+    host.setAttribute('role', 'status');
+    host.setAttribute('aria-live', 'polite');
     document.body.appendChild(host);
   }
   const toast = document.createElement('div');
