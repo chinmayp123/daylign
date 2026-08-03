@@ -43,6 +43,25 @@ function applyLayout() {
     const w = DASH_WIDGETS.find(x => x.key === key);
     if (w) css += w.sel + '{order:' + (i + 1) + ';}';
   });
+
+  // Direct children of #dashboardView that are NOT managed widgets — the
+  // project filter, and the .dashboard-grid wrapper itself — have no `order`,
+  // which in flexbox means order:0, i.e. BEFORE everything given order 1+.
+  // Without this the entire grid (sleep, readiness, deadlines, weight...)
+  // jumped above the whole stack the moment any custom order was saved.
+  // The grid takes the position of the earliest widget it actually contains.
+  const rootForOrder = document.getElementById('dashboardView');
+  const gridForOrder = rootForOrder && rootForOrder.querySelector('.dashboard-grid');
+  if (gridForOrder) {
+    let gridPos = null;
+    order.forEach((key, i) => {
+      const el = layoutElFor(key);
+      if (el && el.parentElement === gridForOrder && gridPos === null) gridPos = i + 1;
+    });
+    css += '#dashboardView .dashboard-grid{order:' + (gridPos === null ? order.length + 1 : gridPos) + ';}';
+  }
+  // The project filter belongs with the controls at the top.
+  css += '#dashboardView .dashboard-project-filter{order:0;}';
   // Wide cards span both grid columns. Scoped above the mobile breakpoint
   // because the grid is single-column on a phone anyway.
   const wideSels = wide.map(k => (DASH_WIDGETS.find(x => x.key === k) || {}).sel).filter(Boolean);
