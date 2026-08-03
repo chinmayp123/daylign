@@ -373,7 +373,10 @@ function renderMyTasksBoard(taskPool) {
     `).join('')}`;
   $('#myTasksTabs').innerHTML = tabsHtml;
 
-  $$('.my-tasks-tab').forEach(tab => {
+  // Scoped to this card: the Board emits the same .my-tasks-tab class into
+  // #boardFilters, so a document-wide query also bound the Board's category
+  // filters — clicking one there mutated the dashboard's tab state.
+  $$('#myTasksTabs .my-tasks-tab').forEach(tab => {
     tab.addEventListener('click', () => {
       activeTaskTab = tab.dataset.cat === 'all' ? null : tab.dataset.cat;
       renderMyTasksBoard(allTasks);

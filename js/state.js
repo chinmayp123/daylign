@@ -54,6 +54,10 @@ function loadData() {
 // saveData and applyFirebaseData write the same 15 keys — keeping the list in
 // one place stops the two copies from drifting (which would silently stop a
 // whole slice of data from being cached/synced).
+// True once we've told the user their device storage is full, so the warning
+// isn't re-toasted on every keystroke.
+let storageWarned = false;
+
 function writeStateToLocal(d) {
   localStorage.setItem('tf_tasks', JSON.stringify(d.tasks));
   localStorage.setItem('tf_categories', JSON.stringify(d.categories));
@@ -73,7 +77,20 @@ function writeStateToLocal(d) {
 }
 
 function saveData(data) {
-  writeStateToLocal(data);
+  // A full or disabled localStorage used to throw straight out of saveData,
+  // which skipped the cloud push below AND aborted the calling handler
+  // mid-way — the edit stayed in memory, the UI never re-rendered, and sync
+  // died silently with the header still reading "Synced". Local caching is
+  // now best-effort so the cloud write always still happens.
+  try {
+    writeStateToLocal(data);
+  } catch (e) {
+    console.warn('Local cache write failed (storage full or unavailable):', e);
+    if (!storageWarned) {
+      storageWarned = true;
+      if (typeof showToast === 'function') showToast('Device storage is full — saving to the cloud only');
+    }
+  }
 
   // Only advance the sync clock and push to the cloud once the initial cloud
   // reconciliation has settled. Saves that fire during initial load (e.g.
@@ -82,7 +99,14 @@ function saveData(data) {
   // layer failed to load at all, fall back to the previous behavior.
   const reconciled = (typeof appReconciled === 'undefined') ? true : appReconciled;
   if (!reconciled) return;
-  localStorage.setItem('tf_last_updated', Date.now().toString());
+  // Guarded for the same reason as above — if the clock write throws, the
+  // cloud push underneath it must still happen, or a full disk silently ends
+  // all syncing while the header keeps claiming "Synced".
+  try {
+    localStorage.setItem('tf_last_updated', Date.now().toString());
+  } catch (e) {
+    console.warn('Could not advance the local sync clock:', e);
+  }
   if (typeof saveToFirebase === 'function') saveToFirebase(data);
 }
 
@@ -103,8 +127,13 @@ function applyFirebaseData(data) {
   state.sleep = data.sleep || {};
   state.aiUsage = data.aiUsage || {};
   // Cache locally (same 15 keys saveData writes — one shared writer)
-  writeStateToLocal(state);
-  localStorage.setItem('tf_last_updated', (data.lastUpdated || Date.now()).toString());
+  // Best-effort too: a quota error here must not abort before the re-render.
+  try {
+    writeStateToLocal(state);
+    localStorage.setItem('tf_last_updated', (data.lastUpdated || Date.now()).toString());
+  } catch (e) {
+    console.warn('Could not cache cloud data locally:', e);
+  }
   // Re-render the app after a tick to let DOM settle
   if (typeof render === 'function') {
     setTimeout(() => {
@@ -166,7 +195,17 @@ function resetLocalStateToStarter() {
 }
 
 // ========== State ==========
-let state = loadData();
+// If localStorage is unavailable at all (Safari "Block All Cookies", some
+// private modes) every getItem throws SecurityError. That used to abort this
+// file at parse time, leaving `state` in the temporal dead zone and taking the
+// whole app down to a blank screen. Fall back to an in-memory session instead.
+let state;
+try {
+  state = loadData();
+} catch (e) {
+  console.warn('localStorage unavailable — running in memory for this session:', e);
+  state = starterState();
+}
 let currentView = localStorage.getItem('tf_view') || 'dashboard';
 let calendarDate = new Date();
 let miniCalDate = new Date();

@@ -149,6 +149,7 @@ function bindEvents() {
   if (typeof bindPreferencesEvents === 'function') bindPreferencesEvents();
   bindDietEvents();
   bindGoalsEvents();
+  if (typeof bindBoardDropTargets === 'function') bindBoardDropTargets();
   if (typeof bindWeightSheet === 'function') bindWeightSheet();
   if (typeof bindPhotoEvents === 'function') bindPhotoEvents();
   if (typeof bindFoodLibrary === 'function') bindFoodLibrary();
@@ -382,6 +383,10 @@ function updateHeaderActionBtn(view) {
 const TASKMETA_VIEWS = ['dashboard', 'tasks', 'board', 'calendar'];
 
 function switchView(view) {
+  // A running rest timer would otherwise keep ticking and fire its toast from
+  // whatever view you navigated to.
+  if (typeof stopRestTimer === 'function') stopRestTimer();
+
   // Always land on the main Diet day, never mid-Food-Library, when navigating.
   const dv = document.getElementById('dietView');
   if (dv) dv.classList.remove('lib-open');
@@ -680,8 +685,16 @@ function exportBackup(prefix) {
     removedFoods: state.removedFoods,
     weight: state.weight,
     goals: state.goals,
+    // These four were missing while restore overwrites "everything on this
+    // device AND in the cloud" — so restoring a backup silently destroyed all
+    // cardio sessions, sleep logs, module settings and AI usage, including in
+    // the automatic pre-restore safety copy.
+    cardio: state.cardio,
+    modules: state.modules,
+    sleep: state.sleep,
+    aiUsage: state.aiUsage,
     exportedAt: new Date().toISOString(),
-    version: 2,
+    version: 3,
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);

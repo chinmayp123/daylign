@@ -130,6 +130,17 @@ function renderBoard() {
     card.addEventListener('dragend', () => { card.style.opacity = '1'; });
   });
 
+}
+
+// The .column-tasks containers are static markup — renderBoard only rewrites
+// their innerHTML, so binding drop targets inside the render added three
+// listeners per column on EVERY render (9 per render, and render() fires on
+// every save). Bound once instead; the cards inside are re-bound per render
+// because they genuinely are replaced.
+let boardDropBound = false;
+function bindBoardDropTargets() {
+  if (boardDropBound) return;
+  boardDropBound = true;
   $$('.column-tasks').forEach(col => {
     col.addEventListener('dragover', (e) => { e.preventDefault(); col.style.background = 'var(--accent-glow)'; });
     col.addEventListener('dragleave', () => { col.style.background = ''; });

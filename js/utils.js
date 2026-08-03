@@ -23,6 +23,25 @@ function formatDate(dateStr) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+// ========== Global error surfacing ==========
+// On an installed iPhone PWA there is no console to open, so an uncaught throw
+// in any of the app's ~230 listeners was completely invisible — the UI would
+// just stop responding with no explanation. Surface it instead, and keep the
+// last few for Settings diagnostics.
+const recentErrors = [];
+function recordError(kind, detail) {
+  const entry = { kind, detail: String(detail || '').slice(0, 300), at: new Date().toISOString() };
+  recentErrors.push(entry);
+  if (recentErrors.length > 10) recentErrors.shift();
+  console.warn('[daylign]', kind, detail);
+  if (typeof showToast === 'function') showToast('Something went wrong — that action may not have saved');
+}
+window.addEventListener('error', (e) => recordError('error', (e && e.message) || 'unknown'));
+window.addEventListener('unhandledrejection', (e) => {
+  const r = e && e.reason;
+  recordError('promise', (r && (r.message || r)) || 'unknown');
+});
+
 // ========== Keyboard access for click-handled elements ==========
 // Much of the UI is rendered as <div>s carrying click handlers (task rows,
 // board cards, health tiles, meal entries...), which makes those actions
