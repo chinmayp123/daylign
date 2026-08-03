@@ -1127,7 +1127,12 @@
   <script src="js/collapsible.js"></script>
   <script src="js/preferences.js"></script>
   <script src="js/ai-usage.js"></script>
-  <script src="js/diet.js"></script>
+  <!-- diet.js was split by concern; load order preserves original execution order -->
+  <script src="js/diet-data.js"></script>
+  <script src="js/diet-core.js"></script>
+  <script src="js/diet-view.js"></script>
+  <script src="js/diet-food.js"></script>
+  <script src="js/diet-goals.js"></script>
   <script src="js/food-photo.js"></script>
   <script src="js/voice.js"></script>
   <script src="js/app.js"></script>
