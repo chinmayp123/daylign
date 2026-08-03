@@ -410,7 +410,7 @@ function switchView(view) {
   $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   $$('.view').forEach(v => v.classList.remove('active'));
 
-  const titles = { dashboard: 'Today', tasks: 'All Tasks', board: 'Board', calendar: 'Calendar', training: 'Training', diet: 'Diet', settings: 'Settings' };
+  const titles = { insights: 'Insights', dashboard: 'Today', tasks: 'All Tasks', board: 'Board', calendar: 'Calendar', training: 'Training', diet: 'Diet', settings: 'Settings' };
   $('#viewTitle').textContent = titles[view];
   $(`#${view}View`).classList.add('active');
   updateHeaderActionBtn(view);
@@ -470,6 +470,7 @@ function render() {
   renderGym();
   if (typeof renderStrength === 'function') renderStrength();
   if (typeof renderCoach === 'function') renderCoach();
+  if (typeof renderInsights === 'function') renderInsights();
   if (typeof renderCardio === 'function') renderCardio();
   if (typeof renderTodayCardio === 'function') renderTodayCardio();
   if (typeof renderTraining === 'function') renderTraining();
