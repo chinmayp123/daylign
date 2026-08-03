@@ -7948,3 +7948,35 @@ body.logfood-sheet-lock { overflow: hidden; }
   .str-pr-shelf { margin: 0 -16px; padding: 2px 16px 6px; }
 }
 .str-mv-more { font-size: 11px; color: var(--text-muted); padding-top: 12px; border-top: 1px solid var(--border); }
+
+/* ---- Muscle balance ---- */
+.mb-row { margin-bottom: 13px; }
+.mb-row:last-of-type { margin-bottom: 0; }
+.mb-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.mb-name { font-size: 12.5px; font-weight: 600; color: var(--text-secondary); }
+.mb-sets { font-size: 12px; color: var(--text-primary); }
+.mb-sets b { font-weight: 700; }
+.mb-zero { color: var(--text-muted); font-style: italic; }
+.mb-barwrap { display: flex; align-items: center; gap: 10px; }
+.mb-track { flex: 1; height: 8px; background: var(--bg-input); border-radius: 999px; overflow: hidden; }
+.mb-fill {
+  height: 100%;
+  border-radius: 999px;
+  min-width: 2px;
+  animation: barGrow 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: left;
+}
+/* 4-week mini history: a zero week still shows as a stub, so a gap is visible */
+.mb-spark { flex: 0 0 auto; display: flex; align-items: flex-end; gap: 2px; height: 14px; }
+.mb-tick { width: 4px; border-radius: 1px; display: block; }
+.mb-verdict {
+  font-size: 11.5px;
+  line-height: 1.45;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+.mb-verdict.warn { color: var(--yellow); }
+.mb-verdict.good { color: var(--green); }
+.mb-verdict.muted { color: var(--text-muted); }

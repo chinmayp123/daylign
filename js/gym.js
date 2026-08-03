@@ -110,10 +110,16 @@ const SET_MINUTES = 2;
 const MET_BODYWEIGHT = 5.0; // moderate-vigorous calisthenics
 const MET_WEIGHTED = 6.0;   // vigorous weight training
 
+// Keyword → muscle group. Matched in object order, so more specific phrases
+// must sit in the group that owns them ('reverse fly' is a rear-delt PULL and
+// is listed before push's chest 'fly'; 'leg raise' stays core, which is why
+// shoulder raises are spelled out rather than matching a bare 'raise').
 const MUSCLE_GROUPS = {
-  push: ['push up', 'pushup', 'push-up', 'dip', 'press', 'bench', 'handstand', 'tricep'],
-  pull: ['pull up', 'pullup', 'chin up', 'row', 'curl', 'pulldown', 'muscle up', 'lever', 'face pull'],
-  legs: ['squat', 'lunge', 'deadlift', 'leg press', 'calf', 'glute', 'hip thrust', 'box jump'],
+  pull: ['pull up', 'pullup', 'chin up', 'row', 'curl', 'pulldown', 'muscle up', 'lever', 'face pull',
+         'bicep', 'reverse fly', 'rear delt'],
+  push: ['push up', 'pushup', 'push-up', 'dip', 'press', 'bench', 'handstand', 'tricep',
+         'front raise', 'lateral raise', 'shoulder', 'chest fly'],
+  legs: ['squat', 'lunge', 'deadlift', 'rdl', 'leg press', 'calf', 'glute', 'hip thrust', 'box jump'],
   core: ['sit up', 'situp', 'crunch', 'plank', 'leg raise', 'twist', 'flutter', 'l-sit', 'dragon flag', 'mountain climber', 'superman'],
 };
 

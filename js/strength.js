@@ -160,6 +160,96 @@ function strengthInsight(movements) {
   };
 }
 
+// ---------- Muscle balance ----------
+// Sets per muscle group per week. Volume alone flatters whatever you already
+// do most, so this card is about BALANCE: which groups are carrying the week
+// and which are being skipped.
+const MUSCLE_ORDER = ['push', 'pull', 'legs', 'core'];
+const MUSCLE_LABEL = { push: 'Push', pull: 'Pull', legs: 'Legs', core: 'Core' };
+const MUSCLE_COLOR = { push: 'var(--accent)', pull: 'var(--blue)', legs: 'var(--green)', core: 'var(--yellow)' };
+const BALANCE_WEEKS = 4; // only 3 of the last 8 weeks have data — don't draw empty columns
+
+// Sets per group for each of the last N weeks. Index 0 = this week.
+function muscleWeeks(weeks) {
+  const today = getTodayStr();
+  const out = [];
+  for (let i = 0; i < weeks; i++) out.push({ push: 0, pull: 0, legs: 0, core: 0, total: 0 });
+  (state.gym || []).forEach(e => {
+    if (!e || !e.date || !e.exercise) return;
+    const g = (typeof muscleGroupFor === 'function') ? muscleGroupFor(e.exercise) : null;
+    if (!g) return;
+    const days = Math.round((new Date(today + 'T00:00:00') - new Date(e.date + 'T00:00:00')) / 86400000);
+    if (days < 0) return;
+    const w = Math.floor(days / 7);
+    if (w >= weeks) return;
+    const n = setsOf(e).length;
+    out[w][g] += n;
+    out[w].total += n;
+  });
+  return out;
+}
+
+// The honest read on this week's split.
+function balanceVerdict(week) {
+  const trained = MUSCLE_ORDER.filter(g => week[g] > 0);
+  const skipped = MUSCLE_ORDER.filter(g => week[g] === 0);
+  if (!week.total) return { tone: 'muted', text: 'No sets logged yet this week.' };
+  if (skipped.length) {
+    const names = skipped.map(g => MUSCLE_LABEL[g].toLowerCase());
+    const list = names.length === 1 ? names[0]
+      : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
+    return { tone: 'warn', text: `No ${list} work this week — ${trained.map(g => MUSCLE_LABEL[g].toLowerCase()).join(' and ')} carried it.` };
+  }
+  const vals = MUSCLE_ORDER.map(g => week[g]);
+  const hi = Math.max.apply(null, vals), lo = Math.min.apply(null, vals);
+  const ratio = lo > 0 ? hi / lo : 0;
+  if (ratio >= 2.5) {
+    const hiG = MUSCLE_ORDER[vals.indexOf(hi)], loG = MUSCLE_ORDER[vals.indexOf(lo)];
+    return { tone: 'warn', text: `${MUSCLE_LABEL[hiG]} is ${Math.round(ratio * 10) / 10}× your ${MUSCLE_LABEL[loG].toLowerCase()} volume this week.` };
+  }
+  return { tone: 'good', text: 'All four groups trained this week — nicely balanced.' };
+}
+
+function renderMuscleBalance() {
+  if (typeof muscleGroupFor !== 'function') return '';
+  const weeks = muscleWeeks(BALANCE_WEEKS);
+  const wk = weeks[0];
+  const anyData = weeks.some(w => w.total > 0);
+  if (!anyData) return '';
+
+  const scale = Math.max.apply(null, MUSCLE_ORDER.map(g => wk[g]).concat([1]));
+  const rows = MUSCLE_ORDER.map(g => {
+    const sets = wk[g];
+    const pct = Math.round((sets / scale) * 100);
+    // 4-week trend for this group, so a zero week reads in context.
+    const hist = weeks.map(w => w[g]).reverse();
+    const hmax = Math.max.apply(null, hist.concat([1]));
+    const spark = hist.map(v => `<span class="mb-tick" style="height:${Math.max(8, Math.round((v / hmax) * 100))}%;background:${v ? MUSCLE_COLOR[g] : 'var(--bg-hover)'}"></span>`).join('');
+    return `
+      <div class="mb-row">
+        <div class="mb-head">
+          <span class="mb-name">${MUSCLE_LABEL[g]}</span>
+          <span class="mb-sets tnum">${sets === 0 ? '<span class="mb-zero">none</span>' : `<b>${sets}</b> set${sets === 1 ? '' : 's'}`}</span>
+        </div>
+        <div class="mb-barwrap">
+          <div class="mb-track"><div class="mb-fill" style="width:${pct}%;background:${MUSCLE_COLOR[g]}"></div></div>
+          <div class="mb-spark" title="last ${BALANCE_WEEKS} weeks">${spark}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  const v = balanceVerdict(wk);
+  return `
+    <div class="card str-card">
+      <div class="coach-head">
+        <h2>Muscle balance</h2>
+        <span class="weight-goal-chip${v.tone === 'warn' ? ' str-chip-warn' : ''}">${wk.total} set${wk.total === 1 ? '' : 's'} this week</span>
+      </div>
+      ${rows}
+      <div class="mb-verdict ${v.tone}">${esc(v.text)}</div>
+    </div>`;
+}
+
 // ---------- Rendering ----------
 
 function renderStrength() {
@@ -176,6 +266,7 @@ function renderStrength() {
 
   host.innerHTML =
     renderStrengthSummary(movements) +
+    renderMuscleBalance() +
     renderMovementList(movements) +
     renderStrengthCurve(movements) +
     renderStrengthPRs(movements);
