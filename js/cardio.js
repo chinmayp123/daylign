@@ -20,6 +20,10 @@ const RACE_DISTANCES = {
 
 let cardioDate = getTodayStr();
 let cardioType = 'run';
+// The type tab defaults to whatever you actually train, resolved once per
+// session from your history. Hard-defaulting to 'run' meant a cyclist had to
+// re-pick "Ride" every single time they opened the view.
+let cardioTypeResolved = false;
 let cardioRunType = 'easy'; // intensity for the run being logged
 
 // Run intensity types (handoff §3), colour-coded. Only apply to runs — a ride
@@ -102,7 +106,14 @@ function formatDuration(mins) {
 // Activities closely across the range people actually train in.
 function cardioMet(session) {
   const pace = paceFor(session);
-  if (!pace) return 0;
+  // No pace means no distance was logged (common for indoor bikes). The work
+  // still happened, so fall back to a moderate MET for the discipline rather
+  // than scoring the session as zero calories.
+  if (!pace) {
+    if (session.type === 'ride') return 7.0;  // stationary/moderate cycling
+    if (session.type === 'swim') return 8.3;
+    return session.type === 'run' ? 9.8 : 0;  // moderate running
+  }
   if (session.type === 'ride') {
     // ~8.4 MET at 12 mph, ~12.3 at 20 mph
     return Math.max(4, Math.min(16, 0.49 * pace.value + 2.5));
@@ -327,6 +338,25 @@ function renderCardio() {
   dateInput.value = cardioDate;
   const label = $('#cardioDateLabel');
   if (label) label.textContent = formatDate(cardioDate);
+
+  // Default the logging type to your usual sport, once, before the tabs draw.
+  // Only latch once there's actually history to learn from — the first render
+  // runs before the cloud data lands, and latching then would keep the old
+  // hard-coded 'run' default forever.
+  if (!cardioTypeResolved) {
+    const usual = cardioUsual();
+    if (usual && CARDIO_TYPES[usual.type]) {
+      cardioType = usual.type;
+      cardioTypeResolved = true;
+    }
+  }
+  // Race prediction and race targets are running features. Hide them entirely
+  // until there's a logged run — for a rider they're pure noise.
+  const hasRuns = (state.cardio || []).some(s => s && s.type === 'run');
+  const raceCard = document.getElementById('cardioRace');
+  const raceTarget = document.querySelector('[data-collapse-key="cardioracetarget"]');
+  if (raceCard) raceCard.hidden = !hasRuns;
+  if (raceTarget) raceTarget.hidden = !hasRuns;
 
   renderCardioQuick();
   renderCardioTypeTabs();
@@ -554,14 +584,16 @@ function addCardioSession() {
   const distance = parseFloat(distEl.value);
   const duration = parseFloat(durEl.value);
 
-  if (!(distance > 0)) { showToast('Enter a distance greater than 0'); distEl.focus(); return; }
+  // Duration is the only thing every session has. Distance is optional: an
+  // indoor bike or treadmill-free session often has no distance readout, and
+  // demanding one meant those workouts simply never got logged.
   if (!(duration > 0)) { showToast('Enter a duration in minutes'); durEl.focus(); return; }
 
   const session = {
     id: 'c' + Date.now(),
     date: cardioDate,
     type: cardioType,
-    distance: distance,
+    distance: distance > 0 ? distance : 0,
     duration: duration,
     notes: (notesEl.value || '').trim(),
   };
@@ -617,6 +649,7 @@ function bindCardioEvents() {
     const btn = e.target.closest('[data-cardio-type]');
     if (!btn) return;
     cardioType = btn.dataset.cardioType;
+    cardioTypeResolved = true; // an explicit pick beats the learned default
     renderCardio();
   });
 
