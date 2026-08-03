@@ -129,7 +129,8 @@
       <!-- Dashboard View -->
       <div class="view active" id="dashboardView">
         <!-- Today hero (populated by js/enhancements.js) -->
-        <div id="todayHero" class="today-hero-wrap"></div>
+                <div class="layout-bar"><button type="button" class="layout-edit-btn" id="layoutEditBtn">Edit layout</button></div>
+<div id="todayHero" class="today-hero-wrap"></div>
 
         <!-- Daily brief: the morning read across training, food and tasks (js/brief.js) -->
         <div id="dailyBrief"></div>
@@ -792,6 +793,12 @@
           </section>
 
           <section class="settings-card">
+            <h2>Saved layouts</h2>
+            <p class="settings-desc">Save the current arrangement and switch between setups. Reorder by tapping <strong>Edit layout</strong> on the Today screen.</p>
+            <div id="layoutManager"></div>
+          </section>
+
+          <section class="settings-card">
             <h2>Workout defaults</h2>
             <p class="settings-desc">Starting values for the Strength logger.</p>
             <div class="pref-fields">
@@ -1202,6 +1209,7 @@
   <script src="js/coach.js"></script>
   <script src="js/brief.js"></script>
   <script src="js/settings-prefs.js"></script>
+  <script src="js/layout.js"></script>
   <script src="js/insights.js"></script>
   <script src="js/sleep.js"></script>
   <script src="js/today.js"></script>

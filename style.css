@@ -8783,3 +8783,101 @@ html.pref-large-text { font-size: 112.5%; }
 html.pref-show-actions .schedule-event-remove,
 html.pref-show-actions .sidebar-del-btn,
 html.pref-show-actions .diet-custom-del { opacity: 0.75 !important; }
+
+/* ========== Dashboard layout editor (js/layout.js) ========== */
+.layout-bar { display: flex; justify-content: flex-end; margin-bottom: 10px; order: -999; }
+.layout-edit-btn {
+  min-height: 34px;
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color .16s ease, color .16s ease;
+}
+.layout-edit-btn:hover { border-color: var(--accent); color: var(--accent-hover); }
+html.layout-editing .layout-edit-btn { border-color: var(--accent); color: var(--accent-hover); background: var(--accent-glow); }
+
+/* In edit mode each widget gets a handle bar and a dashed outline */
+html.layout-editing .layout-item {
+  position: relative;
+  outline: 1px dashed var(--border);
+  outline-offset: 3px;
+  border-radius: var(--radius);
+}
+html.layout-editing .layout-item.is-dragging {
+  z-index: 50;
+  opacity: .92;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
+  outline-color: var(--accent);
+}
+.layout-handle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  margin-bottom: 6px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  /* the finger owns this element, not the scroller */
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.layout-item.is-dragging .layout-handle { cursor: grabbing; }
+.layout-grip { color: var(--text-muted); font-size: 13px; letter-spacing: -1px; }
+.layout-name { flex: 1; min-width: 0; font-size: 11.5px; font-weight: 700; color: var(--text-secondary); }
+.layout-btn {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+.layout-btn:hover { background: var(--accent); color: #fff; }
+
+/* Saved layouts */
+.layout-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.layout-chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  overflow: hidden;
+}
+.layout-chip button {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 8px 12px;
+  min-height: 36px;
+  cursor: pointer;
+}
+.layout-chip button:hover { color: var(--accent-hover); }
+.layout-chip-x { color: var(--text-muted) !important; padding-left: 4px !important; padding-right: 10px !important; }
+.layout-save { display: flex; gap: 8px; }
+.layout-save input {
+  flex: 1;
+  min-height: 40px;
+  padding: 9px 12px;
+  box-sizing: border-box;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+}

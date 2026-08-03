@@ -148,6 +148,7 @@ function bindEvents() {
   if (typeof bindSleepEvents === 'function') bindSleepEvents();
   if (typeof bindPreferencesEvents === 'function') bindPreferencesEvents();
   if (typeof bindSettingsPrefs === 'function') bindSettingsPrefs();
+  if (typeof bindLayoutEditor === 'function') bindLayoutEditor();
   bindDietEvents();
   bindGoalsEvents();
   if (typeof bindBoardDropTargets === 'function') bindBoardDropTargets();
