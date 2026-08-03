@@ -470,6 +470,7 @@ function render() {
   renderGym();
   if (typeof renderStrength === 'function') renderStrength();
   if (typeof renderCoach === 'function') renderCoach();
+  if (typeof renderDailyBrief === 'function') renderDailyBrief();
   if (typeof renderInsights === 'function') renderInsights();
   if (typeof renderCardio === 'function') renderCardio();
   if (typeof renderTodayCardio === 'function') renderTodayCardio();
