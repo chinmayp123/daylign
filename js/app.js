@@ -149,7 +149,6 @@ function bindEvents() {
   if (typeof bindPreferencesEvents === 'function') bindPreferencesEvents();
   bindDietEvents();
   bindGoalsEvents();
-  if (typeof bindLogFoodSheet === 'function') bindLogFoodSheet();
   if (typeof bindWeightSheet === 'function') bindWeightSheet();
   if (typeof bindPhotoEvents === 'function') bindPhotoEvents();
   if (typeof bindFoodLibrary === 'function') bindFoodLibrary();
@@ -372,10 +371,6 @@ function updateHeaderActionBtn(view) {
 const TASKMETA_VIEWS = ['dashboard', 'tasks', 'board', 'calendar'];
 
 function switchView(view) {
-  // The Log Food sheet holds the real diet card node while open. Close it (which
-  // returns the card home) before navigating, so it is never left in the sheet.
-  if (typeof isLogFoodSheetOpen === 'function' && isLogFoodSheetOpen()) closeLogFoodSheet();
-
   // Always land on the main Diet day, never mid-Food-Library, when navigating.
   const dv = document.getElementById('dietView');
   if (dv) dv.classList.remove('lib-open');
