@@ -61,62 +61,10 @@
   // ---------- Dashboard "Today" hero ----------
   // Reads the numbers the app already rendered into the health strip + weekly
   // report, so it never recomputes state and can't drift from the source.
-  function tileByLabel(label) {
-    return $$('#healthGrid .health-tile').find(t => {
-      const l = $('.health-tile-label', t);
-      return l && l.textContent.trim() === label;
-    });
-  }
-  function tileValue(label) {
-    const t = tileByLabel(label); if (!t) return null;
-    const v = $('.health-tile-value', t); if (!v) return null;
-    const main = (v.childNodes[0] && v.childNodes[0].textContent || '').trim();
-    const small = $('small', v);
-    return { main, sub: small ? small.textContent.trim() : '' };
-  }
-  function tilePct(label) {
-    const t = tileByLabel(label); if (!t) return 0;
-    const f = $('.health-bar-fill', t);
-    if (!f) return 0;
-    const w = parseFloat(f.style.width) || 0;
-    return Math.max(0, Math.min(100, w));
-  }
-  function buildTodayHero() {
-    const host = $('#todayHero');
-    if (!host) return;
-    const net = tileValue('Net Cals') || tileValue('Calories');
-    const cal = tileValue('Calories');
-    const protein = tileValue('Protein');
-    const water = tileValue('Water');
-    const pct = tilePct('Calories');
-    const focusEl = $('.weekly-focus strong');
-    const focus = focusEl ? focusEl.textContent.trim() : '';
-
-    const chips = [];
-    if (protein) chips.push(`<span class="th-chip th-chip-green">${protein.main}${protein.sub ? ' <em>' + protein.sub + '</em>' : ''} protein</span>`);
-    if (water) chips.push(`<span class="th-chip th-chip-blue">${water.main} water</span>`);
-    if (cal) chips.push(`<span class="th-chip th-chip-accent">${cal.main}${cal.sub ? ' <em>' + cal.sub + '</em>' : ''} cal</span>`);
-
-    const hour = new Date().getHours();
-    const partOfDay = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-    const who = (typeof currentProfile === 'function' && currentProfile()) ? currentProfile().name : '';
-
-    host.innerHTML = `
-      <div class="th-greeting">${partOfDay}${who ? ', ' + who : ''} <span class="th-wave">👋</span></div>
-      <div class="today-hero">
-        <div class="th-ring" style="background:conic-gradient(var(--accent) 0 ${pct}%, var(--border) ${pct}% 100%)">
-          <div class="th-ring-inner">
-            <span class="th-ring-val">${net ? net.main : '—'}</span>
-            <span class="th-ring-lbl">net kcal</span>
-          </div>
-        </div>
-        <div class="th-body">
-          <div class="th-label">${focus ? "This week's focus" : 'Today'}</div>
-          <div class="th-text">${focus || 'Log your day and your focus for the week shows up here.'}</div>
-          ${chips.length ? `<div class="th-chips">${chips.join('')}</div>` : ''}
-        </div>
-      </div>`;
-  }
+  // The Today hero used to live here. It restated the daily brief's own
+  // sentence from a different window (7 days including today vs excluding
+  // it), so the two sat on screen contradicting each other - 73g against
+  // 85g for the same week - and its chips repeated the health strip.
 
   // ---------- Mobile calendar agenda ----------
   const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -333,10 +281,8 @@
     setupServingStepper();
 
     // Hook renders and paint our extras once for the initial view.
-    wrap('renderDashboard', buildTodayHero);
     wrap('renderCalendar', buildAgenda);
     wrap('renderDiet', function () { setupServingStepper(); updateAddLabel(); });
-    buildTodayHero();
     buildAgenda();
   }
 

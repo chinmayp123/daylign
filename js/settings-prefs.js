@@ -20,7 +20,6 @@ const ACCENTS = [
 // can never point at something that no longer exists without showing up here.
 const DASH_WIDGETS = [
   { key: 'brief',     label: 'Daily brief',     sel: '#dailyBrief' },
-  { key: 'hero',      label: 'Today hero',      sel: '#todayHero' },
   { key: 'plan',      label: 'Today plan',      sel: '#todayPlan' },
   { key: 'stats',     label: 'Task stats',      sel: '#dashboardView .stats-grid' },
   { key: 'health',    label: 'Health strip',    sel: '#healthGrid' },

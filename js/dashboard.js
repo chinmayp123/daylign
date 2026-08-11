@@ -162,10 +162,28 @@ function renderWeeklyReport() {
     days.push(toLocalDateStr(d));
   }
 
-  // Diet: averages over logged days only
+  // Diet: averages over the last 7 COMPLETED days — today excluded.
+  //
+  // Today is a partial day. Averaging 22g-of-a-planned-150g into a DAILY
+  // average drags it down purely because it is 11am, and the number then
+  // disagrees with the daily brief, which excludes today for this reason.
+  // Both surfaces were on screen at once saying 73g and 85g about the same
+  // week — the sort of contradiction that makes people stop trusting all of it.
+  //
+  // Deliberately its own window rather than `days` minus today: that would
+  // leave six days against the brief's seven, which was still a mismatch
+  // (81g vs 85g) — closer, and therefore harder to spot. Counts of sessions
+  // and tasks keep using `days`, which does include today, because a workout
+  // you finished this morning should show up in this week's tally.
+  const dietWindow = [];
+  for (let i = 7; i >= 1; i--) {
+    const d = new Date(todayDate);
+    d.setDate(d.getDate() - i);
+    dietWindow.push(toLocalDateStr(d));
+  }
   const diet = state.diet || [];
   let dietDays = 0, calSum = 0, proteinSum = 0, carbSum = 0, fatSum = 0;
-  days.forEach(day => {
+  dietWindow.forEach(day => {
     const entries = diet.filter(e => e.date === day);
     if (!entries.length) return;
     dietDays++;
