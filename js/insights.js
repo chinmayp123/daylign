@@ -100,6 +100,85 @@ function chartStats(series, opts) {
     '<div class="ins-stat-l">' + esc(c[0]) + '</div></div>').join('') + '</div>';
 }
 
+function tipVal(v, opts) {
+  const o = opts || {};
+  const n = o.decimals ? Math.round(v * 10) / 10 : Math.round(v);
+  return n.toLocaleString() + (o.unit || '');
+}
+
+// One tooltip shared by every chart on the page, driven by pointer events so it
+// works identically under a mouse and under a thumb. Native title= did neither
+// well: a second of hover delay on desktop, and nothing at all on iOS.
+function attachChartHovers(host) {
+  if (!host) return;
+
+  // renderInsights replaces host.innerHTML on every range change, which throws
+  // the tooltip node away. Resolve it lazily so the handlers below never hold a
+  // reference to a detached element.
+  const getTip = () => {
+    let t = host.querySelector(':scope > .ins-tip');
+    if (!t) {
+      t = document.createElement('div');
+      t.className = 'ins-tip';
+      t.setAttribute('role', 'status');
+      host.appendChild(t);
+    }
+    return t;
+  };
+  getTip();
+
+  if (host.dataset.hoversBound === '1') return; // delegated — bind listeners once
+  host.dataset.hoversBound = '1';
+
+  let activeDot = null;
+  const hide = () => {
+    getTip().classList.remove('show');
+    if (activeDot) { activeDot.setAttribute('opacity', '0'); activeDot = null; }
+  };
+
+  const show = (el) => {
+    const text = el.dataset.tip;
+    if (!text) return hide();
+    const tip = getTip();
+    tip.textContent = text;
+    tip.classList.add('show');
+
+    // Park the hover dot on the data point itself, not the invisible hit slice.
+    const svg = el.ownerSVGElement;
+    const dot = svg && svg.querySelector('.ins-hover-dot');
+    if (activeDot && activeDot !== dot) activeDot.setAttribute('opacity', '0');
+    if (dot && el.dataset.cx) {
+      dot.setAttribute('cx', el.dataset.cx);
+      dot.setAttribute('cy', el.dataset.cy);
+      dot.setAttribute('opacity', '1');
+      activeDot = dot;
+    }
+
+    // Anchor above the bar or point, clamped inside the card so it never
+    // hangs off the edge of a phone screen.
+    const anchor = el.classList.contains('ins-col') ? (el.querySelector('.ins-bar') || el) : el;
+    const hr = host.getBoundingClientRect();
+    const r = anchor.getBoundingClientRect();
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    const left = Math.max(6, Math.min(hr.width - w - 6, r.left - hr.left + r.width / 2 - w / 2));
+    let top = r.top - hr.top - h - 8;
+    if (top < 2) top = r.bottom - hr.top + 8; // flip below when there is no room
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+  };
+
+  const onMove = e => {
+    const el = e.target.closest ? e.target.closest('[data-tip]') : null;
+    if (el) show(el); else hide();
+  };
+  host.addEventListener('pointermove', onMove);
+  host.addEventListener('pointerdown', onMove);
+  host.addEventListener('pointerleave', hide);
+  // A tap elsewhere, a scroll, or a range change should all dismiss it.
+  host.addEventListener('scroll', hide, true);
+  window.addEventListener('scroll', hide, { passive: true });
+}
+
 function insightLine(series, opts) {
   const o = opts || {};
   const pts = series.filter(p => p.value !== null);
@@ -121,6 +200,16 @@ function insightLine(series, opts) {
   const y = v => PY + (1 - (v - lo) / range) * (H - PY * 2);
 
   const coords = pts.map(p => `${Math.round(x(p.date) * 10) / 10},${Math.round(y(p.value) * 10) / 10}`);
+  // A polyline is a single element, so there is nothing to hover. Lay an
+  // invisible slice over each point to hit-test against — slices only, so
+  // hovering a gap correctly shows nothing rather than the nearest day.
+  const half = (W - PX * 2) / n / 2;
+  const hits = pts.map(p => {
+    const cx = x(p.date), cy = y(p.value);
+    return `<rect class="ins-hit" x="${Math.round((cx - half) * 10) / 10}" y="0" width="${Math.round(half * 20) / 10}" height="${H}"
+      fill="transparent" data-tip="${esc(formatDate(p.date) + ' · ' + tipVal(p.value, o))}"
+      data-cx="${Math.round(cx * 10) / 10}" data-cy="${Math.round(cy * 10) / 10}"/>`;
+  }).join('');
   const area = `${coords.join(' ')} ${Math.round(x(pts[pts.length - 1].date))},${H - PY} ${Math.round(x(pts[0].date))},${H - PY}`;
   const color = o.color || 'var(--accent)';
   const gid = 'ig' + (o.id || Math.round(hi * 7 + pts.length));
@@ -142,6 +231,8 @@ function insightLine(series, opts) {
         stroke-linejoin="round" pathLength="100" points="${coords.join(' ')}"/>
       <circle cx="${x(pts[pts.length - 1].date)}" cy="${y(pts[pts.length - 1].value)}" r="4.5"
         fill="${color}" stroke="var(--bg-card)" stroke-width="2"/>
+      <circle class="ins-hover-dot" r="5.5" fill="${color}" stroke="var(--bg-card)" stroke-width="2" opacity="0"/>
+      ${hits}
     </svg>
     <div class="ins-axis">
       <span>${formatDate(pts[0].date)}</span>
@@ -164,7 +255,10 @@ function insightBars(series, opts) {
     const v = p.value || 0;
     const pct = max ? (v / max) * 100 : 0;
     const hit = o.goal && v >= o.goal;
-    return `<div class="ins-col" title="${esc(formatDate(p.date))} · ${Math.round(v)}${esc(o.unit || '')}">
+    // data-tip rather than title=: the native tooltip needs a second of hover
+    // and never fires on touch, which is the surface this app actually runs on.
+    const label = formatDate(p.date) + ' · ' + (p.value === null ? 'nothing logged' : tipVal(v, o));
+    return `<div class="ins-col" data-tip="${esc(label)}">
       <div class="ins-bar${v ? '' : ' is-empty'}" style="height:${v ? Math.max(3, pct) : 3}%;background:${v ? (hit ? 'var(--green)' : (o.color || 'var(--accent)')) : 'var(--bg-hover)'}"></div>
     </div>`;
   }).join('');
@@ -339,7 +433,7 @@ function renderInsights() {
     ${card('Training volume', `${s.totalSets} sets`, insightBars(setsSeries, { unit: ' sets', color: 'var(--accent)' }) + chartStats(setsSeries, { unit: ' sets', showTotal: true }), 'Sets logged per day.')}
     ${muscleBody ? card('Sets by muscle group', 'this range', muscleBody, 'Where the work actually went.') : ''}
     ${card('Water', goals.water ? `goal ${goals.water} oz` : '', insightBars(waterSeries, { goal: goals.water, unit: ' oz', color: 'var(--blue)' }) + chartStats(waterSeries, { goal: goals.water, unit: ' oz', showTotal: true }))}
-    ${card('Body weight', goals.weight ? `goal ${goals.weight} lbs` : '', insightLine(weightSeries, { goal: goals.weight, color: 'var(--green)', fill: 'rgba(52,211,153,0.22)', id: 2, unit: '' }) + chartStats(weightSeries, { unit: ' lbs', decimals: true }))}
+    ${card('Body weight', goals.weight ? `goal ${goals.weight} lbs` : '', insightLine(weightSeries, { goal: goals.weight, color: 'var(--green)', fill: 'rgba(52,211,153,0.22)', id: 2, unit: ' lbs', decimals: true }) + chartStats(weightSeries, { unit: ' lbs', decimals: true }))}
     ${card('Sleep', 'hours', insightBars(sleepSeries, { goal: goals.sleep || 8, unit: 'h', color: 'var(--purple)' }) + chartStats(sleepSeries, { goal: goals.sleep || 8, unit: 'h', decimals: true }))}
     ${hasSteps ? card('Steps', `goal ${(goals.steps || 8000).toLocaleString()}`, insightBars(stepSeries, { goal: goals.steps || 8000, unit: '', color: 'var(--yellow)' }) + chartStats(stepSeries, { goal: goals.steps || 8000, showTotal: true }) + stepCoachNote(stepSeries, goals.steps || 8000, latestWeight), 'From your watch. This is the number that sets your daily burn on the days you do not train.') : ''}
     ${hasMove ? card('Movement', 'watch minutes', insightBars(moveSeries, { unit: ' min', color: 'var(--blue)' }) + chartStats(moveSeries, { unit: ' min', showTotal: true }), 'Apple Health exercise minutes — rides included, whether or not you logged them.') : ''}
@@ -356,6 +450,7 @@ function renderInsights() {
   });
   const exp = document.getElementById('insExport');
   if (exp) exp.addEventListener('click', exportInsightsCsv);
+  attachChartHovers(host);
 }
 
 // One row per day in the active range, every metric side by side.

@@ -8439,6 +8439,33 @@ body.app-loading #syncProgress { opacity: 1; }
 .ins-tile-s { font-size: 10px; color: var(--text-secondary); margin-top: 3px; }
 
 .ins-card { margin-bottom: 16px; animation: riseIn .4s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+/* Shared chart tooltip. Anchored to #insightsBody, which is the positioning
+   context, so it can be clamped inside the page on a narrow screen. */
+#insightsBody { position: relative; }
+.ins-tip {
+  position: absolute;
+  z-index: 40;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(3px);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  background: #22222e;
+  color: #f0f0f6;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+.ins-tip.show { opacity: 1; transform: translateY(0); }
+.ins-hit { cursor: crosshair; }
+.ins-col { cursor: crosshair; }
+@media (prefers-reduced-motion: reduce) {
+  .ins-tip { transition: none; }
+}
+
 .ins-note { font-size: 11px; color: var(--text-muted); margin-top: 10px; line-height: 1.45; }
 .ins-note-warn {
   background: rgba(251, 191, 36, 0.09);
