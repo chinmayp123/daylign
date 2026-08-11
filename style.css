@@ -9445,3 +9445,71 @@ html.layout-editing .layout-item.is-dragging {
   .modal { animation-duration: 0.01ms; }
   .modal.is-settling { transition: none; }
 }
+
+/* ==========================================================================
+   Mobile landing-page corrections
+   Three things were wrong on a real iPhone that a desktop viewport hides:
+
+   1. The status bar. This PWA runs with black-translucent, so the page starts
+      at y=0 UNDER the clock. The old header scrolled away so it was merely
+      tight; once it became sticky it parked permanently behind the time.
+      Nothing in the stylesheet referenced safe-area-inset-top at all.
+   2. "Edit layout" claimed a whole row (order:-999) for one small button.
+   3. Project chips wrapped onto two rows, so ~110px of a 844px screen went
+      to chrome before the first real content.
+   ========================================================================== */
+@media (max-width: 600px) {
+  /* The header now owns the top spacing, including the status bar inset, and
+     its background fills that strip so content scrolls under something opaque. */
+  .main { padding-top: 0; }
+  .header {
+    padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    padding-bottom: 10px;
+  }
+  .header.is-condensed {
+    padding-top: calc(5px + env(safe-area-inset-top, 0px));
+    padding-bottom: 5px;
+  }
+
+  /* One row that scrolls sideways, matching how the reminders bar already
+     behaves, instead of wrapping to two. */
+  .dash-project-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+    margin-bottom: 12px;
+  }
+  .dash-project-tabs::-webkit-scrollbar { display: none; }
+  .dash-project-tab { flex: 0 0 auto; }
+
+  /* Collapsed to zero height so it stops claiming a row; the button is then
+     anchored over the right-hand end of the chip row that follows it. A
+     negative margin was the first attempt and drifted, because the chip row's
+     height is not fixed. */
+  .layout-bar {
+    order: -999;
+    height: 0;
+    margin: 0;
+    overflow: visible;
+    position: relative;
+    z-index: 5;
+  }
+  .layout-edit-btn {
+    position: absolute;
+    right: 0;
+    top: 0;
+    min-height: 40px;
+    padding: 6px 12px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  /* The chip track stops short of the button instead of scrolling underneath
+     it. Overlaying and fading was the first attempt, and a chip still ended up
+     half-hidden at rest — which just looks broken. */
+  .dash-project-tabs { margin-right: 100px; }
+
+  /* The last card must clear the floating action pill, which sits 84px up. */
+  .view.active { padding-bottom: 56px; }
+}
