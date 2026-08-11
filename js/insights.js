@@ -329,10 +329,16 @@ function insightsSummary() {
   const avgCal = loggedDiet.length ? Math.round(loggedDiet.reduce((s, d) => s + diet[d].calories, 0) / loggedDiet.length) : null;
   const avgPro = loggedDiet.length ? Math.round(loggedDiet.reduce((s, d) => s + diet[d].protein, 0) / loggedDiet.length) : null;
   const trainDays = days.filter(d => sets[d]).length;
+  // A two-set check-in is not a training day. Reporting them together turned a
+  // month with 11 real sessions into "20 training days".
+  const full = (typeof isFullSession === 'function')
+    ? days.filter(d => (sets[d] || 0) > 0 && isFullSession(d)).length
+    : trainDays;
+  const checkIns = trainDays - full;
   const totalSets = days.reduce((s, d) => s + (sets[d] || 0), 0);
   const tasksDone = (state.tasks || []).filter(t => t.completedAt && inRange(t.completedAt)).length;
 
-  return { days, avgCal, avgPro, trainDays, totalSets, tasksDone, loggedDays: loggedDiet.length, goals };
+  return { days, avgCal, avgPro, trainDays, fullSessions: full, checkIns, totalSets, tasksDone, loggedDays: loggedDiet.length, goals };
 }
 
 // ---------- render ----------
@@ -424,7 +430,7 @@ function renderInsights() {
     <div class="ins-tiles">
       ${tile(s.avgCal, 'Avg calories', s.loggedDays ? `${s.loggedDays} days logged` : 'no food logged')}
       ${tile(s.avgPro !== null ? s.avgPro + 'g' : null, 'Avg protein', goals.protein ? `goal ${goals.protein}g` : '')}
-      ${tile(s.trainDays, 'Training days', `${s.totalSets} sets`)}
+      ${tile(s.fullSessions, 'Full sessions', s.checkIns ? `+${s.checkIns} check-in${s.checkIns === 1 ? '' : 's'} · ${s.totalSets} sets` : `${s.totalSets} sets`)}
       ${tile(s.tasksDone, 'Tasks done', rate ? `${rate}% completion` : '')}
     </div>
 

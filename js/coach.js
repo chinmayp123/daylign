@@ -22,10 +22,15 @@ function coachSnapshot() {
   const gym = state.gym || [];
   const cardio = state.cardio || [];
 
-  const sessionDates = new Set(
+  // Only real sessions inform the coach. Counting two-set check-ins here made
+  // it call a light week "5 sessions in 7 days" and prescribe a deload.
+  const allDates = new Set(
     gym.map(e => e && e.date).concat(cardio.map(c => c && c.date)).filter(Boolean)
   );
-  const trainedToday = sessionDates.has(today);
+  const sessionDates = (typeof isFullSession === 'function')
+    ? new Set(Array.from(allDates).filter(isFullSession))
+    : allDates;
+  const trainedToday = allDates.has(today);
 
   // Most recent training day, and how long ago that was.
   const sorted = Array.from(sessionDates).sort();

@@ -243,6 +243,55 @@ function exerciseHistory(name, beforeDate) {
 // Calisthenics progression chains, easiest → hardest. When the last two
 // sessions of an exercise clear the rep threshold on every set, it has
 // stopped being a growth stimulus — time to move up the chain.
+// A day with one set of push ups and one set of sit ups is a check-in, not a
+// session, and counting it as a full training day flatters the numbers. Four
+// sets is the line: the real sessions in the log run 10-16 sets, the check-ins
+// run 2, so anything at or above this is unambiguously a workout.
+const SESSION_MIN_SETS = 4;
+
+function setsOnDate(dateStr) {
+  return (state.gym || []).reduce((n, e) => n + (e.date === dateStr ? (e.sets || []).length : 0), 0);
+}
+
+// Cardio counts as a full session on its own — a 30 minute ride is real work
+// even though it logs no sets.
+function isFullSession(dateStr) {
+  if ((state.cardio || []).some(s => s.date === dateStr)) return true;
+  return setsOnDate(dateStr) >= SESSION_MIN_SETS;
+}
+
+// Reps have not moved across the last few sessions of a staple movement. This
+// is the failure mode the progression ladder below cannot see: the ladder waits
+// for mastery (every set at the threshold) before suggesting the next
+// variation, so an exercise parked at 10 reps forever never trips it.
+const STALL_SESSIONS = 5;
+
+function bodyweightStall() {
+  const byName = {};
+  (state.gym || []).forEach(e => {
+    if (!e || !e.date || e.date > gymViewDate) return;
+    if (!(e.bodyweight || isBodyweightExercise(e.exercise))) return;
+    const key = (e.exercise || '').trim().toLowerCase();
+    if (!key) return;
+    (byName[key] = byName[key] || []).push(e);
+  });
+
+  let worst = null;
+  Object.keys(byName).forEach(key => {
+    const sessions = byName[key].sort((a, b) => a.date.localeCompare(b.date));
+    if (sessions.length < STALL_SESSIONS) return;
+    const bestOf = e => (e.sets || []).reduce((m, s) => Math.max(m, Number(s.reps) || 0), 0);
+    const recent = sessions.slice(-STALL_SESSIONS);
+    const peak = Math.max.apply(null, recent.map(bestOf));
+    // Stalled if the best set in the whole span never beat the earliest one.
+    if (peak > bestOf(recent[0])) return;
+    if (!worst || sessions.length > worst.sessions) {
+      worst = { name: sessions[0].exercise, sessions: sessions.length, reps: peak, since: sessions[0].date };
+    }
+  });
+  return worst;
+}
+
 const PROGRESSION_CHAINS = [
   { chain: ['Wall Push Ups', 'Incline Push Ups', 'Knee Push Ups', 'Push Ups', 'Wide Push Ups', 'Decline Push Ups', 'Diamond Push Ups', 'Pike Push Ups', 'Handstand Push Up'], threshold: 20 },
   { chain: ['Crunches', 'Sit Ups', 'Bicycle Crunches', 'Leg Raises', 'Hanging Leg Raises', 'Dragon Flag'], threshold: 25 },
@@ -321,17 +370,25 @@ function renderStreak() {
     prevT = t;
   }
 
-  let week = 0;
+  // Active days and full sessions are different things. Counting a two-set
+  // check-in toward a "4+ sessions a week" target reports a week that did not
+  // happen, so the headline number is sessions and active days sit behind it.
+  let week = 0, fullWeek = 0;
   for (let i = 0; i < 7; i++) {
     const dd = new Date(today + 'T00:00:00');
     dd.setDate(dd.getDate() - i);
-    if (daySets[toLocalDateStr(dd)]) week++;
+    const ds = toLocalDateStr(dd);
+    if (daySets[ds]) week++;
+    if (isFullSession(ds)) fullWeek++;
   }
 
-  $('#streakSummary').textContent = `${week}/7 days this week`;
+  const checkIns = week - fullWeek;
+  $('#streakSummary').textContent = checkIns > 0
+    ? `${fullWeek} session${fullWeek === 1 ? '' : 's'} · ${checkIns} check-in${checkIns === 1 ? '' : 's'} this week`
+    : `${fullWeek}/7 sessions this week`;
   $('#streakStats').innerHTML = `
     <div class="gym-stat"><span class="gym-stat-val">${streak}</span><span class="gym-stat-lbl">Day Streak</span></div>
-    <div class="gym-stat"><span class="gym-stat-val">${week}<small class="streak-stat-target"> / 4+</small></span><span class="gym-stat-lbl">This Week</span></div>
+    <div class="gym-stat"><span class="gym-stat-val">${fullWeek}<small class="streak-stat-target"> / 4+</small></span><span class="gym-stat-lbl">Sessions This Week</span></div>
     <div class="gym-stat"><span class="gym-stat-val">${best}</span><span class="gym-stat-lbl">Best Streak</span></div>
   `;
 
@@ -348,7 +405,7 @@ function renderStreak() {
     const ds = toLocalDateStr(dd);
     if (ds > today) { cells.push('<div class="streak-cell future"></div>'); continue; }
     const sets = daySets[ds] || 0;
-    const lvl = sets === 0 ? 0 : sets < 6 ? 1 : sets < 12 ? 2 : 3;
+    const lvl = sets === 0 ? 0 : sets < SESSION_MIN_SETS ? 1 : sets < 12 ? 2 : 3;
     const label = new Date(ds + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     cells.push(`<div class="streak-cell lvl${lvl}" title="${label}${sets ? ` · ${sets} sets` : ' · rest'}"></div>`);
   }
@@ -443,6 +500,19 @@ function coachRecommendations(burn, burnGoal, pace) {
   const prog = progressionSuggestion();
   if (prog) {
     recs.push({ type: 'good', text: `You've cleared ${prog.threshold}+ reps across your last two ${prog.from} sessions — that variation has stopped challenging you. Progress to ${prog.to}.` });
+  }
+
+  // Stalled staple: the ladder waits for mastery, so a movement parked well
+  // below its threshold is invisible to it. That is the more common failure.
+  const stall = bodyweightStall();
+  if (!prog && stall) {
+    recs.push({ type: 'warn', text: `${stall.name}: ${stall.sessions} sessions logged and your best set is still ${stall.reps} reps — it has not moved since ${formatDate(stall.since)}. A set that never gets harder stops producing anything. Take the first set to failure and log the real number.` });
+  }
+
+  // Check-in days: logged, but not a session
+  const tokenDays = [...new Set(week.map(e => e.date))].filter(d => !isFullSession(d));
+  if (tokenDays.length >= 2) {
+    recs.push({ type: 'info', text: `${tokenDays.length} of your training days this week were under ${SESSION_MIN_SETS} sets. They keep the habit alive, but they are not doing training work — if a day is meant to count, give it 4+ hard sets.` });
   }
 
   // Progression: total reps this week vs last week

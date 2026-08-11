@@ -218,10 +218,12 @@ function renderRailReadiness() {
 function renderRailConsistency() {
   const host = document.getElementById('trainingRailConsistency');
   if (!host) return;
-  const active = new Set([
-    ...(state.gym || []).map(e => e.date),
-    ...(state.cardio || []).map(s => s.date),
-  ]);
+  // Shaded by size, not just presence — a two-set check-in and a sixteen-set
+  // session used to render as the same solid square, which made a light month
+  // look identical to a heavy one.
+  const daySets = {};
+  (state.gym || []).forEach(e => { daySets[e.date] = (daySets[e.date] || 0) + ((e.sets || []).length); });
+  const cardioDays = new Set((state.cardio || []).map(s => s.date));
   const today = getTodayStr();
   const WEEKS = 12;
   const end = new Date(today + 'T00:00:00');
@@ -235,7 +237,10 @@ function renderRailConsistency() {
       cur.setDate(cur.getDate() + w * 7 + d);
       const ds = toLocalDateStr(cur);
       if (ds > today) { cells.push('<div class="streak-cell future"></div>'); continue; }
-      cells.push(`<div class="streak-cell ${active.has(ds) ? 'lvl3' : ''}" title="${formatDate(ds)}"></div>`);
+      const sets = daySets[ds] || 0;
+      const lvl = cardioDays.has(ds) ? 3 : (sets === 0 ? 0 : sets < 4 ? 1 : sets < 12 ? 2 : 3);
+      const note = sets ? ` · ${sets} set${sets === 1 ? '' : 's'}` : (cardioDays.has(ds) ? ' · cardio' : ' · rest');
+      cells.push(`<div class="streak-cell lvl${lvl}" title="${formatDate(ds)}${note}"></div>`);
     }
   }
   host.innerHTML = `
