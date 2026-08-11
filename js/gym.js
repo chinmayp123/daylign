@@ -435,7 +435,10 @@ function startRestTimer(btn) {
     left--;
     if (left <= 0) {
       stopRestTimer();
-      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      // Fires from a timer, not a tap. The iOS switch fallback needs a user
+      // gesture, so on iPhone this stays silent and the toast does the work —
+      // there is no way to buzz a phone from a background timer on the web.
+      if (typeof haptic === 'function') haptic('success');
       showToast('Rest over — next set!');
     } else {
       btn.textContent = `${left}s`;

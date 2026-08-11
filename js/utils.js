@@ -222,3 +222,68 @@ function getLastWeekday(year, month, weekday) {
   }
   return null;
 }
+
+// ========== Haptics ==========
+// navigator.vibrate is unsupported in every browser on iOS — Apple requires
+// WebKit, so Chrome and Firefox there fail identically. That kills the obvious
+// implementation on the one platform this app actually runs on.
+//
+// The fallback exploits the fact that Apple's own switch control (iOS 17.4+,
+// <input type="checkbox" switch>) produces haptic feedback natively. Clicking
+// a hidden one borrows that. It is undocumented and depends on behaviour Apple
+// never promised, so it is written to fail silently and nothing is built on
+// the assumption that it works — if it does nothing, the app is merely as
+// quiet as it was before.
+let hapticSwitch = null;
+let hapticsProbed = false;
+
+function hapticsEnabled() {
+  try { return typeof readPrefs !== 'function' || readPrefs().haptics !== false; }
+  catch (e) { return true; }
+}
+
+function ensureHapticSwitch() {
+  if (hapticsProbed) return hapticSwitch;
+  hapticsProbed = true;
+  try {
+    // Only worth building on WebKit/iOS, where vibrate() is missing.
+    if (typeof navigator.vibrate === 'function') return null;
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    // Unknown attributes are ignored elsewhere, so this is inert off-iOS.
+    input.setAttribute('switch', '');
+    input.id = 'hapticProxy';
+    input.tabIndex = -1;
+    input.setAttribute('aria-hidden', 'true');
+    // Off-screen rather than display:none — a hidden control cannot be
+    // clicked, and clicking is the whole mechanism.
+    input.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none;';
+    const label = document.createElement('label');
+    label.setAttribute('for', 'hapticProxy');
+    label.setAttribute('aria-hidden', 'true');
+    label.style.cssText = input.style.cssText;
+    document.body.appendChild(input);
+    document.body.appendChild(label);
+    hapticSwitch = label;
+  } catch (e) {
+    hapticSwitch = null;
+  }
+  return hapticSwitch;
+}
+
+// Call from inside a user gesture. Patterns follow the usual convention:
+// 'light' for a confirmation, 'success' for something completed, 'warn' for a
+// rejected action.
+const HAPTIC_PATTERNS = { light: 10, success: [12, 40, 18], warn: [26, 60, 26] };
+
+function haptic(kind) {
+  if (!hapticsEnabled()) return;
+  try {
+    if (typeof navigator.vibrate === 'function') {
+      navigator.vibrate(HAPTIC_PATTERNS[kind] || HAPTIC_PATTERNS.light);
+      return;
+    }
+    const proxy = ensureHapticSwitch();
+    if (proxy) proxy.click(); // iOS only ever gives one flavour of tick
+  } catch (e) { /* haptics are a nicety — never let them surface */ }
+}

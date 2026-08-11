@@ -159,6 +159,9 @@ function toggleTaskDone(id) {
   if (!task) return;
   task.status = task.status === 'done' ? 'todo' : 'done';
   task.completedAt = task.status === 'done' ? getTodayStr() : null;
+  // Completing something is the one action in this app that deserves to be
+  // felt. Un-completing gets the lighter tick.
+  if (typeof haptic === 'function') haptic(task.status === 'done' ? 'success' : 'light');
   saveData(state);
   render();
 }

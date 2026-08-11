@@ -43,6 +43,7 @@ const PREF_DEFAULTS = {
   reduceMotion: false, // force-off animation regardless of OS setting
   largeText: false,
   alwaysShowActions: false, // reveal hover-only delete buttons permanently
+  haptics: true,       // tactile feedback where the platform allows it
 };
 
 function readPrefs() {
@@ -137,7 +138,7 @@ function renderSettingsPrefsPanel() {
   const sets = document.getElementById('prefDefaultSets');
   if (sets) sets.value = p.defaultSets;
 
-  [['prefReduceMotion', 'reduceMotion'], ['prefLargeText', 'largeText'], ['prefShowActions', 'alwaysShowActions']]
+  [['prefReduceMotion', 'reduceMotion'], ['prefLargeText', 'largeText'], ['prefShowActions', 'alwaysShowActions'], ['prefHaptics', 'haptics']]
     .forEach(function (pair) {
       const el = document.getElementById(pair[0]);
       if (el) el.checked = !!p[pair[1]];
@@ -172,7 +173,7 @@ function bindSettingsPrefs() {
     setPref('defaultSets', v);
   });
 
-  [['prefReduceMotion', 'reduceMotion'], ['prefLargeText', 'largeText'], ['prefShowActions', 'alwaysShowActions']]
+  [['prefReduceMotion', 'reduceMotion'], ['prefLargeText', 'largeText'], ['prefShowActions', 'alwaysShowActions'], ['prefHaptics', 'haptics']]
     .forEach(function (pair) {
       const el = document.getElementById(pair[0]);
       if (el) el.addEventListener('change', () => setPref(pair[1], el.checked));

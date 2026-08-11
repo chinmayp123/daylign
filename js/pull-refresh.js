@@ -55,6 +55,8 @@ function ptrReset() {
 function ptrRun() {
   if (ptrRefreshing) return;
   ptrRefreshing = true;
+  // Still inside the touch gesture here, which is what the iOS fallback needs.
+  if (typeof haptic === 'function') haptic('light');
   const el = ptrIndicator();
   el.classList.add('is-spinning');
   el.classList.add('is-settling');
