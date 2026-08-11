@@ -1,3 +1,14 @@
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { switchView } from './app.js';
+import { openEventModal } from './calendar.js';
+import { openModal } from './modal.js';
+import { renderThemeSegmented } from './preferences.js';
+import { currentProfile } from './profile.js';
+import { calendarDate, state } from './state.js';
+import { esc, getTodayStr, getUSHolidays } from './utils.js';
+import { runVoiceCommand } from './voice.js';
+
 // ========== Daylign UI enhancements (additive) ==========
 // Self-contained layer added during the design pass. Everything here is
 // additive — it wraps existing global render fns and reads already-rendered

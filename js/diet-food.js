@@ -1,4 +1,13 @@
-function searchFoodDatabase(query) {
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { FOOD_DATABASE } from './diet-data.js';
+import { bindWaterEvents, clearDietForm } from './diet-goals.js';
+import { renderDiet } from './diet-view.js';
+import { publishFoodToBank, sharedFoods } from './firebase-sync.js';
+import { dietBaseMacros, dietViewDate, saveData, setDietBaseMacros, setDietViewDate, state } from './state.js';
+import { esc, getTodayStr, showToast, toLocalDateStr } from './utils.js';
+
+export function searchFoodDatabase(query) {
   query = query.toLowerCase().trim();
   if (!query) return [];
   const results = [];
@@ -52,9 +61,9 @@ function searchFoodDatabase(query) {
   return results.sort((a, b) => a.score - b.score || a.name.localeCompare(b.name)).slice(0, 8);
 }
 
-function selectFoodFromDropdown(name, data) {
+export function selectFoodFromDropdown(name, data) {
   $('#dietFoodName').value = name.charAt(0).toUpperCase() + name.slice(1);
-  dietBaseMacros = { calories: data.calories, protein: data.protein, carbs: data.carbs, fat: data.fat };
+  setDietBaseMacros({ calories: data.calories, protein: data.protein, carbs: data.carbs, fat: data.fat });
   $('#dietServings').value = 1;
   updateMacrosByServings();
   $('#dietSearchDropdown').innerHTML = '';
@@ -67,7 +76,7 @@ function selectFoodFromDropdown(name, data) {
 }
 
 // "Save as My Food" flips to "Update My Food" when the typed name is already banked
-function syncSaveCustomLabel() {
+export function syncSaveCustomLabel() {
   const label = $('#dietSaveCustomLabel');
   if (!label) return;
   const name = ($('#dietFoodName').value || '').trim().toLowerCase();
@@ -78,11 +87,11 @@ function syncSaveCustomLabel() {
 // Auto-add a logged food to the searchable food database (My Foods) if it's new.
 // Stores PER-SERVING macros so quantities scale correctly next time.
 // Foods the user explicitly deleted — never auto-add these again
-function isRemovedFood(name) {
+export function isRemovedFood(name) {
   return (state.removedFoods || []).includes((name || '').trim().toLowerCase());
 }
 
-function rememberFood(name, totals, servings) {
+export function rememberFood(name, totals, servings) {
   const key = (name || '').trim();
   if (!key) return false;
   const lower = key.toLowerCase();
@@ -127,7 +136,7 @@ function rememberFood(name, totals, servings) {
 // Sweep the whole diet log and bank any dish that isn't searchable yet.
 // Catches foods logged before auto-remember existed and entries synced in
 // from other devices. Iterates newest-first so the latest macros win.
-function backfillRememberedFoods() {
+export function backfillRememberedFoods() {
   let added = 0;
   const seen = new Set(Object.keys(state.customFoods).map(k => k.toLowerCase()));
   for (let i = state.diet.length - 1; i >= 0; i--) {
@@ -154,7 +163,7 @@ function backfillRememberedFoods() {
   return added;
 }
 
-function updateMacrosByServings() {
+export function updateMacrosByServings() {
   if (!dietBaseMacros) return;
   const servings = Number($('#dietServings').value) || 1;
   $('#dietCalories').value = Math.round(dietBaseMacros.calories * servings);
@@ -163,7 +172,7 @@ function updateMacrosByServings() {
   $('#dietFat').value = Math.round(dietBaseMacros.fat * servings * 10) / 10;
 }
 
-function parseOFFNutrients(product) {
+export function parseOFFNutrients(product) {
   const n = product.nutriments || {};
   // energy-kcal_100g is preferred; fallback to energy_100g (kJ) converted to kcal
   let cal = n['energy-kcal_100g'] || n['energy-kcal_serving'] || n['energy-kcal'] || 0;
@@ -180,13 +189,13 @@ function parseOFFNutrients(product) {
   };
 }
 
-function fetchWithTimeout(url, ms = 5000) {
+export function fetchWithTimeout(url, ms = 5000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), ms);
   return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
 }
 
-async function lookupFoodAPI(query) {
+export async function lookupFoodAPI(query) {
   const dropdown = $('#dietSearchDropdown');
   // Don't replace dropdown if user is hovering over it
   const isHovered = dropdown.matches(':hover');
@@ -275,7 +284,7 @@ async function lookupFoodAPI(query) {
       const r = results[i];
       const displayName = r.name.split(',')[0].split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
       $('#dietFoodName').value = r.brand ? `${displayName} (${r.brand})` : displayName;
-      dietBaseMacros = { calories: r.calories || 0, protein: r.protein || 0, carbs: r.carbs || 0, fat: r.fat || 0 };
+      setDietBaseMacros({ calories: r.calories || 0, protein: r.protein || 0, carbs: r.carbs || 0, fat: r.fat || 0 });
       $('#dietServings').value = 1;
       updateMacrosByServings();
       dropdown.innerHTML = '';
@@ -288,24 +297,24 @@ async function lookupFoodAPI(query) {
   });
 }
 
-let dietSearchTimeout = null;
+export let dietSearchTimeout = null;
 
-function bindDietEvents() {
-  $('#dietDate').addEventListener('change', (e) => { dietViewDate = e.target.value; renderDiet(); });
+export function bindDietEvents() {
+  $('#dietDate').addEventListener('change', (e) => { setDietViewDate(e.target.value); renderDiet(); });
   $('#dietPrevDay').addEventListener('click', () => {
     const d = new Date(dietViewDate + 'T00:00:00');
     d.setDate(d.getDate() - 1);
-    dietViewDate = toLocalDateStr(d);
+    setDietViewDate(toLocalDateStr(d));
     renderDiet();
   });
   $('#dietNextDay').addEventListener('click', () => {
     const d = new Date(dietViewDate + 'T00:00:00');
     d.setDate(d.getDate() + 1);
-    dietViewDate = toLocalDateStr(d);
+    setDietViewDate(toLocalDateStr(d));
     renderDiet();
   });
   $('#dietToday').addEventListener('click', () => {
-    dietViewDate = getTodayStr();
+    setDietViewDate(getTodayStr());
     renderDiet();
   });
 
@@ -379,7 +388,7 @@ function bindDietEvents() {
   }
 
   foodInput.addEventListener('input', () => {
-    dietBaseMacros = null;
+    setDietBaseMacros(null);
     clearTimeout(dietSearchTimeout);
     clearTimeout(localSearchTimeout);
     $('#dietServingInfo').innerHTML = '';
@@ -477,3 +486,10 @@ function bindDietEvents() {
   });
 }
 
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { backfillRememberedFoods: backfillRememberedFoods, bindDietEvents: bindDietEvents, fetchWithTimeout: fetchWithTimeout, isRemovedFood: isRemovedFood, lookupFoodAPI: lookupFoodAPI, parseOFFNutrients: parseOFFNutrients, rememberFood: rememberFood, searchFoodDatabase: searchFoodDatabase, selectFoodFromDropdown: selectFoodFromDropdown, syncSaveCustomLabel: syncSaveCustomLabel, updateMacrosByServings: updateMacrosByServings });

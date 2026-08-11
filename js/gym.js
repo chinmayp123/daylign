@@ -1,5 +1,16 @@
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { cardioBurnForDate } from './cardio.js';
+import { getGoals, openGoalsModal } from './diet-goals.js';
+import { getExternalActiveEnergy } from './firebase-sync.js';
+import { defaultGymSets, gymSets, gymViewDate, saveData, setGymSets, setGymViewDate, state } from './state.js';
+import { MUSCLE_LABEL, MUSCLE_ORDER } from './strength.js';
+import { renderTrainingShell } from './training.js';
+import { getTodayStr, haptic, showToast, toLocalDateStr } from './utils.js';
+import { renderWeightSheetBody } from './weight-sheet.js';
+
 // ========== Gym ==========
-const BODYWEIGHT_EXERCISES = new Set([
+export const BODYWEIGHT_EXERCISES = new Set([
   'Push Ups', 'Wide Push Ups', 'Diamond Push Ups', 'Decline Push Ups', 'Pike Push Ups',
   'Pull Up', 'Chin Up', 'Muscle Up', 'Dip', 'Ring Dip',
   'Sit Ups', 'Crunches', 'Leg Raises', 'Hanging Leg Raises', 'Bicycle Crunches',
@@ -10,7 +21,7 @@ const BODYWEIGHT_EXERCISES = new Set([
   'Flutter Kicks', 'Russian Twists', 'Superman', 'Glute Bridge',
 ]);
 
-const COMMON_EXERCISES = [
+export const COMMON_EXERCISES = [
   ...BODYWEIGHT_EXERCISES,
   // Weights
   'Bench Press', 'Squat', 'Deadlift', 'Overhead Press', 'Barbell Row',
@@ -19,10 +30,10 @@ const COMMON_EXERCISES = [
   'Lateral Raise', 'Face Pull',
 ];
 
-let gymBodyweight = false; // current input mode
-let gymEditingIdx = null; // index into day's exercises when editing
+export let gymBodyweight = false; // current input mode
+export let gymEditingIdx = null; // index into day's exercises when editing
 
-function isBodyweightExercise(name) {
+export function isBodyweightExercise(name) {
   if (!name) return false;
   const lower = name.toLowerCase().trim();
   for (const bw of BODYWEIGHT_EXERCISES) {
@@ -34,7 +45,7 @@ function isBodyweightExercise(name) {
 // 7-day rolling average of weigh-ins. Daily scale weight swings 1-3 lbs on
 // water and food timing alone; on a 10 lb cut that noise buries the signal,
 // so the trend value is the headline and the raw reading is secondary.
-function weightTrendSeries() {
+export function weightTrendSeries() {
   const entries = Object.entries(state.weight || {}).sort((a, b) => a[0].localeCompare(b[0]));
   const times = entries.map(([d]) => new Date(d + 'T00:00:00').getTime());
   return entries.map(([d], i) => {
@@ -44,7 +55,7 @@ function weightTrendSeries() {
   });
 }
 
-function renderWeight() {
+export function renderWeight() {
   const currentEl = $('#weightCurrent');
   if (!currentEl) return;
   const WEIGHT_GOAL = (typeof getGoals === 'function' && getGoals().weight) || 150;
@@ -106,15 +117,15 @@ function renderWeight() {
 // ---- Targets & Coach ----
 // Calorie burn is a MET estimate: cal = MET x bodyweight(kg) x hours.
 // Each set is counted as ~2 min of session time (work + rest).
-const SET_MINUTES = 2;
-const MET_BODYWEIGHT = 5.0; // moderate-vigorous calisthenics
-const MET_WEIGHTED = 6.0;   // vigorous weight training
+export const SET_MINUTES = 2;
+export const MET_BODYWEIGHT = 5.0; // moderate-vigorous calisthenics
+export const MET_WEIGHTED = 6.0;   // vigorous weight training
 
 // Keyword → muscle group. Matched in object order, so more specific phrases
 // must sit in the group that owns them ('reverse fly' is a rear-delt PULL and
 // is listed before push's chest 'fly'; 'leg raise' stays core, which is why
 // shoulder raises are spelled out rather than matching a bare 'raise').
-const MUSCLE_GROUPS = {
+export const MUSCLE_GROUPS = {
   pull: ['pull up', 'pullup', 'chin up', 'row', 'curl', 'pulldown', 'muscle up', 'lever', 'face pull',
          'bicep', 'reverse fly', 'rear delt', 'shrug'],
   push: ['push up', 'pushup', 'push-up', 'dip', 'press', 'bench', 'handstand', 'tricep',
@@ -123,14 +134,14 @@ const MUSCLE_GROUPS = {
   core: ['sit up', 'situp', 'crunch', 'plank', 'leg raise', 'twist', 'flutter', 'l-sit', 'dragon flag', 'mountain climber', 'superman'],
 };
 
-const GROUP_SUGGESTIONS = {
+export const GROUP_SUGGESTIONS = {
   push: 'push ups or dips',
   pull: 'pull ups or Australian rows',
   legs: 'bodyweight squats and lunges',
   core: 'planks and leg raises',
 };
 
-function muscleGroupFor(exercise) {
+export function muscleGroupFor(exercise) {
   const name = (exercise || '').toLowerCase();
   for (const [group, keywords] of Object.entries(MUSCLE_GROUPS)) {
     if (keywords.some(k => name.includes(k))) return group;
@@ -139,7 +150,7 @@ function muscleGroupFor(exercise) {
 }
 
 // MUSCLE_LABEL lives in strength.js; gym.js must not hard-depend on it loading.
-function groupLabel(g) {
+export function groupLabel(g) {
   if (typeof MUSCLE_LABEL !== 'undefined' && MUSCLE_LABEL[g]) return MUSCLE_LABEL[g];
   return g ? g.charAt(0).toUpperCase() + g.slice(1) : '';
 }
@@ -147,7 +158,7 @@ function groupLabel(g) {
 // Names the day at a glance — "Push day" when one group carries most of the
 // work, otherwise the groups that were actually hit. Weighted by sets rather
 // than by exercise count, so four sets of squats outrank one set of crunches.
-function sessionFocusRow(entries) {
+export function sessionFocusRow(entries) {
   if (!entries || !entries.length) return '';
   const ORDER = (typeof MUSCLE_ORDER !== 'undefined') ? MUSCLE_ORDER : ['push', 'pull', 'legs', 'core'];
   const tally = { push: 0, pull: 0, legs: 0, core: 0 };
@@ -173,12 +184,12 @@ function sessionFocusRow(entries) {
     </div>`;
 }
 
-function latestBodyWeightLbs() {
+export function latestBodyWeightLbs() {
   const entries = Object.entries(state.weight || {}).sort((a, b) => a[0].localeCompare(b[0]));
   return entries.length ? entries[entries.length - 1][1] : 160;
 }
 
-function estimateBurnForDate(dateStr) {
+export function estimateBurnForDate(dateStr) {
   const kg = latestBodyWeightLbs() * 0.4536;
   const lifting = state.gym.filter(e => e.date === dateStr).reduce((cal, ex) => {
     const met = (ex.bodyweight || isBodyweightExercise(ex.exercise)) ? MET_BODYWEIGHT : MET_WEIGHTED;
@@ -194,7 +205,7 @@ function estimateBurnForDate(dateStr) {
 // Prefer the Apple Watch's measured active calories when synced; fall back to
 // the MET estimate from logged sets. The watch number is whole-day active
 // energy (walking included), so callers must not add walk burn on top of it.
-function burnForDate(dateStr) {
+export function burnForDate(dateStr) {
   const watch = (typeof getExternalActiveEnergy === 'function') ? getExternalActiveEnergy(dateStr) : null;
   if (watch !== null) return { cal: Math.round(watch), watch: true };
   return { cal: estimateBurnForDate(dateStr), watch: false };
@@ -202,7 +213,7 @@ function burnForDate(dateStr) {
 
 // Pace over the trailing 3 weeks → lbs per week (negative = losing).
 // Runs on the smoothed trend series so one salty dinner can't flip the verdict.
-function weighInPace() {
+export function weighInPace() {
   const entries = weightTrendSeries();
   if (entries.length < 2) return null;
   const [lastDate, lastW] = entries[entries.length - 1];
@@ -216,23 +227,23 @@ function weighInPace() {
   return { perWeek: (lastW - firstW) / days * 7, lastDate, lastW };
 }
 
-function gymDatesBetween(startStr, endStr) {
+export function gymDatesBetween(startStr, endStr) {
   return state.gym.filter(e => e.date >= startStr && e.date <= endStr);
 }
 
 // ---- Progressive overload: last-time chip, PRs, progressions ----
 // A set's score: reps for bodyweight work, reps x weight for loaded work.
-function setScore(ex, s) {
+export function setScore(ex, s) {
   const bw = ex.bodyweight || isBodyweightExercise(ex.exercise);
   return bw ? Number(s.reps) || 0 : (Number(s.reps) || 0) * (Number(s.weight) || 0);
 }
 
-function bestSetScore(ex) {
+export function bestSetScore(ex) {
   return ex.sets.reduce((m, s) => Math.max(m, setScore(ex, s)), 0);
 }
 
 // All sessions of an exercise strictly before a date, newest first
-function exerciseHistory(name, beforeDate) {
+export function exerciseHistory(name, beforeDate) {
   const lower = (name || '').toLowerCase().trim();
   if (!lower) return [];
   return state.gym
@@ -247,15 +258,15 @@ function exerciseHistory(name, beforeDate) {
 // session, and counting it as a full training day flatters the numbers. Four
 // sets is the line: the real sessions in the log run 10-16 sets, the check-ins
 // run 2, so anything at or above this is unambiguously a workout.
-const SESSION_MIN_SETS = 4;
+export const SESSION_MIN_SETS = 4;
 
-function setsOnDate(dateStr) {
+export function setsOnDate(dateStr) {
   return (state.gym || []).reduce((n, e) => n + (e.date === dateStr ? (e.sets || []).length : 0), 0);
 }
 
 // Cardio counts as a full session on its own — a 30 minute ride is real work
 // even though it logs no sets.
-function isFullSession(dateStr) {
+export function isFullSession(dateStr) {
   if ((state.cardio || []).some(s => s.date === dateStr)) return true;
   return setsOnDate(dateStr) >= SESSION_MIN_SETS;
 }
@@ -264,9 +275,9 @@ function isFullSession(dateStr) {
 // is the failure mode the progression ladder below cannot see: the ladder waits
 // for mastery (every set at the threshold) before suggesting the next
 // variation, so an exercise parked at 10 reps forever never trips it.
-const STALL_SESSIONS = 5;
+export const STALL_SESSIONS = 5;
 
-function bodyweightStall() {
+export function bodyweightStall() {
   const byName = {};
   (state.gym || []).forEach(e => {
     if (!e || !e.date || e.date > gymViewDate) return;
@@ -292,7 +303,7 @@ function bodyweightStall() {
   return worst;
 }
 
-const PROGRESSION_CHAINS = [
+export const PROGRESSION_CHAINS = [
   { chain: ['Wall Push Ups', 'Incline Push Ups', 'Knee Push Ups', 'Push Ups', 'Wide Push Ups', 'Decline Push Ups', 'Diamond Push Ups', 'Pike Push Ups', 'Handstand Push Up'], threshold: 20 },
   { chain: ['Crunches', 'Sit Ups', 'Bicycle Crunches', 'Leg Raises', 'Hanging Leg Raises', 'Dragon Flag'], threshold: 25 },
   { chain: ['Bodyweight Squat', 'Jump Squat', 'Lunges', 'Bulgarian Split Squat', 'Pistol Squat'], threshold: 20 },
@@ -300,7 +311,7 @@ const PROGRESSION_CHAINS = [
   { chain: ['Dip', 'Ring Dip'], threshold: 15 },
 ];
 
-function progressionSuggestion() {
+export function progressionSuggestion() {
   for (const { chain, threshold } of PROGRESSION_CHAINS) {
     for (let i = chain.length - 2; i >= 0; i--) { // hardest mastered variation wins
       const name = chain[i].toLowerCase();
@@ -321,7 +332,7 @@ function progressionSuggestion() {
 
 // The "beat last time" chip under the exercise input — previous session,
 // all-time PR, and a concrete target for today.
-function renderLastTimeChip() {
+export function renderLastTimeChip() {
   const el = $('#gymLastTime');
   if (!el) return;
   const name = $('#gymExerciseName').value.trim();
@@ -348,7 +359,7 @@ function renderLastTimeChip() {
 }
 
 // ---- Consistency: streak stats + 16-week heatmap ----
-function renderStreak() {
+export function renderStreak() {
   const heatEl = $('#streakHeatmap');
   if (!heatEl) return;
   const daySets = {};
@@ -413,9 +424,9 @@ function renderStreak() {
 }
 
 // ---- Rest timer ----
-let restInterval = null;
+export let restInterval = null;
 
-function stopRestTimer() {
+export function stopRestTimer() {
   if (restInterval) clearInterval(restInterval);
   restInterval = null;
   $$('.gym-rest-btn').forEach(b => {
@@ -424,7 +435,7 @@ function stopRestTimer() {
   });
 }
 
-function startRestTimer(btn) {
+export function startRestTimer(btn) {
   const wasActive = btn.classList.contains('active');
   stopRestTimer();
   if (wasActive) return; // tapping the running timer cancels it
@@ -446,13 +457,13 @@ function startRestTimer(btn) {
   }, 1000);
 }
 
-function offsetDateStr(dateStr, days) {
+export function offsetDateStr(dateStr, days) {
   const d = new Date(dateStr + 'T00:00:00');
   d.setDate(d.getDate() + days);
   return toLocalDateStr(d);
 }
 
-function coachRecommendations(burn, burnGoal, pace) {
+export function coachRecommendations(burn, burnGoal, pace) {
   const goals = getGoals();
   const recs = [];
   const isToday = gymViewDate === getTodayStr();
@@ -550,7 +561,7 @@ function coachRecommendations(burn, burnGoal, pace) {
   return recs.slice(0, 4);
 }
 
-function renderGymCoach() {
+export function renderGymCoach() {
   const targetsEl = $('#coachTargets');
   if (!targetsEl) return;
   const goals = getGoals();
@@ -610,7 +621,7 @@ function renderGymCoach() {
   `).join('');
 }
 
-function renderGym() {
+export function renderGym() {
   const dateInput = $('#gymDate');
   if (!dateInput) return;
   dateInput.value = gymViewDate;
@@ -723,7 +734,7 @@ function renderGym() {
       if (!ex) return;
       gymEditingIdx = parseInt(btn.dataset.gymIdx);
       $('#gymExerciseName').value = ex.exercise;
-      gymSets = ex.sets.map(s => ({ reps: String(s.reps), weight: String(s.weight) }));
+      setGymSets(ex.sets.map(s => ({ reps: String(s.reps), weight: String(s.weight) })));
       // Update button text
       $('#gymSaveExerciseBtn').innerHTML = `
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
@@ -753,7 +764,7 @@ function renderGym() {
   if (typeof renderWeightSheetBody === 'function') renderWeightSheetBody();
 }
 
-function bindGymEvents() {
+export function bindGymEvents() {
   const burnChip = $('#burnGoalChip');
   if (burnChip && typeof openGoalsModal === 'function') burnChip.addEventListener('click', openGoalsModal);
   // Re-render set inputs when exercise name changes (bodyweight detection)
@@ -761,21 +772,21 @@ function bindGymEvents() {
   // Live "beat last time" chip while typing (chip only — no full re-render mid-keystroke)
   $('#gymExerciseName').addEventListener('input', renderLastTimeChip);
   $$('.gym-rest-btn').forEach(btn => btn.addEventListener('click', () => startRestTimer(btn)));
-  $('#gymDate').addEventListener('change', (e) => { gymViewDate = e.target.value; renderGym(); });
+  $('#gymDate').addEventListener('change', (e) => { setGymViewDate(e.target.value); renderGym(); });
   $('#gymPrevDay').addEventListener('click', () => {
     const d = new Date(gymViewDate + 'T00:00:00');
     d.setDate(d.getDate() - 1);
-    gymViewDate = toLocalDateStr(d);
+    setGymViewDate(toLocalDateStr(d));
     renderGym();
   });
   $('#gymNextDay').addEventListener('click', () => {
     const d = new Date(gymViewDate + 'T00:00:00');
     d.setDate(d.getDate() + 1);
-    gymViewDate = toLocalDateStr(d);
+    setGymViewDate(toLocalDateStr(d));
     renderGym();
   });
   $('#gymToday').addEventListener('click', () => {
-    gymViewDate = getTodayStr();
+    setGymViewDate(getTodayStr());
     renderGym();
   });
   $('#gymAddSetBtn').addEventListener('click', () => { gymSets.push({ reps: '', weight: '' }); renderGym(); });
@@ -820,8 +831,15 @@ function bindGymEvents() {
 
     saveData(state);
     $('#gymExerciseName').value = '';
-    gymSets = (typeof defaultGymSets === 'function') ? defaultGymSets() : [{ reps: '', weight: '' }];
+    setGymSets((typeof defaultGymSets === 'function') ? defaultGymSets() : [{ reps: '', weight: '' }]);
     gymBodyweight = false;
     renderGym();
   });
 }
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { BODYWEIGHT_EXERCISES: BODYWEIGHT_EXERCISES, COMMON_EXERCISES: COMMON_EXERCISES, GROUP_SUGGESTIONS: GROUP_SUGGESTIONS, MET_BODYWEIGHT: MET_BODYWEIGHT, MET_WEIGHTED: MET_WEIGHTED, MUSCLE_GROUPS: MUSCLE_GROUPS, PROGRESSION_CHAINS: PROGRESSION_CHAINS, SESSION_MIN_SETS: SESSION_MIN_SETS, SET_MINUTES: SET_MINUTES, STALL_SESSIONS: STALL_SESSIONS, bestSetScore: bestSetScore, bindGymEvents: bindGymEvents, bodyweightStall: bodyweightStall, burnForDate: burnForDate, coachRecommendations: coachRecommendations, estimateBurnForDate: estimateBurnForDate, exerciseHistory: exerciseHistory, groupLabel: groupLabel, gymDatesBetween: gymDatesBetween, isBodyweightExercise: isBodyweightExercise, isFullSession: isFullSession, latestBodyWeightLbs: latestBodyWeightLbs, muscleGroupFor: muscleGroupFor, offsetDateStr: offsetDateStr, progressionSuggestion: progressionSuggestion, renderGym: renderGym, renderGymCoach: renderGymCoach, renderLastTimeChip: renderLastTimeChip, renderStreak: renderStreak, renderWeight: renderWeight, sessionFocusRow: sessionFocusRow, setScore: setScore, setsOnDate: setsOnDate, startRestTimer: startRestTimer, stopRestTimer: stopRestTimer, weighInPace: weighInPace, weightTrendSeries: weightTrendSeries });

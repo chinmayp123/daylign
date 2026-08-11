@@ -1,3 +1,41 @@
+// Loaded for their side effects — nothing imports these by name, but they
+// register listeners and render panels the app relies on.
+import './enhancements.js';
+
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { renderAiUsageReport } from './ai-usage.js';
+import { bindBoardDropTargets, renderBoard } from './board.js';
+import { renderDailyBrief } from './brief.js';
+import { renderCalendar } from './calendar.js';
+import { bindCardioEvents, renderCardio, renderTodayCardio } from './cardio.js';
+import { renderCoach } from './coach.js';
+import { initCollapsibles } from './collapsible.js';
+import { renderDashboard, renderMiniCalendar, renderSchedule } from './dashboard.js';
+import { bindFoodLibrary, openFoodLibrary } from './diet-core.js';
+import { bindDietEvents } from './diet-food.js';
+import { bindGoalsEvents, closeGoalsModal, getGoals, openGoalsModal } from './diet-goals.js';
+import { renderDiet } from './diet-view.js';
+import { externalData, firebaseConfig, initFirebaseSync } from './firebase-sync.js';
+import { bindPhotoEvents } from './food-photo.js';
+import { bindGymEvents, renderGym, stopRestTimer } from './gym.js';
+import { renderInsights } from './insights.js';
+import { bindLayoutEditor } from './layout.js';
+import { addSubtask, bindSheetDrag, closeModal, handleAddCategory, handleDeleteTask, handleSaveTask, openModal, toggleProjectRow } from './modal.js';
+import { bindPreferencesEvents, renderSettingsPrefs } from './preferences.js';
+import { currentProfile, loadUsageReport, profileExternalPath, requireProfile, resetCurrentProfileData, switchProfile, updateProfileSettingsCard } from './profile.js';
+import { bindPullToRefresh } from './pull-refresh.js';
+import { bindSettingsPrefs } from './settings-prefs.js';
+import { bindSleepEvents, renderSleep } from './sleep.js';
+import { TOGGLEABLE_MODULES, activeProject, applyFirebaseData, calViewMode, calendarDate, currentView, miniCalDate, moduleEnabled, saveData, scheduleDate, setActiveProject, setCalViewMode, setCurrentView, setScheduleDate, state } from './state.js';
+import { renderStrength } from './strength.js';
+import { renderTasksView } from './tasks.js';
+import { renderTodayPlan } from './today.js';
+import { bindTrainingEvents, effectiveTrainingMode, renderTraining, setTrainingMode } from './training.js';
+import { enhanceKeyboardAccess, esc, haptic, showToast } from './utils.js';
+import { bindVoiceEvents, closeVoicePanel } from './voice.js';
+import { bindWeightSheet } from './weight-sheet.js';
+
 // ========== Init ==========
 document.addEventListener('DOMContentLoaded', () => {
   // Offline support: network-first SW, so code is always fresh when online
@@ -34,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // "Tuesday, August 11, 2026" is 24 characters competing with the title for a
 // 390px row. The short form carries everything you actually need — the year is
 // never in question, and the long weekday buys nothing.
-function setHeaderDate() {
+export function setHeaderDate() {
   const d = new Date();
   const narrow = window.matchMedia('(max-width: 600px)').matches;
   $('#headerDate').textContent = d.toLocaleDateString('en-US', narrow
@@ -45,7 +83,7 @@ function setHeaderDate() {
 // Collapse the large title into a compact bar once you start reading. Standard
 // iOS behaviour, and it pairs with the sticky header: generous at rest, thin
 // while scrolling, without costing a permanent chunk of the screen.
-function bindHeaderCondense() {
+export function bindHeaderCondense() {
   const header = document.querySelector('.header');
   if (!header) return;
   const ON = 34, OFF = 12; // hysteresis, so it cannot flicker at the boundary
@@ -63,7 +101,7 @@ function bindHeaderCondense() {
 }
 
 // ========== Events ==========
-function bindEvents() {
+export function bindEvents() {
   // Mobile sidebar toggle
   const sidebar = document.querySelector('.sidebar');
   const overlay = $('#sidebarOverlay');
@@ -146,13 +184,13 @@ function bindEvents() {
 
   // Calendar view toggle
   $('#calMonthBtn').addEventListener('click', () => {
-    calViewMode = 'month';
+    setCalViewMode('month');
     $('#calMonthBtn').classList.add('active');
     $('#calWeekBtn').classList.remove('active');
     renderCalendar();
   });
   $('#calWeekBtn').addEventListener('click', () => {
-    calViewMode = 'week';
+    setCalViewMode('week');
     $('#calWeekBtn').classList.add('active');
     $('#calMonthBtn').classList.remove('active');
     renderCalendar();
@@ -174,7 +212,7 @@ function bindEvents() {
     renderSchedule();
   });
   $('#scheduleToday').addEventListener('click', () => {
-    scheduleDate = new Date();
+    setScheduleDate(new Date());
     renderSchedule();
   });
 
@@ -287,9 +325,9 @@ function bindEvents() {
 // ========== Views ==========
 // The header's top-right button adapts to the current view: it logs weight in
 // the Gym, logs food in Diet, and creates a task everywhere else.
-const HEADER_ACTION_LABELS = { diet: 'Food Library' };
+export const HEADER_ACTION_LABELS = { diet: 'Food Library' };
 
-function headerPrimaryAction() {
+export function headerPrimaryAction() {
   if (currentView === 'training') {
     // Follows the active mode, so the button always means the thing on screen.
     const cardio = typeof effectiveTrainingMode === 'function' && effectiveTrainingMode() === 'cardio';
@@ -311,15 +349,15 @@ function headerPrimaryAction() {
 // Pre-built iCloud shortcut(s). The combined "Sync Health to Daylign" pulls
 // steps, active energy, exercise minutes, run distance and resting HR in one
 // run. Add more entries here to render more "Add" buttons.
-const HEALTH_SHORTCUTS = [
+export const HEALTH_SHORTCUTS = [
   { label: 'Sync Health to Daylign', url: 'https://www.icloud.com/shortcuts/35bece5937964531903187bb76279012' },
 ];
 
 // Metric names the app understands, so the "last synced" scan ignores the
 // nested u/<id> subtree under the legacy external node.
-const KNOWN_EXTERNAL_METRICS = ['steps', 'activeEnergy', 'exerciseMinutes', 'restingHR', 'sleep', 'runDistance', 'cycleDistance', 'swimDistance'];
+export const KNOWN_EXTERNAL_METRICS = ['steps', 'activeEnergy', 'exerciseMinutes', 'restingHR', 'sleep', 'runDistance', 'cycleDistance', 'swimDistance'];
 
-function lastExternalSyncDate() {
+export function lastExternalSyncDate() {
   if (typeof externalData === 'undefined' || !externalData) return null;
   let latest = null;
   KNOWN_EXTERNAL_METRICS.forEach(m => {
@@ -329,7 +367,7 @@ function lastExternalSyncDate() {
   return latest;
 }
 
-function renderWatchConnect() {
+export function renderWatchConnect() {
   const wrap = $('#watchConnect');
   if (!wrap) return;
   const dbUrl = (typeof firebaseConfig !== 'undefined' && firebaseConfig.databaseURL) ? firebaseConfig.databaseURL.replace(/\/$/, '') : '';
@@ -369,7 +407,7 @@ function renderWatchConnect() {
   }));
 }
 
-function renderGoalsSummary() {
+export function renderGoalsSummary() {
   const wrap = $('#goalsSummary');
   if (!wrap || typeof getGoals !== 'function') return;
   const g = getGoals();
@@ -389,7 +427,7 @@ function renderGoalsSummary() {
     </div>`).join('');
 }
 
-function renderModuleToggles() {
+export function renderModuleToggles() {
   const wrap = $('#moduleToggles');
   if (!wrap || typeof TOGGLEABLE_MODULES === 'undefined') return;
   wrap.innerHTML = TOGGLEABLE_MODULES.map(m => `
@@ -414,7 +452,7 @@ function renderModuleToggles() {
   });
 }
 
-function updateHeaderActionBtn(view) {
+export function updateHeaderActionBtn(view) {
   const btn = $('#addTaskBtn');
   if (!btn) return;
   const setBoth = (label) => {
@@ -443,9 +481,9 @@ function updateHeaderActionBtn(view) {
 
 // Views that use the category/project sidebar sections. Everything else (the
 // fitness modules, settings) hides them — they only clutter those screens.
-const TASKMETA_VIEWS = ['dashboard', 'tasks', 'board', 'calendar'];
+export const TASKMETA_VIEWS = ['dashboard', 'tasks', 'board', 'calendar'];
 
-function switchView(view) {
+export function switchView(view) {
   // A running rest timer would otherwise keep ticking and fire its toast from
   // whatever view you navigated to.
   if (typeof stopRestTimer === 'function') stopRestTimer();
@@ -468,7 +506,7 @@ function switchView(view) {
     if (view === 'training' && !moduleEnabled('gym') && !moduleEnabled('cardio')) view = 'dashboard';
     if (view === 'diet' && !moduleEnabled('diet')) view = 'dashboard';
   }
-  currentView = view;
+  setCurrentView(view);
   localStorage.setItem('tf_view', view);
   $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   $$('.view').forEach(v => v.classList.remove('active'));
@@ -492,7 +530,7 @@ function switchView(view) {
 // Reflect the module on/off settings across every nav surface and the
 // dashboard cards that belong to a module. Non-destructive: disabling only
 // hides; the data stays in the cloud and returns when re-enabled.
-function applyModuleNav() {
+export function applyModuleNav() {
   if (typeof moduleEnabled !== 'function') return;
   ['diet'].forEach(key => {
     const on = moduleEnabled(key);
@@ -511,7 +549,7 @@ function applyModuleNav() {
 }
 
 // ========== Render ==========
-function render() {
+export function render() {
   applyModuleNav();
   if (typeof updateProfileSettingsCard === 'function') updateProfileSettingsCard();
   if (typeof renderGoalsSummary === 'function') renderGoalsSummary();
@@ -550,7 +588,7 @@ function render() {
   if (typeof enhanceKeyboardAccess === 'function') enhanceKeyboardAccess();
 }
 
-function renderSidebarCategories() {
+export function renderSidebarCategories() {
   const list = $('#categoryList');
   list.innerHTML = state.categories.map(cat => {
     const count = state.tasks.filter(t => t.category === cat.id).length;
@@ -571,7 +609,7 @@ function renderSidebarCategories() {
   });
 }
 
-function renderSidebarProjects() {
+export function renderSidebarProjects() {
   const list = $('#projectList');
   list.innerHTML = state.projects.map(proj => {
     const count = state.tasks.filter(t => t.project === proj.id && t.status !== 'done').length;
@@ -589,7 +627,7 @@ function renderSidebarProjects() {
     el.addEventListener('click', (e) => {
       if (e.target.closest('.sidebar-del-btn')) return;
       const id = el.dataset.proj;
-      activeProject = activeProject === id ? null : id;
+      setActiveProject(activeProject === id ? null : id);
       render();
     });
   });
@@ -602,16 +640,16 @@ function renderSidebarProjects() {
   });
 }
 
-function handleAddProject() {
+export function handleAddProject() {
   const name = prompt('Project name:');
   addProjectNamed(name);
 }
 
 // ---- Shared category/project mutations, used by both the sidebar and the
 // Settings manager so add/rename/delete behave identically everywhere. ----
-const TAXONOMY_COLORS = ['#6366f1', '#22c55e', '#ef4444', '#eab308', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+export const TAXONOMY_COLORS = ['#6366f1', '#22c55e', '#ef4444', '#eab308', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
-function addCategoryNamed(name) {
+export function addCategoryNamed(name) {
   if (!name || !name.trim()) return false;
   const clean = name.trim();
   const id = clean.toLowerCase().replace(/\s+/g, '-');
@@ -622,7 +660,7 @@ function addCategoryNamed(name) {
   return true;
 }
 
-function addProjectNamed(name) {
+export function addProjectNamed(name) {
   if (!name || !name.trim()) return false;
   state.projects.push({ id: 'proj-' + Date.now(), name: name.trim(), color: TAXONOMY_COLORS[state.projects.length % TAXONOMY_COLORS.length] });
   saveData(state);
@@ -630,7 +668,7 @@ function addProjectNamed(name) {
   return true;
 }
 
-function deleteCategoryById(id) {
+export function deleteCategoryById(id) {
   const cat = state.categories.find(c => c.id === id);
   if (!cat) return;
   const count = state.tasks.filter(t => t.category === id).length;
@@ -642,7 +680,7 @@ function deleteCategoryById(id) {
   render();
 }
 
-function deleteProjectById(id) {
+export function deleteProjectById(id) {
   const proj = state.projects.find(p => p.id === id);
   if (!proj) return;
   const count = state.tasks.filter(t => t.project === id).length;
@@ -650,12 +688,12 @@ function deleteProjectById(id) {
   if (!confirm(msg)) return;
   state.projects = state.projects.filter(p => p.id !== id);
   state.tasks.forEach(t => { if (t.project === id) t.project = null; });
-  if (activeProject === id) activeProject = null;
+  if (activeProject === id) setActiveProject(null);
   saveData(state);
   render();
 }
 
-function renameCategoryById(id) {
+export function renameCategoryById(id) {
   const cat = state.categories.find(c => c.id === id);
   if (!cat) return;
   const name = prompt('Rename category:', cat.name);
@@ -665,7 +703,7 @@ function renameCategoryById(id) {
   render();
 }
 
-function renameProjectById(id) {
+export function renameProjectById(id) {
   const proj = state.projects.find(p => p.id === id);
   if (!proj) return;
   const name = prompt('Rename project:', proj.name);
@@ -675,19 +713,19 @@ function renameProjectById(id) {
   render();
 }
 
-function openTaxonomyModal() {
+export function openTaxonomyModal() {
   renderTaxonomyManager($('#taxonomyManagerModal'));
   const m = $('#taxonomyModal');
   if (m) m.classList.add('active');
 }
-function closeTaxonomyModal() {
+export function closeTaxonomyModal() {
   const m = $('#taxonomyModal');
   if (m) m.classList.remove('active');
 }
 
 // The always-available manager in Settings, so add/delete never depends on
 // being on a task view or discovering a hover-only × in the sidebar.
-function renderTaxonomyManager(target) {
+export function renderTaxonomyManager(target) {
   const wrap = target || $('#taxonomyManager');
   if (!wrap) return;
   const row = (item, kind, count) => `
@@ -737,7 +775,7 @@ function renderTaxonomyManager(target) {
 
 // ========== Backup / Restore ==========
 // Optional `prefix` names the file (used for the automatic pre-restore safety copy).
-function exportBackup(prefix) {
+export function exportBackup(prefix) {
   const namePrefix = (typeof prefix === 'string' && prefix) ? prefix : 'daylign-backup';
   const payload = {
     tasks: state.tasks,
@@ -775,7 +813,7 @@ function exportBackup(prefix) {
   URL.revokeObjectURL(url);
 }
 
-function importBackup(e) {
+export function importBackup(e) {
   const input = e.target;
   const file = input.files && input.files[0];
   input.value = ''; // reset now so the same file can be re-selected later
@@ -847,8 +885,15 @@ function importBackup(e) {
   reader.readAsText(file);
 }
 
-function populateCategoryDropdowns() {
+export function populateCategoryDropdowns() {
   const opts = state.categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
   $('#taskCategory').innerHTML = opts;
   $('#filterCategory').innerHTML = '<option value="all">All Categories</option>' + opts;
 }
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { HEADER_ACTION_LABELS: HEADER_ACTION_LABELS, HEALTH_SHORTCUTS: HEALTH_SHORTCUTS, KNOWN_EXTERNAL_METRICS: KNOWN_EXTERNAL_METRICS, TASKMETA_VIEWS: TASKMETA_VIEWS, TAXONOMY_COLORS: TAXONOMY_COLORS, addCategoryNamed: addCategoryNamed, addProjectNamed: addProjectNamed, applyModuleNav: applyModuleNav, bindEvents: bindEvents, bindHeaderCondense: bindHeaderCondense, closeTaxonomyModal: closeTaxonomyModal, deleteCategoryById: deleteCategoryById, deleteProjectById: deleteProjectById, exportBackup: exportBackup, handleAddProject: handleAddProject, headerPrimaryAction: headerPrimaryAction, importBackup: importBackup, lastExternalSyncDate: lastExternalSyncDate, openTaxonomyModal: openTaxonomyModal, populateCategoryDropdowns: populateCategoryDropdowns, renameCategoryById: renameCategoryById, renameProjectById: renameProjectById, render: render, renderGoalsSummary: renderGoalsSummary, renderModuleToggles: renderModuleToggles, renderSidebarCategories: renderSidebarCategories, renderSidebarProjects: renderSidebarProjects, renderTaxonomyManager: renderTaxonomyManager, renderWatchConnect: renderWatchConnect, setHeaderDate: setHeaderDate, switchView: switchView, updateHeaderActionBtn: updateHeaderActionBtn });

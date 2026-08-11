@@ -11,14 +11,14 @@
 // when collapsed. An explicit toggle is remembered per card (data-collapse-key)
 // and then wins over the responsive default.
 
-function collapseKey(card) {
+export function collapseKey(card) {
   return 'daylign_collapse_' + (card.dataset.collapseKey || card.id || 'c');
 }
 
 // Apply the right collapsed state to every collapsible card. Safe to call on
 // every render — it re-reads the viewport so a card the user hasn't explicitly
 // toggled collapses on phones and expands on desktop.
-function applyCollapsibleState() {
+export function applyCollapsibleState() {
   const isPhone = window.matchMedia('(max-width: 640px)').matches;
   document.querySelectorAll('.card.collapsible').forEach(card => {
     const saved = localStorage.getItem(collapseKey(card));
@@ -30,7 +30,7 @@ function applyCollapsibleState() {
 }
 
 // One-time wiring: mark the header, inject a chevron, attach the toggle.
-function initCollapsibles() {
+export function initCollapsibles() {
   document.querySelectorAll('.card.collapsible').forEach(card => {
     if (!card.dataset.collapseWired) {
       card.dataset.collapseWired = '1';
@@ -58,3 +58,10 @@ function initCollapsibles() {
     window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(applyCollapsibleState, 150); });
   }
 }
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { applyCollapsibleState: applyCollapsibleState, collapseKey: collapseKey, initCollapsibles: initCollapsibles });

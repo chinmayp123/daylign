@@ -1,3 +1,13 @@
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { updateHeaderActionBtn } from './app.js';
+import { getGoals } from './diet-goals.js';
+import { weightTrendSeries } from './gym.js';
+import { readinessBreakdown, readinessVerdict } from './sleep.js';
+import { currentView, moduleEnabled, state } from './state.js';
+import { getTodayStr, toLocalDateStr } from './utils.js';
+import { openWeightSheet } from './weight-sheet.js';
+
 // ========== Training (Gym + Cardio behind one nav item) ==========
 // Gym and Cardio used to be two nav items, which cost a slot the mobile bottom
 // bar does not have. They are now two panes of one Training view: the shell
@@ -8,15 +18,15 @@
 // every id intact, so gym.js and cardio.js still render into exactly what they
 // always did and needed no changes.
 
-const TRAINING_MODE_KEY = 'daylign_training_mode';
+export const TRAINING_MODE_KEY = 'daylign_training_mode';
 
-function trainingMode() {
+export function trainingMode() {
   return localStorage.getItem(TRAINING_MODE_KEY) === 'cardio' ? 'cardio' : 'strength';
 }
 
 // A mode whose module is switched off in Settings is not selectable — fall back
 // to whichever one is on instead of showing an empty pane.
-function effectiveTrainingMode() {
+export function effectiveTrainingMode() {
   const gymOn = typeof moduleEnabled !== 'function' || moduleEnabled('gym');
   const cardioOn = typeof moduleEnabled !== 'function' || moduleEnabled('cardio');
   const saved = trainingMode();
@@ -25,7 +35,7 @@ function effectiveTrainingMode() {
   return saved;
 }
 
-function setTrainingMode(mode) {
+export function setTrainingMode(mode) {
   localStorage.setItem(TRAINING_MODE_KEY, mode === 'cardio' ? 'cardio' : 'strength');
   applyTrainingMode();
   // The header's primary action follows the mode: Log Weight vs Log Session.
@@ -34,7 +44,7 @@ function setTrainingMode(mode) {
   }
 }
 
-function applyTrainingMode() {
+export function applyTrainingMode() {
   const mode = effectiveTrainingMode();
   const strength = document.getElementById('trainingStrength');
   const cardio = document.getElementById('trainingCardio');
@@ -57,7 +67,7 @@ function applyTrainingMode() {
 // Compact body-weight readout in the shell: "163.2 lbs ↓0.6 · Log".
 // Uses the same smoothed trend series as the full weight card so the two can
 // never disagree.
-function renderTrainingWeight() {
+export function renderTrainingWeight() {
   const el = document.getElementById('trainingWeight');
   if (!el) return;
   const gymOn = typeof moduleEnabled !== 'function' || moduleEnabled('gym');
@@ -92,7 +102,7 @@ function renderTrainingWeight() {
 
 // "3 lifts · 4 runs · 🔥12" — the point of the merge is that the week reads as
 // one story instead of two separate tabs.
-function trainingWeekSummary() {
+export function trainingWeekSummary() {
   const today = getTodayStr();
   const window7 = new Set();
   for (let i = 0; i < 7; i++) {
@@ -120,7 +130,7 @@ function trainingWeekSummary() {
   return { lifts: liftDays.size, runs: runs.length, runMiles, crossTrain, streak };
 }
 
-function renderTrainingWeek() {
+export function renderTrainingWeek() {
   const el = document.getElementById('trainingWeek');
   if (!el) return;
   const s = trainingWeekSummary();
@@ -143,7 +153,7 @@ function renderTrainingWeek() {
 
 // Just the numbers in the shell. Split out so gym.js/cardio.js can refresh it
 // after a save without re-running the mode/visibility logic.
-function renderTrainingShell() {
+export function renderTrainingShell() {
   renderTrainingWeight();
   renderTrainingWeek();
 }
@@ -151,13 +161,13 @@ function renderTrainingShell() {
 // Desktop right rail (ref 11c): the cross-mode cards that belong beside either
 // logging pane — this week's training, readiness, and consistency. The rail is
 // hidden on mobile (CSS), where these live in the shell/panes instead.
-function renderTrainingRail() {
+export function renderTrainingRail() {
   renderRailWeek();
   renderRailReadiness();
   renderRailConsistency();
 }
 
-function renderRailWeek() {
+export function renderRailWeek() {
   const host = document.getElementById('trainingRailWeek');
   if (!host) return;
   const s = trainingWeekSummary();
@@ -183,7 +193,7 @@ function renderRailWeek() {
     </div>`;
 }
 
-function renderRailReadiness() {
+export function renderRailReadiness() {
   const host = document.getElementById('trainingRailReadiness');
   if (!host) return;
   if (typeof readinessBreakdown !== 'function') { host.innerHTML = ''; return; }
@@ -215,7 +225,7 @@ function renderRailReadiness() {
 }
 
 // Compact consistency heatmap for the rail — any lift or cardio day counts.
-function renderRailConsistency() {
+export function renderRailConsistency() {
   const host = document.getElementById('trainingRailConsistency');
   if (!host) return;
   // Shaded by size, not just presence — a two-set check-in and a sixteen-set
@@ -250,14 +260,14 @@ function renderRailConsistency() {
     </div>`;
 }
 
-function renderTraining() {
+export function renderTraining() {
   if (!document.getElementById('trainingView')) return;
   renderTrainingShell();
   renderTrainingRail();
   applyTrainingMode();
 }
 
-function bindTrainingEvents() {
+export function bindTrainingEvents() {
   const toggle = document.getElementById('trainingToggle');
   if (toggle) {
     toggle.addEventListener('click', e => {
@@ -275,3 +285,10 @@ function bindTrainingEvents() {
     });
   }
 }
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { TRAINING_MODE_KEY: TRAINING_MODE_KEY, applyTrainingMode: applyTrainingMode, bindTrainingEvents: bindTrainingEvents, effectiveTrainingMode: effectiveTrainingMode, renderRailConsistency: renderRailConsistency, renderRailReadiness: renderRailReadiness, renderRailWeek: renderRailWeek, renderTraining: renderTraining, renderTrainingRail: renderTrainingRail, renderTrainingShell: renderTrainingShell, renderTrainingWeek: renderTrainingWeek, renderTrainingWeight: renderTrainingWeight, setTrainingMode: setTrainingMode, trainingMode: trainingMode, trainingWeekSummary: trainingWeekSummary });

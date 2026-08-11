@@ -1,3 +1,8 @@
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { DASH_WIDGETS, applyPrefs, readPrefs, renderSettingsPrefsPanel, setPref, writePrefs } from './settings-prefs.js';
+import { esc, showToast } from './utils.js';
+
 // ========== Dashboard layout editor ==========
 // Drag to reorder, resize (desktop), hide, and save named layouts.
 //
@@ -14,9 +19,9 @@
 // applies to the grid cards, and only above the mobile breakpoint — at 390px
 // every card is already full width, so "wide" would be meaningless.
 
-let layoutEditing = false;
+export let layoutEditing = false;
 
-function layoutOrder() {
+export function layoutOrder() {
   const p = readPrefs();
   const saved = p.order || [];
   // Anything not yet in the saved order keeps its natural position at the end,
@@ -26,7 +31,7 @@ function layoutOrder() {
     .concat(known.filter(k => saved.indexOf(k) === -1));
 }
 
-function applyLayout() {
+export function applyLayout() {
   const p = readPrefs();
   const order = layoutOrder();
   const wide = p.wide || [];
@@ -90,20 +95,20 @@ function applyLayout() {
   }
 }
 
-function layoutElFor(key) {
+export function layoutElFor(key) {
   const w = DASH_WIDGETS.find(x => x.key === key);
   return w ? document.querySelector(w.sel) : null;
 }
 
 // ---------- edit mode ----------
-function layoutWidgetEls() {
+export function layoutWidgetEls() {
   return DASH_WIDGETS.map(w => {
     const el = document.querySelector(w.sel);
     return el ? { key: w.key, label: w.label, el } : null;
   }).filter(Boolean);
 }
 
-function toggleLayoutEdit(on) {
+export function toggleLayoutEdit(on) {
   layoutEditing = (on === undefined) ? !layoutEditing : !!on;
   document.documentElement.classList.toggle('layout-editing', layoutEditing);
 
@@ -129,7 +134,7 @@ function toggleLayoutEdit(on) {
   renderHiddenTray();
 }
 
-function moveWidget(key, dir) {
+export function moveWidget(key, dir) {
   const order = layoutOrder();
   const i = order.indexOf(key);
   const j = i + dir;
@@ -166,13 +171,13 @@ function moveWidget(key, dir) {
 // ---------- FLIP animation ----------
 // Record where everything is, let the reorder happen, then animate each card
 // from where it was to where it landed. Without this, `order` changes snap.
-function captureRects() {
+export function captureRects() {
   const map = {};
   layoutWidgetEls().forEach(w => { map[w.key] = w.el.getBoundingClientRect(); });
   return map;
 }
 
-function flipFrom(before) {
+export function flipFrom(before) {
   if (document.documentElement.classList.contains('pref-reduce-motion')) return;
   if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   layoutWidgetEls().forEach(w => {
@@ -193,7 +198,7 @@ function flipFrom(before) {
 
 // ---------- pointer drag ----------
 // Pointer Events rather than HTML5 DnD, so this works with a finger on iOS.
-function attachLayoutDrag(handle, key) {
+export function attachLayoutDrag(handle, key) {
   let startY = 0, dragging = false, el = null;
 
   handle.addEventListener('pointerdown', (e) => {
@@ -244,7 +249,7 @@ function attachLayoutDrag(handle, key) {
 // Hiding a widget used to be a one-way door from the dashboard — the only way
 // back was buried in Settings. In edit mode the hidden ones now sit at the
 // bottom as ghosts you can restore in place.
-function renderHiddenTray() {
+export function renderHiddenTray() {
   const rootEl = document.getElementById('dashboardView');
   if (!rootEl) return;
   let tray = document.getElementById('layoutHiddenTray');
@@ -275,12 +280,12 @@ function renderHiddenTray() {
 }
 
 // ---------- named layouts ----------
-function savedLayouts() {
+export function savedLayouts() {
   const p = readPrefs();
   return p.layouts || {};
 }
 
-function saveNamedLayout(name) {
+export function saveNamedLayout(name) {
   if (!name) return;
   const p = readPrefs();
   p.layouts = p.layouts || {};
@@ -290,7 +295,7 @@ function saveNamedLayout(name) {
   if (typeof showToast === 'function') showToast('Saved layout "' + name + '"');
 }
 
-function applyNamedLayout(name) {
+export function applyNamedLayout(name) {
   const l = savedLayouts()[name];
   if (!l) return;
   const before = captureRects();
@@ -307,7 +312,7 @@ function applyNamedLayout(name) {
   if (typeof showToast === 'function') showToast('Switched to "' + name + '"');
 }
 
-function deleteNamedLayout(name) {
+export function deleteNamedLayout(name) {
   const p = readPrefs();
   if (!p.layouts || !p.layouts[name]) return;
   delete p.layouts[name];
@@ -315,7 +320,7 @@ function deleteNamedLayout(name) {
   renderLayoutManager();
 }
 
-function renderLayoutManager() {
+export function renderLayoutManager() {
   const host = document.getElementById('layoutManager');
   if (!host) return;
   const names = Object.keys(savedLayouts());
@@ -330,7 +335,7 @@ function renderLayoutManager() {
     '<button type="button" class="btn-secondary" id="layoutSaveBtn">Save current</button></div>';
 }
 
-function bindLayoutEditor() {
+export function bindLayoutEditor() {
   applyLayout();
   renderLayoutManager();
 
@@ -379,3 +384,10 @@ function bindLayoutEditor() {
 
 // Order must be on the page before first paint, like the accent.
 applyLayout();
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { applyLayout: applyLayout, applyNamedLayout: applyNamedLayout, attachLayoutDrag: attachLayoutDrag, bindLayoutEditor: bindLayoutEditor, captureRects: captureRects, deleteNamedLayout: deleteNamedLayout, flipFrom: flipFrom, layoutElFor: layoutElFor, layoutOrder: layoutOrder, layoutWidgetEls: layoutWidgetEls, moveWidget: moveWidget, renderHiddenTray: renderHiddenTray, renderLayoutManager: renderLayoutManager, saveNamedLayout: saveNamedLayout, savedLayouts: savedLayouts, toggleLayoutEdit: toggleLayoutEdit });

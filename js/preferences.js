@@ -1,3 +1,10 @@
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { bindPhotoEvents } from './food-photo.js';
+import { currentProfile } from './profile.js';
+import { state } from './state.js';
+import { showToast } from './utils.js';
+
 // ========== Settings preferences ==========
 // The controls that used to be scattered — the theme toggle in the sidebar, the
 // Anthropic key behind a tiny icon in Diet — now also have a real home in
@@ -7,11 +14,11 @@
 // The theme itself lives in js/enhancements.js (it has to run before first
 // paint). This only drives the segmented control and keeps it in sync with the
 // sidebar toggle, which still works.
-function currentThemeName() {
+export function currentThemeName() {
   return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
 }
 
-function renderThemeSegmented() {
+export function renderThemeSegmented() {
   const wrap = document.getElementById('themeSegmented');
   if (!wrap) return;
   const theme = currentThemeName();
@@ -23,7 +30,7 @@ function renderThemeSegmented() {
 }
 
 // ---------- Account / sync ----------
-function renderSettingsSync() {
+export function renderSettingsSync() {
   const el = document.getElementById('settingsSync');
   if (!el) return;
   // Mirrors the header indicator rather than inventing a second source of truth.
@@ -42,19 +49,19 @@ function renderSettingsSync() {
 // ---------- Anthropic API key ----------
 // Same localStorage slot the Diet photo button uses, so setting it in either
 // place lights up both photo logging and voice.
-const AI_KEY_STORAGE = 'tf_anthropic_key';
+export const AI_KEY_STORAGE = 'tf_anthropic_key';
 
-function readAiKey() {
+export function readAiKey() {
   try { return localStorage.getItem(AI_KEY_STORAGE) || ''; } catch (e) { return ''; }
 }
 
 // Never render the key itself — only enough to recognise it.
-function maskAiKey(key) {
+export function maskAiKey(key) {
   if (key.length <= 10) return '••••';
   return key.slice(0, 7) + '…' + key.slice(-4);
 }
 
-function renderAiKeyStatus() {
+export function renderAiKeyStatus() {
   const status = document.getElementById('aiKeyStatus');
   if (!status) return;
   const key = readAiKey();
@@ -73,7 +80,7 @@ function renderAiKeyStatus() {
   }
 }
 
-function saveAiKey() {
+export function saveAiKey() {
   const input = document.getElementById('aiKeyInput');
   if (!input) return;
   const key = input.value.trim();
@@ -91,19 +98,19 @@ function saveAiKey() {
   showToast('Key saved on this device');
 }
 
-function removeAiKey() {
+export function removeAiKey() {
   try { localStorage.removeItem(AI_KEY_STORAGE); } catch (e) {}
   renderAiKeyStatus();
   showToast('Key removed from this device');
 }
 
-function renderSettingsPrefs() {
+export function renderSettingsPrefs() {
   renderThemeSegmented();
   renderSettingsSync();
   renderAiKeyStatus();
 }
 
-function bindPreferencesEvents() {
+export function bindPreferencesEvents() {
   const seg = document.getElementById('themeSegmented');
   if (seg) {
     seg.addEventListener('click', e => {
@@ -122,3 +129,10 @@ function bindPreferencesEvents() {
   const remove = document.getElementById('aiKeyRemoveBtn');
   if (remove) remove.addEventListener('click', removeAiKey);
 }
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { AI_KEY_STORAGE: AI_KEY_STORAGE, bindPreferencesEvents: bindPreferencesEvents, currentThemeName: currentThemeName, maskAiKey: maskAiKey, readAiKey: readAiKey, removeAiKey: removeAiKey, renderAiKeyStatus: renderAiKeyStatus, renderSettingsPrefs: renderSettingsPrefs, renderSettingsSync: renderSettingsSync, renderThemeSegmented: renderThemeSegmented, saveAiKey: saveAiKey });

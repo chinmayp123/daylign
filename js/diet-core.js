@@ -1,9 +1,18 @@
-let dietBackfillNotified = false;
-let recentFoodsOpen = null; // per-meal open/collapsed state, survives re-renders
-let dietInlineOpenMeal = null; // which meal's inline quick-add is open, survives re-renders
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { FOOD_DATABASE } from './diet-data.js';
+import { isRemovedFood, rememberFood, searchFoodDatabase } from './diet-food.js';
+import { renderDiet } from './diet-view.js';
+import { sharedFoods } from './firebase-sync.js';
+import { dietViewDate, saveData, state } from './state.js';
+import { showToast } from './utils.js';
+
+export let dietBackfillNotified = false;
+export let recentFoodsOpen = null; // per-meal open/collapsed state, survives re-renders
+export let dietInlineOpenMeal = null; // which meal's inline quick-add is open, survives re-renders
 
 // Render inline search results under a meal's quick-add.
-function renderInlineResults(wrap, query) {
+export function renderInlineResults(wrap, query) {
   const box = wrap.querySelector('.diet-inline-results');
   if (!box) return;
   const q = (query || '').trim();
@@ -56,7 +65,7 @@ function renderInlineResults(wrap, query) {
 }
 
 // One-tap add a searched food to a specific meal, at one serving.
-function quickAddToMeal(meal, result, keepSearchOpen) {
+export function quickAddToMeal(meal, result, keepSearchOpen) {
   const d = result.data || {};
   state.diet.push({
     date: dietViewDate,
@@ -77,7 +86,7 @@ function quickAddToMeal(meal, result, keepSearchOpen) {
 
 // Per-serving macros for a food: prefer the food bank / built-in DB / shared
 // bank; otherwise derive from a logged entry (its macros ÷ its servings).
-function perServingMacros(name, entry) {
+export function perServingMacros(name, entry) {
   const lower = (name || '').toLowerCase();
   const bankedEntry = Object.entries(state.customFoods).find(([k]) => k.toLowerCase() === lower);
   const banked = (bankedEntry && bankedEntry[1]) || FOOD_DATABASE[lower] || (typeof sharedFoods !== 'undefined' && sharedFoods[lower]);
@@ -96,7 +105,7 @@ function perServingMacros(name, entry) {
 // "Your Usuals" for a meal: the foods you log MOST for that meal, most-frequent
 // first (newest entry breaks ties and supplies the macros). Powers the one-tap
 // tiles so a routine day is logged without searching or typing.
-function mealUsuals(meal, limit) {
+export function mealUsuals(meal, limit) {
   limit = limit || 4;
   const byFood = {};
   for (let i = 0; i < state.diet.length; i++) {
@@ -121,30 +130,46 @@ function mealUsuals(meal, limit) {
 }
 
 // Which logged entry's servings stepper is expanded (survives re-render).
-let dietEditOpenIdx = null;
+export let dietEditOpenIdx = null;
 // "Skip or shrink today" advice shows expanded by default so it's actually
 // useful — just in a calm, light style rather than bold red cards. Still
 // collapsible via the chevron; remembers its state per session.
-let dietAdviceOpen = true;
+export let dietAdviceOpen = true;
 
 // Food Library sub-page: Recent Foods, My Food Bank, Diet History and manual
 // entry live here now, off the main Diet screen. Toggled by a class on #dietView.
-function openFoodLibrary() {
+export function openFoodLibrary() {
   const v = document.getElementById('dietView');
   if (!v) return;
   v.classList.add('lib-open');
   window.scrollTo(0, 0);
 }
-function closeFoodLibrary() {
+export function closeFoodLibrary() {
   const v = document.getElementById('dietView');
   if (!v) return;
   v.classList.remove('lib-open');
   window.scrollTo(0, 0);
 }
-function bindFoodLibrary() {
+export function bindFoodLibrary() {
   const open = document.getElementById('openFoodLibraryBtn');
   const close = document.getElementById('closeFoodLibraryBtn');
   if (open) open.addEventListener('click', openFoodLibrary);
   if (close) close.addEventListener('click', closeFoodLibrary);
 }
 
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { bindFoodLibrary: bindFoodLibrary, closeFoodLibrary: closeFoodLibrary, mealUsuals: mealUsuals, openFoodLibrary: openFoodLibrary, perServingMacros: perServingMacros, quickAddToMeal: quickAddToMeal, renderInlineResults: renderInlineResults });
+
+// --- cross-module setters ---
+// Imported bindings are read-only, so other modules cannot assign to these
+// directly the way they did as globals. One setter each, nothing clever.
+export function setDietAdviceOpen(v) { dietAdviceOpen = v; }
+export function setDietBackfillNotified(v) { dietBackfillNotified = v; }
+export function setDietEditOpenIdx(v) { dietEditOpenIdx = v; }
+export function setDietInlineOpenMeal(v) { dietInlineOpenMeal = v; }
+export function setRecentFoodsOpen(v) { recentFoodsOpen = v; }

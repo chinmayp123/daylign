@@ -1,3 +1,11 @@
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { COACH_STALE_DAYS, coachDecision, coachSnapshot } from './coach.js';
+import { getGoals } from './diet-goals.js';
+import { offsetDateStr } from './gym.js';
+import { state } from './state.js';
+import { esc, getTodayStr, sumMacros } from './utils.js';
+
 // ========== Daily brief ==========
 // The morning read on the whole day, not just training. It shares
 // coachSnapshot/coachDecision with the Training coach on purpose — two engines
@@ -9,7 +17,7 @@
 // calendar analysis (the calendar has zero events). Inventing either would mean
 // showing advice about data that does not exist.
 
-function briefNutrition() {
+export function briefNutrition() {
   const goals = (typeof getGoals === 'function') ? getGoals() : {};
   const today = getTodayStr();
   const todays = (state.diet || []).filter(e => e && e.date === today);
@@ -46,7 +54,7 @@ function briefNutrition() {
   return { text, chronicLow, proteinLeft, logged, avgProtein, proteinGoal, totals };
 }
 
-function briefTasks() {
+export function briefTasks() {
   const today = getTodayStr();
   const tasks = state.tasks || [];
   const open = tasks.filter(t => t.status !== 'done');
@@ -71,7 +79,7 @@ function briefTasks() {
 }
 
 // This week against last, so the brief shows movement rather than a snapshot.
-function briefWeek() {
+export function briefWeek() {
   const today = getTodayStr();
   const thisStart = offsetDateStr(today, -6);
   const lastStart = offsetDateStr(today, -13);
@@ -107,7 +115,7 @@ function briefWeek() {
 
 // The single most important thing today, ordered by what costs the most if
 // ignored: recovery, then commitments already made, then consistency.
-function briefFocus(s, nut, tasks) {
+export function briefFocus(s, nut, tasks) {
   const r = s.readiness;
   const staleDays = (typeof COACH_STALE_DAYS !== 'undefined') ? COACH_STALE_DAYS : 4;
 
@@ -138,7 +146,7 @@ function briefFocus(s, nut, tasks) {
   return { text: 'Keep the streak honest. One session, one good meal, one task closed.', tone: 'good' };
 }
 
-function renderDailyBrief() {
+export function renderDailyBrief() {
   const host = document.getElementById('dailyBrief');
   if (!host) return;
   if (typeof coachSnapshot !== 'function') { host.innerHTML = ''; return; }
@@ -191,3 +199,10 @@ function renderDailyBrief() {
       '</div>' +
     '</div>';
 }
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { briefFocus: briefFocus, briefNutrition: briefNutrition, briefTasks: briefTasks, briefWeek: briefWeek, renderDailyBrief: renderDailyBrief });

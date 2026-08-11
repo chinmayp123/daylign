@@ -1,10 +1,16 @@
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { getGoals } from './diet-goals.js';
+import { weightTrendSeries } from './gym.js';
+import { state } from './state.js';
+
 // ========== Weight-trend sheet (ref 5a/5b) ==========
 // The full Body Weight card left the Training pane; the shell now shows a
 // compact readout, and tapping it opens this sheet — a 30-day mini bar chart
 // with the delta, goal, and an inline Log input (the same #weightInput /
 // #weightLogBtn the gym module already wires, so logging is unchanged).
 
-function renderWeightSheetBody() {
+export function renderWeightSheetBody() {
   const host = document.getElementById('weightSheetBody');
   if (!host) return;
   const goal = (typeof getGoals === 'function' && getGoals().weight) || 150;
@@ -52,7 +58,7 @@ function renderWeightSheetBody() {
     </div>`;
 }
 
-function openWeightSheet() {
+export function openWeightSheet() {
   const sheet = document.getElementById('weightSheet');
   if (!sheet) return;
   renderWeightSheetBody();
@@ -63,7 +69,7 @@ function openWeightSheet() {
   if (input) setTimeout(() => input.focus(), 250);
 }
 
-function closeWeightSheet() {
+export function closeWeightSheet() {
   const sheet = document.getElementById('weightSheet');
   if (!sheet) return;
   sheet.classList.remove('open');
@@ -71,12 +77,12 @@ function closeWeightSheet() {
   setTimeout(() => { sheet.hidden = true; }, 220);
 }
 
-function isWeightSheetOpen() {
+export function isWeightSheetOpen() {
   const sheet = document.getElementById('weightSheet');
   return sheet && sheet.classList.contains('open');
 }
 
-function bindWeightSheet() {
+export function bindWeightSheet() {
   const sheet = document.getElementById('weightSheet');
   if (!sheet) return;
   const close = document.getElementById('weightSheetClose');
@@ -84,3 +90,10 @@ function bindWeightSheet() {
   sheet.addEventListener('click', e => { if (e.target === sheet) closeWeightSheet(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && isWeightSheetOpen()) closeWeightSheet(); });
 }
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { bindWeightSheet: bindWeightSheet, closeWeightSheet: closeWeightSheet, isWeightSheetOpen: isWeightSheetOpen, openWeightSheet: openWeightSheet, renderWeightSheetBody: renderWeightSheetBody });

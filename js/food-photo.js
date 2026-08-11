@@ -1,26 +1,34 @@
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { logAiCall } from './ai-usage.js';
+import { rememberFood } from './diet-food.js';
+import { renderDiet } from './diet-view.js';
+import { dietViewDate, saveData, state } from './state.js';
+import { esc, getTodayStr, showToast } from './utils.js';
+
 // ========== Photo Food Logging (Claude vision) ==========
 // Snap a plate photo → Claude identifies the food and estimates macros →
 // user confirms/edits → items land in the diet log. The API key lives only
 // in localStorage on this device — never in the repo or Firebase.
-const FOOD_PHOTO_MODEL = 'claude-opus-4-8'; // cheaper: 'claude-sonnet-5' or 'claude-haiku-4-5'
-const FOOD_PHOTO_KEY = 'tf_anthropic_key';
+export const FOOD_PHOTO_MODEL = 'claude-opus-4-8'; // cheaper: 'claude-sonnet-5' or 'claude-haiku-4-5'
+export const FOOD_PHOTO_KEY = 'tf_anthropic_key';
 
-let photoItems = null; // items awaiting confirmation
-let lastPhotoDataUrl = null; // thumbnail of the most recent analyzed photo
+export let photoItems = null; // items awaiting confirmation
+export let lastPhotoDataUrl = null; // thumbnail of the most recent analyzed photo
 // When Snap is launched from a specific meal row, log to that meal and render
 // the confirm UI inline there instead of the Log Food card's #photoResult.
-let photoTargetMeal = null;
-let photoResultSel = null;
-function photoResultBox() {
+export let photoTargetMeal = null;
+export let photoResultSel = null;
+export function photoResultBox() {
   return (photoResultSel && document.querySelector(photoResultSel)) || $('#photoResult');
 }
 
-function getAnthropicKey() {
+export function getAnthropicKey() {
   return localStorage.getItem(FOOD_PHOTO_KEY) || '';
 }
 
 // Downscale to keep image tokens (and cost) low — 1024px is plenty for a plate
-function resizePhotoToJpeg(file, maxDim) {
+export function resizePhotoToJpeg(file, maxDim) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -38,7 +46,7 @@ function resizePhotoToJpeg(file, maxDim) {
   });
 }
 
-const PHOTO_SCHEMA = {
+export const PHOTO_SCHEMA = {
   type: 'object',
   properties: {
     items: {
@@ -63,7 +71,7 @@ const PHOTO_SCHEMA = {
   additionalProperties: false,
 };
 
-async function analyzeMealPhoto(file) {
+export async function analyzeMealPhoto(file) {
   const key = getAnthropicKey();
   const resultEl = photoResultBox();
   resultEl.innerHTML = '<div class="photo-status"><span class="photo-spinner"></span>Analyzing your plate&hellip;</div>';
@@ -155,12 +163,12 @@ async function analyzeMealPhoto(file) {
   renderPhotoConfirm();
 }
 
-function defaultMealForNow() {
+export function defaultMealForNow() {
   const h = new Date().getHours();
   return h < 11 ? 'breakfast' : h < 15 ? 'lunch' : h < 20 ? 'dinner' : 'snack';
 }
 
-function renderPhotoConfirm() {
+export function renderPhotoConfirm() {
   const resultEl = photoResultBox();
   if (!photoItems || !photoItems.length) { resultEl.innerHTML = ''; return; }
   const totals = photoItems.reduce((a, it) => ({
@@ -221,7 +229,7 @@ function renderPhotoConfirm() {
   if (discardBtn) discardBtn.addEventListener('click', () => { photoItems = null; photoResultBox().innerHTML = ''; photoTargetMeal = null; photoResultSel = null; });
 }
 
-function savePhotoItems() {
+export function savePhotoItems() {
   if (!photoItems || !photoItems.length) return;
   const meal = photoTargetMeal || ($('#photoMeal') && $('#photoMeal').value) || defaultMealForNow();
   const date = (typeof dietViewDate !== 'undefined' && dietViewDate) || getTodayStr();
@@ -248,7 +256,7 @@ function savePhotoItems() {
 
 // Launch the photo flow from a specific meal row: log to that meal, render the
 // confirm UI inline there. If no API key yet, show an inline paste field first.
-function startMealPhoto(meal) {
+export function startMealPhoto(meal) {
   photoTargetMeal = meal;
   photoResultSel = `.diet-inline-photo[data-photo-meal="${meal}"]`;
   if (!getAnthropicKey()) { renderInlinePhotoKeyPrompt(); return; }
@@ -256,7 +264,7 @@ function startMealPhoto(meal) {
   if (input) input.click();
 }
 
-function renderInlinePhotoKeyPrompt() {
+export function renderInlinePhotoKeyPrompt() {
   const box = photoResultBox();
   if (!box) { showToast('Add your Anthropic key in Settings → AI features to use Snap'); return; }
   box.innerHTML = `
@@ -279,7 +287,7 @@ function renderInlinePhotoKeyPrompt() {
   });
 }
 
-function bindPhotoEvents() {
+export function bindPhotoEvents() {
   const snapBtn = $('#snapMealBtn');
   if (!snapBtn) return;
 
@@ -330,3 +338,10 @@ function bindPhotoEvents() {
     $('#photoKeySetup').hidden = true;
   });
 }
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { FOOD_PHOTO_KEY: FOOD_PHOTO_KEY, FOOD_PHOTO_MODEL: FOOD_PHOTO_MODEL, PHOTO_SCHEMA: PHOTO_SCHEMA, analyzeMealPhoto: analyzeMealPhoto, bindPhotoEvents: bindPhotoEvents, defaultMealForNow: defaultMealForNow, getAnthropicKey: getAnthropicKey, photoResultBox: photoResultBox, renderInlinePhotoKeyPrompt: renderInlinePhotoKeyPrompt, renderPhotoConfirm: renderPhotoConfirm, resizePhotoToJpeg: resizePhotoToJpeg, savePhotoItems: savePhotoItems, startMealPhoto: startMealPhoto });

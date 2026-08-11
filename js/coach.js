@@ -1,3 +1,11 @@
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { GROUP_SUGGESTIONS, isFullSession, muscleGroupFor, offsetDateStr } from './gym.js';
+import { readinessAdvice, readinessBreakdown } from './sleep.js';
+import { state } from './state.js';
+import { MUSCLE_LABEL, MUSCLE_ORDER, muscleWeeks, strengthMovements } from './strength.js';
+import { esc, getTodayStr } from './utils.js';
+
 // ========== AI Fitness Coach ==========
 // One decision surface that answers the questions a trainer actually answers:
 // do I train today, what do I do, should volume go up, do I need a deload, and
@@ -13,11 +21,11 @@
 // traced to the numbers shown beside it. It "adapts over time" by recomputing
 // from the full history on every render, so the advice moves as the log does.
 
-const COACH_HARD_DAYS = 5;      // sessions in 7 days that counts as a heavy week
-const COACH_STALE_DAYS = 4;     // days off after which getting back in matters more than freshness
+export const COACH_HARD_DAYS = 5;      // sessions in 7 days that counts as a heavy week
+export const COACH_STALE_DAYS = 4;     // days off after which getting back in matters more than freshness
 
 // Everything the coach reasons about, gathered once.
-function coachSnapshot() {
+export function coachSnapshot() {
   const today = getTodayStr();
   const gym = state.gym || [];
   const cardio = state.cardio || [];
@@ -56,7 +64,7 @@ function coachSnapshot() {
 
 // Which muscle group has been neglected this week, and a concrete movement for
 // it — preferring something already in the log over a generic suggestion.
-function coachWorkoutPick(s) {
+export function coachWorkoutPick(s) {
   if (!s.week || typeof MUSCLE_ORDER === 'undefined') return null;
   const counts = MUSCLE_ORDER.map(g => ({ group: g, sets: s.week[g] || 0 }));
   counts.sort((a, b) => a.sets - b.sets);
@@ -86,7 +94,7 @@ function coachWorkoutPick(s) {
 }
 
 // Should volume go up, hold, or come down.
-function coachVolumeCall(s) {
+export function coachVolumeCall(s) {
   const heavyWeek = s.last7 >= COACH_HARD_DAYS;
   const lowReadiness = s.readiness && s.readiness.score < 55;
   const manyStalls = s.stalled.length >= 2;
@@ -116,7 +124,7 @@ function coachVolumeCall(s) {
 }
 
 // The headline decision.
-function coachDecision(s) {
+export function coachDecision(s) {
   const r = s.readiness;
   const score = r ? r.score : null;
 
@@ -151,7 +159,7 @@ function coachDecision(s) {
 }
 
 // Recovery: name the single biggest lever rather than listing everything.
-function coachRecovery(s) {
+export function coachRecovery(s) {
   const r = s.readiness;
   if (r && typeof readinessAdvice === 'function') {
     const a = readinessAdvice(r);
@@ -161,7 +169,7 @@ function coachRecovery(s) {
   return 'Recovery looks fine — keep sleep consistent.';
 }
 
-function renderCoach() {
+export function renderCoach() {
   const host = document.getElementById('coachPanel');
   if (!host) return;
   if (!(state.gym || []).length) { host.innerHTML = ''; return; }
@@ -211,3 +219,10 @@ function renderCoach() {
       </div>
     </div>`;
 }
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { COACH_HARD_DAYS: COACH_HARD_DAYS, COACH_STALE_DAYS: COACH_STALE_DAYS, coachDecision: coachDecision, coachRecovery: coachRecovery, coachSnapshot: coachSnapshot, coachVolumeCall: coachVolumeCall, coachWorkoutPick: coachWorkoutPick, renderCoach: renderCoach });

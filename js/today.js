@@ -1,3 +1,10 @@
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { render, switchView } from './app.js';
+import { openModal, toggleTaskDone } from './modal.js';
+import { saveData, state } from './state.js';
+import { getTodayStr, showToast } from './utils.js';
+
 // ========== Today plan (two-lane) ==========
 // design_handoff_daylign_v2 section 1, refs 10a/10b. The Dashboard became
 // Today; this is the plan that now leads it. Two lanes:
@@ -8,11 +15,11 @@
 // that was already on the dashboard (stat chips, health strip, weekly report)
 // stays below, demoted — nothing lost.
 
-const TRIAGE_CHIP_LIMIT = 3;
+export const TRIAGE_CHIP_LIMIT = 3;
 
 // Domain colours for the timeline dots (handoff: work / training / meals /
 // recovery). Task category maps onto them; a due item overrides to red.
-function todayDomainColor(task) {
+export function todayDomainColor(task) {
   const cat = task.category || '';
   if (cat === 'health') return 'var(--purple)';   // training/fitness
   if (cat === 'personal') return 'var(--blue)';    // recovery/life
@@ -20,13 +27,13 @@ function todayDomainColor(task) {
   return 'var(--accent)';                           // work + default
 }
 
-function formatHourLabel(h) {
+export function formatHourLabel(h) {
   const hr = ((h + 11) % 12) + 1;
   return `${hr}:00${h < 12 ? ' AM' : ' PM'}`.replace(':00', ':00');
 }
 
 // A short estimate chip from the task's duration (hours). Only shown when set.
-function todayEstimateChip(task) {
+export function todayEstimateChip(task) {
   const d = Number(task.duration);
   if (!d || d <= 0) return '';
   const mins = Math.round(d * 60);
@@ -34,7 +41,7 @@ function todayEstimateChip(task) {
   return `<span class="today-anytime-est">${txt}</span>`;
 }
 
-function renderTodayPlan() {
+export function renderTodayPlan() {
   const host = document.getElementById('todayPlan');
   if (!host) return;
   const today = getTodayStr();
@@ -115,7 +122,7 @@ function renderTodayPlan() {
   bindTodayPlan();
 }
 
-function bindTodayPlan() {
+export function bindTodayPlan() {
   const host = document.getElementById('todayPlan');
   if (!host) return;
 
@@ -198,3 +205,10 @@ function bindTodayPlan() {
     });
   }
 }
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { TRIAGE_CHIP_LIMIT: TRIAGE_CHIP_LIMIT, bindTodayPlan: bindTodayPlan, formatHourLabel: formatHourLabel, renderTodayPlan: renderTodayPlan, todayDomainColor: todayDomainColor, todayEstimateChip: todayEstimateChip });

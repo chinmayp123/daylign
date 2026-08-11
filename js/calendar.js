@@ -1,5 +1,11 @@
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { openModal } from './modal.js';
+import { calViewMode, calendarDate, saveData, state } from './state.js';
+import { esc, getTodayStr, getUSHolidays, toLocalDateStr } from './utils.js';
+
 // ========== Calendar View ==========
-function renderCalendar() {
+export function renderCalendar() {
   if (calViewMode === 'month') {
     $('#calMonthView').style.display = '';
     $('#calWeekView').style.display = 'none';
@@ -11,7 +17,7 @@ function renderCalendar() {
   }
 }
 
-function renderCalendarMonth() {
+export function renderCalendarMonth() {
   const year = calendarDate.getFullYear();
   const month = calendarDate.getMonth();
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -81,7 +87,7 @@ function renderCalendarMonth() {
   });
 }
 
-function renderCalendarWeek() {
+export function renderCalendarWeek() {
   const d = new Date(calendarDate);
   const dayOfWeek = d.getDay();
   const weekStart = new Date(d);
@@ -182,9 +188,9 @@ function renderCalendarWeek() {
 }
 
 // ========== Event Modal ==========
-const EVENT_COLORS = ['#3b82f6', '#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#06b6d4'];
+export const EVENT_COLORS = ['#3b82f6', '#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#06b6d4'];
 
-function openEventModal(date, existingEvent) {
+export function openEventModal(date, existingEvent) {
   // Remove any existing event modal
   const old = $('#eventModal');
   if (old) old.remove();
@@ -285,3 +291,10 @@ function openEventModal(date, existingEvent) {
 
   $('#eventName').focus();
 }
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { EVENT_COLORS: EVENT_COLORS, openEventModal: openEventModal, renderCalendar: renderCalendar, renderCalendarMonth: renderCalendarMonth, renderCalendarWeek: renderCalendarWeek });

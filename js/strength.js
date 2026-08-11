@@ -1,3 +1,9 @@
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { muscleGroupFor, offsetDateStr, renderGym } from './gym.js';
+import { gymSets, setGymSets, state } from './state.js';
+import { esc, getTodayStr, showToast } from './utils.js';
+
 // ========== Strength Analytics ==========
 // Progression tracking for the Strength pane: movement history, plateau
 // detection, personal records, and a per-movement progression curve.
@@ -10,17 +16,17 @@
 // with fewer than MIN_CURVE_SESSIONS sessions renders a "keep logging" state
 // instead of a misleading chart.
 
-const MIN_CURVE_SESSIONS = 3;   // sessions needed before a curve is drawn
-const STALL_MIN_SESSIONS = 5;   // below this we don't claim a plateau
-const STALL_MIN_DAYS = 21;      // ...nor over a span shorter than this
-const PR_FRESH_DAYS = 14;       // a PR this recent gets the "new" treatment
+export const MIN_CURVE_SESSIONS = 3;   // sessions needed before a curve is drawn
+export const STALL_MIN_SESSIONS = 5;   // below this we don't claim a plateau
+export const STALL_MIN_DAYS = 21;      // ...nor over a span shorter than this
+export const PR_FRESH_DAYS = 14;       // a PR this recent gets the "new" treatment
 
 // Which movement the curve card is showing, and in which mode.
-let strengthCurveKey = null;
-let strengthCurveMode = 'best'; // 'best' | 'total'
+export let strengthCurveKey = null;
+export let strengthCurveMode = 'best'; // 'best' | 'total'
 
 // Epley — the standard estimate. Lets 5x135 and 3x155 sit on one line.
-function estOneRM(weight, reps) {
+export function estOneRM(weight, reps) {
   const w = Number(weight) || 0;
   const r = Number(reps) || 0;
   if (w <= 0 || r <= 0) return 0;
@@ -30,12 +36,12 @@ function estOneRM(weight, reps) {
 // Grouping key for an exercise name. Case and stray whitespace only — enough
 // to merge "squat"/"Squat"/"Squat " without risking a merge of two genuinely
 // different lifts. Typos ("Shoullder press") stay separate on purpose.
-function exKey(name) {
+export function exKey(name) {
   return String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
 // Firebase hands arrays back as objects when they have gaps — normalize.
-function setsOf(entry) {
+export function setsOf(entry) {
   const s = entry && entry.sets;
   if (!s) return [];
   const arr = Array.isArray(s) ? s : Object.values(s);
@@ -43,7 +49,7 @@ function setsOf(entry) {
 }
 
 // One logged entry reduced to the numbers the analytics care about.
-function sessionStats(entry) {
+export function sessionStats(entry) {
   const sets = setsOf(entry);
   const bw = !!entry.bodyweight;
   let bestReps = 0, best1RM = 0, totalReps = 0, volume = 0, topWeight = 0;
@@ -68,7 +74,7 @@ function sessionStats(entry) {
 }
 
 // All movements in the log, grouped and sorted by how much they're trained.
-function strengthMovements() {
+export function strengthMovements() {
   const groups = {};
   (state.gym || []).forEach(e => {
     if (!e || !e.exercise || !e.date) return;
@@ -92,7 +98,7 @@ function strengthMovements() {
 // Progression verdict for one movement: PR, typical working set, and whether
 // it has plateaued. "Stalled" is only claimed with enough sessions over a long
 // enough span — a quiet week shouldn't read as a plateau.
-function movementTrend(g) {
+export function movementTrend(g) {
   const ss = g.sessions;
   const bests = ss.map(s => s.best);
   const prVal = Math.max.apply(null, bests.concat([0]));
@@ -128,7 +134,7 @@ function movementTrend(g) {
 }
 
 // Rolling 30-day headline: how much work actually happened.
-function strengthLast30() {
+export function strengthLast30() {
   const cutoff = offsetDateStr(getTodayStr(), -30);
   const recent = (state.gym || []).filter(e => e && e.date && e.date >= cutoff);
   const days = new Set(recent.map(e => e.date));
@@ -143,7 +149,7 @@ function strengthLast30() {
 
 // The one thing worth saying today. Prefers the most-trained plateaued
 // movement, because that's where an extra rep is cheapest.
-function strengthInsight(movements) {
+export function strengthInsight(movements) {
   const stalled = movements.filter(m => m.stalled);
   if (!stalled.length) return null;
   const m = stalled[0];
@@ -164,13 +170,13 @@ function strengthInsight(movements) {
 // Sets per muscle group per week. Volume alone flatters whatever you already
 // do most, so this card is about BALANCE: which groups are carrying the week
 // and which are being skipped.
-const MUSCLE_ORDER = ['push', 'pull', 'legs', 'core'];
-const MUSCLE_LABEL = { push: 'Push', pull: 'Pull', legs: 'Legs', core: 'Core' };
-const MUSCLE_COLOR = { push: 'var(--accent)', pull: 'var(--blue)', legs: 'var(--green)', core: 'var(--yellow)' };
-const BALANCE_WEEKS = 4; // only 3 of the last 8 weeks have data — don't draw empty columns
+export const MUSCLE_ORDER = ['push', 'pull', 'legs', 'core'];
+export const MUSCLE_LABEL = { push: 'Push', pull: 'Pull', legs: 'Legs', core: 'Core' };
+export const MUSCLE_COLOR = { push: 'var(--accent)', pull: 'var(--blue)', legs: 'var(--green)', core: 'var(--yellow)' };
+export const BALANCE_WEEKS = 4; // only 3 of the last 8 weeks have data — don't draw empty columns
 
 // Sets per group for each of the last N weeks. Index 0 = this week.
-function muscleWeeks(weeks) {
+export function muscleWeeks(weeks) {
   const today = getTodayStr();
   const out = [];
   for (let i = 0; i < weeks; i++) out.push({ push: 0, pull: 0, legs: 0, core: 0, total: 0 });
@@ -190,7 +196,7 @@ function muscleWeeks(weeks) {
 }
 
 // The honest read on this week's split.
-function balanceVerdict(week) {
+export function balanceVerdict(week) {
   const trained = MUSCLE_ORDER.filter(g => week[g] > 0);
   const skipped = MUSCLE_ORDER.filter(g => week[g] === 0);
   if (!week.total) return { tone: 'muted', text: 'No sets logged yet this week.' };
@@ -210,7 +216,7 @@ function balanceVerdict(week) {
   return { tone: 'good', text: 'All four groups trained this week — nicely balanced.' };
 }
 
-function renderMuscleBalance() {
+export function renderMuscleBalance() {
   if (typeof muscleGroupFor !== 'function') return '';
   const weeks = muscleWeeks(BALANCE_WEEKS);
   const wk = weeks[0];
@@ -252,7 +258,7 @@ function renderMuscleBalance() {
 
 // ---------- Rendering ----------
 
-function renderStrength() {
+export function renderStrength() {
   const host = document.getElementById('strengthAnalytics');
   if (!host) return;
   const movements = strengthMovements();
@@ -274,7 +280,7 @@ function renderStrength() {
   bindStrengthEvents(movements);
 }
 
-function renderStrengthSummary(movements) {
+export function renderStrengthSummary(movements) {
   const s = strengthLast30();
   const insight = strengthInsight(movements);
   return `
@@ -300,7 +306,7 @@ function renderStrengthSummary(movements) {
     </div>`;
 }
 
-function renderMovementList(movements) {
+export function renderMovementList(movements) {
   const stalledCount = movements.filter(m => m.stalled).length;
   // Tracked movements lead. Movements still gathering history are capped at a
   // couple of rows and then summarised — eight identical "needs more sessions"
@@ -351,7 +357,7 @@ function renderMovementList(movements) {
 }
 
 // Small inline sparkline of the last 14 sessions' best set.
-function sparklineSvg(m) {
+export function sparklineSvg(m) {
   const ss = m.sessions.slice(-14);
   const vals = ss.map(s => s.best);
   const max = Math.max.apply(null, vals);
@@ -378,7 +384,7 @@ function sparklineSvg(m) {
     </svg>`;
 }
 
-function renderStrengthCurve(movements) {
+export function renderStrengthCurve(movements) {
   const m = movements.find(x => x.key === strengthCurveKey);
   if (!m) return '';
   const ss = m.sessions.slice(-16);
@@ -442,7 +448,7 @@ function renderStrengthCurve(movements) {
     </div>`;
 }
 
-function renderStrengthPRs(movements) {
+export function renderStrengthPRs(movements) {
   const today = getTodayStr();
   // A record needs something to be a record AGAINST — a movement logged once
   // has no PR, just an entry. Two sessions minimum keeps this shelf meaningful.
@@ -472,7 +478,7 @@ function renderStrengthPRs(movements) {
     </div>`;
 }
 
-function bindStrengthEvents(movements) {
+export function bindStrengthEvents(movements) {
   // Tap a movement row to point the curve at it.
   document.querySelectorAll('#strengthAnalytics .str-mv:not(.is-locked)').forEach(el => {
     el.addEventListener('click', () => {
@@ -496,13 +502,20 @@ function bindStrengthEvents(movements) {
     const nameInput = document.getElementById('gymExerciseName');
     if (nameInput) nameInput.value = insight.name;
     if (typeof gymSets !== 'undefined') {
-      gymSets = [0, 1, 2].map(() => ({
+      setGymSets([0, 1, 2].map(() => ({
         reps: String(insight.targetReps),
         weight: insight.targetWeight ? String(insight.targetWeight) : '',
-      }));
+      })));
     }
     if (typeof renderGym === 'function') renderGym();
     if (nameInput) nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
     if (typeof showToast === 'function') showToast(`Loaded 3 × ${insight.targetReps} ${insight.name} — hit Add Exercise`);
   });
 }
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { BALANCE_WEEKS: BALANCE_WEEKS, MIN_CURVE_SESSIONS: MIN_CURVE_SESSIONS, MUSCLE_COLOR: MUSCLE_COLOR, MUSCLE_LABEL: MUSCLE_LABEL, MUSCLE_ORDER: MUSCLE_ORDER, PR_FRESH_DAYS: PR_FRESH_DAYS, STALL_MIN_DAYS: STALL_MIN_DAYS, STALL_MIN_SESSIONS: STALL_MIN_SESSIONS, balanceVerdict: balanceVerdict, bindStrengthEvents: bindStrengthEvents, estOneRM: estOneRM, exKey: exKey, movementTrend: movementTrend, muscleWeeks: muscleWeeks, renderMovementList: renderMovementList, renderMuscleBalance: renderMuscleBalance, renderStrength: renderStrength, renderStrengthCurve: renderStrengthCurve, renderStrengthPRs: renderStrengthPRs, renderStrengthSummary: renderStrengthSummary, sessionStats: sessionStats, setsOf: setsOf, sparklineSvg: sparklineSvg, strengthInsight: strengthInsight, strengthLast30: strengthLast30, strengthMovements: strengthMovements });

@@ -1,3 +1,9 @@
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { render } from './app.js';
+import { refreshFromCloud } from './firebase-sync.js';
+import { haptic, showToast } from './utils.js';
+
 // ========== Pull to refresh ==========
 // The app's own data arrives on a live Firebase listener, but Apple Health and
 // the shared food bank are read once at startup. So an installed PWA left open
@@ -10,18 +16,18 @@
 // page already at the very top, and disarms the moment the gesture looks more
 // horizontal than vertical. Anything else is left alone as a normal scroll.
 
-const PTR_TRIGGER = 72;   // pull distance that commits to a refresh
-const PTR_MAX = 110;      // furthest the indicator will travel
-const PTR_SLOP = 10;      // ignore the first few px so taps never arm it
+export const PTR_TRIGGER = 72;   // pull distance that commits to a refresh
+export const PTR_MAX = 110;      // furthest the indicator will travel
+export const PTR_SLOP = 10;      // ignore the first few px so taps never arm it
 
-let ptrStartY = 0;
-let ptrStartX = 0;
-let ptrArmed = false;     // touch began at scrollY 0
-let ptrPulling = false;   // committed to a vertical pull, we own the gesture
-let ptrRefreshing = false;
-let ptrEl = null;
+export let ptrStartY = 0;
+export let ptrStartX = 0;
+export let ptrArmed = false;     // touch began at scrollY 0
+export let ptrPulling = false;   // committed to a vertical pull, we own the gesture
+export let ptrRefreshing = false;
+export let ptrEl = null;
 
-function ptrIndicator() {
+export function ptrIndicator() {
   if (ptrEl) return ptrEl;
   ptrEl = document.createElement('div');
   ptrEl.className = 'ptr';
@@ -31,7 +37,7 @@ function ptrIndicator() {
   return ptrEl;
 }
 
-function ptrSet(dist, committed) {
+export function ptrSet(dist, committed) {
   const el = ptrIndicator();
   const d = Math.min(dist, PTR_MAX);
   el.style.transform = 'translate(-50%, ' + d + 'px)';
@@ -43,7 +49,7 @@ function ptrSet(dist, committed) {
   if (spin) spin.style.transform = 'rotate(' + Math.round(d * 2.6) + 'deg)';
 }
 
-function ptrReset() {
+export function ptrReset() {
   const el = ptrIndicator();
   el.classList.add('is-settling');
   el.style.transform = 'translate(-50%, 0px)';
@@ -52,7 +58,7 @@ function ptrReset() {
   setTimeout(() => el.classList.remove('is-settling'), 240);
 }
 
-function ptrRun() {
+export function ptrRun() {
   if (ptrRefreshing) return;
   ptrRefreshing = true;
   // Still inside the touch gesture here, which is what the iOS fallback needs.
@@ -81,7 +87,7 @@ function ptrRun() {
   }).catch(done);
 }
 
-function bindPullToRefresh() {
+export function bindPullToRefresh() {
   if (!('ontouchstart' in window)) return; // pointerless devices have F5
 
   document.addEventListener('touchstart', e => {
@@ -129,3 +135,10 @@ function bindPullToRefresh() {
   document.addEventListener('touchend', end, { passive: true });
   document.addEventListener('touchcancel', end, { passive: true });
 }
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { PTR_MAX: PTR_MAX, PTR_SLOP: PTR_SLOP, PTR_TRIGGER: PTR_TRIGGER, bindPullToRefresh: bindPullToRefresh, ptrIndicator: ptrIndicator, ptrReset: ptrReset, ptrRun: ptrRun, ptrSet: ptrSet });

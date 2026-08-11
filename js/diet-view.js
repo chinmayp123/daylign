@@ -1,4 +1,15 @@
-function renderDiet() {
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { dietBackfillNotified, dietEditOpenIdx, dietInlineOpenMeal, mealUsuals, quickAddToMeal, recentFoodsOpen, renderInlineResults, setDietBackfillNotified, setDietEditOpenIdx, setDietInlineOpenMeal, setRecentFoodsOpen } from './diet-core.js';
+import { FOOD_DATABASE } from './diet-data.js';
+import { backfillRememberedFoods, isRemovedFood, selectFoodFromDropdown } from './diet-food.js';
+import { renderDietGoals, renderDietRecs, renderDietReview, renderWater, renderYesterdayAdvice } from './diet-goals.js';
+import { sharedFoods } from './firebase-sync.js';
+import { startMealPhoto } from './food-photo.js';
+import { dietViewDate, saveData, setDietViewDate, state } from './state.js';
+import { emptyState, esc, getTodayStr, showToast, sumMacros } from './utils.js';
+
+export function renderDiet() {
   const dateInput = $('#dietDate');
   if (!dateInput) return;
 
@@ -8,12 +19,12 @@ function renderDiet() {
   if (backfilled > 0) {
     saveData(state);
     if (!dietBackfillNotified) {
-      dietBackfillNotified = true;
+      setDietBackfillNotified(true);
       showToast(`Added ${backfilled} dish${backfilled === 1 ? '' : 'es'} from your log to My Foods`);
     }
   }
   // Ensure dietViewDate is set
-  if (!dietViewDate) dietViewDate = getTodayStr();
+  if (!dietViewDate) setDietViewDate(getTodayStr());
   dateInput.value = dietViewDate;
 
   // Date navigation label
@@ -153,7 +164,7 @@ function renderDiet() {
       if (ev.target.closest('.diet-delete-food')) return;
       const row = main.closest('.diet-food-entry');
       const idx = Number(row.dataset.entryIdx);
-      dietEditOpenIdx = (dietEditOpenIdx === idx) ? null : idx;
+      setDietEditOpenIdx((dietEditOpenIdx === idx) ? null : idx);
       const edit = row.querySelector('.diet-entry-edit');
       if (edit) edit.hidden = dietEditOpenIdx !== idx;
     });
@@ -177,7 +188,7 @@ function renderDiet() {
       e.protein = Math.round(((e.protein || 0) * ratio) * 10) / 10;
       e.carbs = Math.round(((e.carbs || 0) * ratio) * 10) / 10;
       e.fat = Math.round(((e.fat || 0) * ratio) * 10) / 10;
-      dietEditOpenIdx = idx; // keep the stepper open across the re-render
+      setDietEditOpenIdx(idx); // keep the stepper open across the re-render
       saveData(state);
       renderDiet();
     });
@@ -192,9 +203,9 @@ function renderDiet() {
       const search = wrap.querySelector('.diet-inline-search');
       const input = wrap.querySelector('.diet-inline-input');
       const open = !search.hidden;
-      if (open) { search.hidden = true; dietInlineOpenMeal = null; return; }
+      if (open) { search.hidden = true; setDietInlineOpenMeal(null); return; }
       search.hidden = false;
-      dietInlineOpenMeal = btn.dataset.addMeal;
+      setDietInlineOpenMeal(btn.dataset.addMeal);
       input.focus();
     });
   });
@@ -217,7 +228,7 @@ function renderDiet() {
   $$('.diet-delete-food').forEach(btn => {
     btn.addEventListener('click', () => {
       state.diet.splice(Number(btn.dataset.dietIdx), 1);
-      dietEditOpenIdx = null; // indices shift after a splice — don't reopen the wrong row
+      setDietEditOpenIdx(null); // indices shift after a splice — don't reopen the wrong row
       saveData(state);
       renderDiet();
     });
@@ -261,7 +272,7 @@ function renderDiet() {
   if (!recentFoodsOpen) {
     const hour = new Date().getHours();
     const nowMeal = hour < 11 ? 'breakfast' : hour < 16 ? 'lunch' : hour < 22 ? 'dinner' : 'snack';
-    recentFoodsOpen = { breakfast: false, lunch: false, dinner: false, snack: false, [nowMeal]: true };
+    setRecentFoodsOpen({ breakfast: false, lunch: false, dinner: false, snack: false, [nowMeal]: true });
   }
 
   // Full food bank — every banked dish (your South Indian pool + saved brands), A→Z
@@ -397,10 +408,17 @@ function renderDiet() {
 
     $$('.diet-history-day').forEach(el => {
       el.addEventListener('click', () => {
-        dietViewDate = el.dataset.dietDay;
+        setDietViewDate(el.dataset.dietDay);
         renderDiet();
       });
     });
   }
 }
 
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { renderDiet: renderDiet });

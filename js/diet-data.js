@@ -1,5 +1,5 @@
 // ========== Diet ==========
-const FOOD_DATABASE = {
+export const FOOD_DATABASE = {
   // Proteins
   'chicken breast': { calories: 165, protein: 31, carbs: 0, fat: 3.6, serving: '100g', fiber: 0, sugar: 0 },
   'chicken thigh': { calories: 209, protein: 26, carbs: 0, fat: 11, serving: '100g', fiber: 0, sugar: 0 },
@@ -477,3 +477,10 @@ const FOOD_DATABASE = {
   'filter coffee': { calories: 75, protein: 2, carbs: 8, fat: 3.5, serving: '1 cup with milk', fiber: 0, sugar: 7 },
 };
 
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { FOOD_DATABASE: FOOD_DATABASE });

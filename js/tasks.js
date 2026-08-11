@@ -1,13 +1,19 @@
-// ========== Tasks List View ==========
-const ARCHIVE_AFTER_MS = 7 * 24 * 60 * 60 * 1000; // done tasks auto-archive after 1 week
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { openModal, toggleTaskDone } from './modal.js';
+import { activeProject, state } from './state.js';
+import { emptyState, formatDate, getTodayStr } from './utils.js';
 
-function isArchived(t) {
+// ========== Tasks List View ==========
+export const ARCHIVE_AFTER_MS = 7 * 24 * 60 * 60 * 1000; // done tasks auto-archive after 1 week
+
+export function isArchived(t) {
   if (t.status !== 'done' || !t.completedAt) return false;
   const completed = new Date(t.completedAt + 'T00:00:00');
   return (Date.now() - completed.getTime()) >= ARCHIVE_AFTER_MS;
 }
 
-function renderTasksView() {
+export function renderTasksView() {
   const today = getTodayStr();
   const search = $('#searchInput').value.toLowerCase();
   const statusF = $('#filterStatus').value;
@@ -82,7 +88,7 @@ function renderTasksView() {
   }
 }
 
-function renderTaskRow(t, today) {
+export function renderTaskRow(t, today) {
   const cat = state.categories.find(c => c.id === t.category);
   const proj = t.project ? state.projects.find(p => p.id === t.project) : null;
   const isOverdue = t.dueDate && t.dueDate < today && t.status !== 'done';
@@ -107,7 +113,7 @@ function renderTaskRow(t, today) {
     </div>`;
 }
 
-function bindTaskRowEvents(containerSel) {
+export function bindTaskRowEvents(containerSel) {
   $$(`${containerSel} .task-check`).forEach(el => {
     el.addEventListener('click', (e) => { e.stopPropagation(); toggleTaskDone(el.dataset.id); });
   });
@@ -115,3 +121,10 @@ function bindTaskRowEvents(containerSel) {
     el.addEventListener('click', () => openModal(el.dataset.id));
   });
 }
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { ARCHIVE_AFTER_MS: ARCHIVE_AFTER_MS, bindTaskRowEvents: bindTaskRowEvents, isArchived: isArchived, renderTaskRow: renderTaskRow, renderTasksView: renderTasksView });

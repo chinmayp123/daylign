@@ -1,7 +1,18 @@
-// ========== Dashboard ==========
-let dashboardProjectFilter = null; // null = all projects
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { render, switchView } from './app.js';
+import { getGoals } from './diet-goals.js';
+import { getExternalActiveEnergy, getExternalExerciseMinutes, getExternalRestingHR, getExternalSleep, getExternalSteps } from './firebase-sync.js';
+import { estimateBurnForDate, weightTrendSeries } from './gym.js';
+import { openModal, toggleTaskDone } from './modal.js';
+import { sleepHoursFor } from './sleep.js';
+import { activeTaskTab, miniCalDate, saveData, scheduleDate, setActiveTaskTab, state } from './state.js';
+import { animateNumber, emptyState, esc, formatDate, getTodayStr, getUSHolidays, toLocalDateStr } from './utils.js';
 
-function renderDashboardProjectFilter() {
+// ========== Dashboard ==========
+export let dashboardProjectFilter = null; // null = all projects
+
+export function renderDashboardProjectFilter() {
   const projects = state.projects || [];
   if (!projects.length) {
     $('#dashboardProjectFilter').innerHTML = '';
@@ -29,7 +40,7 @@ function renderDashboardProjectFilter() {
 }
 
 // Today's health at a glance — the numbers that matter on a cut
-function renderHealthStrip(today) {
+export function renderHealthStrip(today) {
   const el = $('#healthGrid');
   if (!el) return;
   const g = (typeof getGoals === 'function') ? getGoals() : { calories: 2000, protein: 150, water: 66, weight: 150 };
@@ -86,7 +97,7 @@ function renderHealthStrip(today) {
 }
 
 // Weight trend chart — SVG line of weigh-ins vs the goal line
-function renderWeightTrend() {
+export function renderWeightTrend() {
   const host = $('#weightTrendChart');
   if (!host) return;
   const goalW = (typeof getGoals === 'function' && getGoals().weight) || 150;
@@ -146,7 +157,7 @@ function renderWeightTrend() {
 }
 
 // Weekly Report — trailing 7-day averages vs goals, plus one focus for the week
-function renderWeeklyReport() {
+export function renderWeeklyReport() {
   const host = $('#weeklyReport');
   if (!host) return;
   const g = (typeof getGoals === 'function') ? getGoals() : { calories: 2000, protein: 150, water: 66, weight: 155 };
@@ -311,7 +322,7 @@ function renderWeeklyReport() {
     <div class="weekly-focus">Focus this week: <strong>${focus}</strong></div>`;
 }
 
-function renderDashboard() {
+export function renderDashboard() {
   renderDashboardProjectFilter();
 
   let tasks = state.tasks;
@@ -357,7 +368,7 @@ function renderDashboard() {
 }
 
 // ========== My Tasks Board (Dashboard) ==========
-function renderMyTasksBoard(taskPool) {
+export function renderMyTasksBoard(taskPool) {
   const allTasks = taskPool || state.tasks;
   const today = getTodayStr();
 
@@ -378,7 +389,7 @@ function renderMyTasksBoard(taskPool) {
   // filters — clicking one there mutated the dashboard's tab state.
   $$('#myTasksTabs .my-tasks-tab').forEach(tab => {
     tab.addEventListener('click', () => {
-      activeTaskTab = tab.dataset.cat === 'all' ? null : tab.dataset.cat;
+      setActiveTaskTab(tab.dataset.cat === 'all' ? null : tab.dataset.cat);
       renderMyTasksBoard(allTasks);
     });
   });
@@ -432,7 +443,7 @@ function renderMyTasksBoard(taskPool) {
 }
 
 // ========== Mini Calendar (Dashboard) ==========
-function renderMiniCalendar() {
+export function renderMiniCalendar() {
   if (!$('#miniCalDays')) return;
   const year = miniCalDate.getFullYear();
   const month = miniCalDate.getMonth();
@@ -473,7 +484,7 @@ function renderMiniCalendar() {
 }
 
 // ========== Daily Schedule ==========
-function renderSchedule() {
+export function renderSchedule() {
   const now = new Date();
   const nowStr = toLocalDateStr(now);
   const viewDate = new Date(scheduleDate);
@@ -620,7 +631,7 @@ function renderSchedule() {
 }
 
 // ========== Reminders ==========
-function renderReminders(today) {
+export function renderReminders(today) {
   const reminders = [];
   const hour = new Date().getHours();
 
@@ -830,3 +841,10 @@ function renderReminders(today) {
     });
   });
 }
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { renderDashboard: renderDashboard, renderDashboardProjectFilter: renderDashboardProjectFilter, renderHealthStrip: renderHealthStrip, renderMiniCalendar: renderMiniCalendar, renderMyTasksBoard: renderMyTasksBoard, renderReminders: renderReminders, renderSchedule: renderSchedule, renderWeeklyReport: renderWeeklyReport, renderWeightTrend: renderWeightTrend });

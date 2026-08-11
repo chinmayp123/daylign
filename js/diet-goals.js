@@ -1,8 +1,16 @@
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { render } from './app.js';
+import { dietAdviceOpen, setDietAdviceOpen } from './diet-core.js';
+import { burnForDate, estimateBurnForDate } from './gym.js';
+import { dietBaseMacros, dietViewDate, saveData, setDietBaseMacros, state } from './state.js';
+import { esc, getTodayStr, showToast } from './utils.js';
+
 // ========== Goal Tracker ==========
 // Defaults: 25yo male, 5'10", ~160 lbs → 150 lbs cut (started Jul 2026)
 // BMR ~1720, TDEE ~2500, -500 deficit = ~2000 cal/day (~1 lb/week)
 // User-editable via the Goals modal; overrides live in state.goals (synced).
-const DEFAULT_GOALS = {
+export const DEFAULT_GOALS = {
   calories: 2000,
   protein: 150,  // keep high on a cut to hold onto muscle
   carbs: 215,
@@ -12,7 +20,7 @@ const DEFAULT_GOALS = {
   burn: 300,     // cal/day from exercise — pads the deficit so diet slip-ups still net out
 };
 
-function getGoals() {
+export function getGoals() {
   return { ...DEFAULT_GOALS, ...(state.goals || {}) };
 }
 
@@ -20,7 +28,7 @@ function getGoals() {
 // macro mini-rings that spell out eaten / goal in grams with a "left" chip —
 // the explicit user correction was that a percent alone isn't enough.
 // Daylign's burn-aware net line is preserved as a caption under the ring.
-function renderDietGoals(totals) {
+export function renderDietGoals(totals) {
   const goals = getGoals();
   const cal = Math.round(totals.calories);
   const calPct = Math.min(100, Math.round((cal / goals.calories) * 100));
@@ -78,7 +86,7 @@ function renderDietGoals(totals) {
 
 // ========== Food Recommendations ==========
 // Cutting: high protein, high volume, calorie-conscious (South Indian friendly)
-const CUT_RECOMMENDATIONS = [
+export const CUT_RECOMMENDATIONS = [
   { meal: 'Breakfast', foods: [
     { name: 'Egg white omelette + 1 toast', cal: 250, p: 24, desc: '4 whites + 1 whole egg, veggies' },
     { name: '2 idli + sambar', cal: 200, p: 8, desc: 'Skip the coconut chutney' },
@@ -113,7 +121,7 @@ const CUT_RECOMMENDATIONS = [
   ]},
 ];
 
-function renderDietRecs(totals) {
+export function renderDietRecs(totals) {
   const recGoals = getGoals();
   const remaining = {
     calories: Math.max(0, recGoals.calories - Math.round(totals.calories)),
@@ -225,7 +233,7 @@ function renderDietRecs(totals) {
 // Forward-looking twin of the end-of-day review: analyze the most recent
 // logged day and call out the specific foods to skip or shrink today.
 // Shown only on the live day — browsing history shows the review instead.
-function renderYesterdayAdvice() {
+export function renderYesterdayAdvice() {
   const el = $('#dietYesterday');
   if (!el) return;
   const hide = () => { el.innerHTML = ''; el.classList.remove('has-content'); };
@@ -337,7 +345,7 @@ function renderYesterdayAdvice() {
     </div>`;
   const adviceToggle = el.querySelector('#dietAdviceToggle');
   if (adviceToggle) adviceToggle.addEventListener('click', () => {
-    dietAdviceOpen = !dietAdviceOpen;
+    setDietAdviceOpen(!dietAdviceOpen);
     el.classList.toggle('open', dietAdviceOpen);
   });
 }
@@ -346,7 +354,7 @@ function renderYesterdayAdvice() {
 // Retrospective: for each macro that finished over goal, surface the foods
 // that drove it so you can see exactly where to cut back next time.
 // Protein is intentionally excluded — going over protein isn't a problem on a cut.
-function renderDietReview(totals, dayEntries) {
+export function renderDietReview(totals, dayEntries) {
   const el = $('#dietReview');
   if (!el) return;
 
@@ -446,7 +454,7 @@ function renderDietReview(totals, dayEntries) {
 }
 
 // ========== Water Tracker ==========
-function renderWater() {
+export function renderWater() {
   const waterGoal = getGoals().water;
   const entries = state.water[dietViewDate] || [];
   const total = entries.reduce((s, v) => s + v, 0);
@@ -469,14 +477,14 @@ function renderWater() {
   }
 }
 
-function addWater(oz) {
+export function addWater(oz) {
   if (!state.water[dietViewDate]) state.water[dietViewDate] = [];
   state.water[dietViewDate].push(oz);
   saveData(state);
   renderWater();
 }
 
-function undoWater() {
+export function undoWater() {
   if (!state.water[dietViewDate] || !state.water[dietViewDate].length) return;
   state.water[dietViewDate].pop();
   saveData(state);
@@ -484,7 +492,7 @@ function undoWater() {
 }
 
 // ========== Goals Modal ==========
-function openGoalsModal() {
+export function openGoalsModal() {
   const g = getGoals();
   $('#goalCalories').value = g.calories;
   $('#goalProtein').value = g.protein;
@@ -496,11 +504,11 @@ function openGoalsModal() {
   $('#goalsModal').classList.add('active');
 }
 
-function closeGoalsModal() {
+export function closeGoalsModal() {
   $('#goalsModal').classList.remove('active');
 }
 
-function bindGoalsEvents() {
+export function bindGoalsEvents() {
   $('#editGoalsBtn').addEventListener('click', openGoalsModal);
   const weightChip = $('#weightGoalChip');
   if (weightChip) weightChip.addEventListener('click', openGoalsModal);
@@ -534,7 +542,7 @@ function bindGoalsEvents() {
   });
 }
 
-function bindWaterEvents() {
+export function bindWaterEvents() {
   $$('.water-btn[data-oz]').forEach(btn => {
     btn.addEventListener('click', () => addWater(Number(btn.dataset.oz)));
   });
@@ -546,7 +554,7 @@ function bindWaterEvents() {
   $('#waterUndoBtn').addEventListener('click', undoWater);
 }
 
-function clearDietForm() {
+export function clearDietForm() {
   $('#dietFoodName').value = '';
   $('#dietServings').value = 1;
   $('#dietCalories').value = '';
@@ -554,6 +562,13 @@ function clearDietForm() {
   $('#dietCarbs').value = '';
   $('#dietFat').value = '';
   $('#dietServingInfo').innerHTML = '';
-  dietBaseMacros = null;
+  setDietBaseMacros(null);
 }
 
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { CUT_RECOMMENDATIONS: CUT_RECOMMENDATIONS, DEFAULT_GOALS: DEFAULT_GOALS, addWater: addWater, bindGoalsEvents: bindGoalsEvents, bindWaterEvents: bindWaterEvents, clearDietForm: clearDietForm, closeGoalsModal: closeGoalsModal, getGoals: getGoals, openGoalsModal: openGoalsModal, renderDietGoals: renderDietGoals, renderDietRecs: renderDietRecs, renderDietReview: renderDietReview, renderWater: renderWater, renderYesterdayAdvice: renderYesterdayAdvice, undoWater: undoWater });

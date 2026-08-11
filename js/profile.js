@@ -1,3 +1,10 @@
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { render } from './app.js';
+import { db } from './firebase-sync.js';
+import { resetLocalStateToStarter, saveData, state } from './state.js';
+import { esc, showToast, toLocalDateStr } from './utils.js';
+
 // ========== Profiles ==========
 // Daylign began as a single-person app: everything lived at the `lifestack`
 // node with no notion of who owned it, and every save was a full-blob
@@ -9,17 +16,17 @@
 // anyone with the URL can reach any node. It stops accidental clobbering
 // between people who trust each other; it is not a permission system.
 
-const PROFILE_KEY = 'daylign_profile';
+export const PROFILE_KEY = 'daylign_profile';
 
 // The original user. `legacy: true` means two things: their app data is
 // migrated out of the old `lifestack` node, and their Apple Health metrics
 // stay at the un-namespaced `external/*` paths their iPhone Shortcut already
 // posts to. Everyone else is namespaced from the start.
-const OWNER_PROFILE = { id: 'chinmay', name: 'Chinmay', legacy: true };
+export const OWNER_PROFILE = { id: 'chinmay', name: 'Chinmay', legacy: true };
 
-let activeProfile = null;
+export let activeProfile = null;
 
-function loadProfile() {
+export function loadProfile() {
   try {
     const raw = localStorage.getItem(PROFILE_KEY);
     if (!raw) return null;
@@ -31,9 +38,9 @@ function loadProfile() {
   return null;
 }
 
-function currentProfile() { return activeProfile; }
+export function currentProfile() { return activeProfile; }
 
-function profileDataPath() {
+export function profileDataPath() {
   return 'users/' + (activeProfile ? activeProfile.id : 'unknown');
 }
 
@@ -41,20 +48,20 @@ function profileDataPath() {
 // existed. Keep that path working rather than making him re-edit five Shortcut
 // URLs; everyone else lives under external/u/<id>, where a profile id can
 // never collide with a metric name.
-function profileExternalPath() {
+export function profileExternalPath() {
   if (activeProfile && activeProfile.legacy) return 'external';
   return 'external/u/' + (activeProfile ? activeProfile.id : 'unknown');
 }
 
 // Firebase keys cannot contain . $ # [ ] / — the slug avoids all of them.
-function slugifyProfileName(name) {
+export function slugifyProfileName(name) {
   return String(name).toLowerCase().trim()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 24);
 }
 
-function saveProfile(profile) {
+export function saveProfile(profile) {
   activeProfile = profile;
   localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
   // Registry of who exists, so a future "compare our week" view can find both
@@ -65,7 +72,7 @@ function saveProfile(profile) {
 // Gate startup on a profile being chosen. Firebase sync is not started until
 // this resolves, and saveToFirebase() is a no-op while firebaseReady is false,
 // so nothing can reach the cloud before we know whose data it is.
-function requireProfile(onReady) {
+export function requireProfile(onReady) {
   const saved = loadProfile();
   if (saved) {
     activeProfile = saved;
@@ -81,7 +88,7 @@ function requireProfile(onReady) {
   showProfileGate(onReady);
 }
 
-function showProfileGate(onReady) {
+export function showProfileGate(onReady) {
   const gate = document.getElementById('profileGate');
   if (!gate) { // markup missing — fall back to the owner rather than stranding the app
     activeProfile = OWNER_PROFILE;
@@ -165,7 +172,7 @@ function showProfileGate(onReady) {
 }
 
 // Reflect the active profile in Settings and the sidebar indicator.
-function updateProfileSettingsCard() {
+export function updateProfileSettingsCard() {
   const name = activeProfile ? activeProfile.name : '—';
   const el = document.getElementById('profileCurrentName');
   if (el) el.textContent = name;
@@ -185,7 +192,7 @@ function updateProfileSettingsCard() {
 // the live app instead would be a write hazard: renderDiet() alone calls
 // saveData() during a normal render.
 
-function relativeTime(ms) {
+export function relativeTime(ms) {
   if (!ms) return 'never';
   const mins = Math.round((Date.now() - ms) / 60000);
   if (mins < 2) return 'just now';
@@ -197,7 +204,7 @@ function relativeTime(ms) {
   return Math.round(days / 30) + ' month(s) ago';
 }
 
-function summarizeUsage(id, data) {
+export function summarizeUsage(id, data) {
   const tasks = data.tasks || [];
   const gym = data.gym || [];
   const cardio = data.cardio || [];
@@ -232,7 +239,7 @@ function summarizeUsage(id, data) {
   };
 }
 
-function loadUsageReport() {
+export function loadUsageReport() {
   const out = document.getElementById('usageReport');
   if (!out) return;
   out.innerHTML = '<p class="settings-desc">Loading…</p>';
@@ -250,7 +257,7 @@ function loadUsageReport() {
     });
 }
 
-function renderUsageReport(all, names, out) {
+export function renderUsageReport(all, names, out) {
   const ids = Object.keys(all);
   if (!ids.length) { out.innerHTML = '<p class="settings-desc">No profiles have synced yet.</p>'; return; }
   out.innerHTML = ids.map(id => {
@@ -280,7 +287,7 @@ function renderUsageReport(all, names, out) {
 // For repairing a profile that got seeded with the demo tasks (created before
 // the clean-start fix), or for anyone who just wants to start over. Only ever
 // touches the active profile's own node, and only on a typed confirmation.
-function resetCurrentProfileData() {
+export function resetCurrentProfileData() {
   const who = activeProfile ? activeProfile.name : 'this profile';
   const typed = prompt(
     `Erase ALL of ${who}'s data — tasks, workouts, cardio, meals, weigh-ins — ` +
@@ -298,7 +305,7 @@ function resetCurrentProfileData() {
 // previous person's tasks and meals are still in localStorage when the next
 // person's node loads, and the newer-timestamp reconciliation could push one
 // person's data into the other's node.
-function switchProfile() {
+export function switchProfile() {
   const who = activeProfile ? activeProfile.name : 'this profile';
   const ok = confirm(
     `Switch away from ${who}?\n\n` +
@@ -316,3 +323,10 @@ function switchProfile() {
   localStorage.removeItem(PROFILE_KEY);
   location.reload();
 }
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { OWNER_PROFILE: OWNER_PROFILE, PROFILE_KEY: PROFILE_KEY, currentProfile: currentProfile, loadProfile: loadProfile, loadUsageReport: loadUsageReport, profileDataPath: profileDataPath, profileExternalPath: profileExternalPath, relativeTime: relativeTime, renderUsageReport: renderUsageReport, requireProfile: requireProfile, resetCurrentProfileData: resetCurrentProfileData, saveProfile: saveProfile, showProfileGate: showProfileGate, slugifyProfileName: slugifyProfileName, summarizeUsage: summarizeUsage, switchProfile: switchProfile, updateProfileSettingsCard: updateProfileSettingsCard });

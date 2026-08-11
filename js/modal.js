@@ -1,5 +1,11 @@
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { render } from './app.js';
+import { activeProject, editingSubtasks, saveData, setEditingSubtasks, state } from './state.js';
+import { getTodayStr, haptic } from './utils.js';
+
 // ========== Modal ==========
-function populateScheduleHourDropdown() {
+export function populateScheduleHourDropdown() {
   const sel = $('#taskScheduledHour');
   let html = '<option value="">Not scheduled</option>';
   for (let h = 6; h <= 21; h++) {
@@ -10,11 +16,11 @@ function populateScheduleHourDropdown() {
   sel.innerHTML = html;
 }
 
-function openModal(taskId = null, scheduledHour = null) {
+export function openModal(taskId = null, scheduledHour = null) {
   const modal = $('#taskModal');
   const form = $('#taskForm');
   form.reset();
-  editingSubtasks = [];
+  setEditingSubtasks([]);
   populateScheduleHourDropdown();
   populateProjectDropdown();
 
@@ -34,7 +40,7 @@ function openModal(taskId = null, scheduledHour = null) {
     $('#taskProject').value = task.project || '';
     $('#taskScheduledHour').value = task.scheduledHour != null ? task.scheduledHour : '';
     $('#taskDuration').value = task.duration || '1';
-    editingSubtasks = task.subtasks ? task.subtasks.map(s => ({ ...s })) : [];
+    setEditingSubtasks(task.subtasks ? task.subtasks.map(s => ({ ...s })) : []);
     $('#deleteBtn').style.display = 'inline-flex';
   } else {
     $('#modalTitle').textContent = 'New Task';
@@ -56,22 +62,22 @@ function openModal(taskId = null, scheduledHour = null) {
   setTimeout(() => $('#taskName').focus(), 100);
 }
 
-function populateProjectDropdown() {
+export function populateProjectDropdown() {
   const opts = state.projects.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
   $('#taskProject').innerHTML = '<option value="">No Project</option>' + opts;
 }
 
-function toggleProjectRow() {
+export function toggleProjectRow() {
   const cat = $('#taskCategory').value;
   $('#projectRow').style.display = cat === 'work' ? '' : 'none';
   if (cat !== 'work') $('#taskProject').value = '';
 }
 
-function closeModal() {
+export function closeModal() {
   $('#taskModal').classList.remove('active');
 }
 
-function renderSubtasks() {
+export function renderSubtasks() {
   $('#subtasksList').innerHTML = editingSubtasks.map((s, i) => `
     <div class="subtask-item">
       <input type="checkbox" ${s.done ? 'checked' : ''} data-idx="${i}">
@@ -95,7 +101,7 @@ function renderSubtasks() {
   });
 }
 
-function addSubtask() {
+export function addSubtask() {
   const input = $('#subtaskInput');
   const text = input.value.trim();
   if (!text) return;
@@ -106,7 +112,7 @@ function addSubtask() {
 }
 
 // ========== CRUD ==========
-function handleSaveTask(e) {
+export function handleSaveTask(e) {
   e.preventDefault();
   const id = $('#taskId').value;
   const scheduledVal = $('#taskScheduledHour').value;
@@ -144,7 +150,7 @@ function handleSaveTask(e) {
   render();
 }
 
-function handleDeleteTask() {
+export function handleDeleteTask() {
   const id = $('#taskId').value;
   if (!id) return;
   if (!confirm('Delete this task?')) return;
@@ -154,7 +160,7 @@ function handleDeleteTask() {
   render();
 }
 
-function toggleTaskDone(id) {
+export function toggleTaskDone(id) {
   const task = state.tasks.find(t => t.id === id);
   if (!task) return;
   task.status = task.status === 'done' ? 'todo' : 'done';
@@ -166,7 +172,7 @@ function toggleTaskDone(id) {
   render();
 }
 
-function handleAddCategory() {
+export function handleAddCategory() {
   const name = prompt('Category name:');
   if (!name || !name.trim()) return;
   const colors = ['#6366f1', '#22c55e', '#ef4444', '#eab308', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
@@ -181,22 +187,22 @@ function handleAddCategory() {
 // downward drag should close them without aiming at a small x. Bound once on
 // the document and delegated, so every modal — present and future — gets it
 // without registering anything.
-const SHEET_DISMISS = 96;   // drag distance that commits to a close
-const SHEET_SLOP = 8;
+export const SHEET_DISMISS = 96;   // drag distance that commits to a close
+export const SHEET_SLOP = 8;
 
-let sheetEl = null;
-let sheetStartY = 0;
-let sheetStartX = 0;
-let sheetDragging = false;
-let sheetDecided = false;
+export let sheetEl = null;
+export let sheetStartY = 0;
+export let sheetStartX = 0;
+export let sheetDragging = false;
+export let sheetDecided = false;
 
-function sheetIsMobile() {
+export function sheetIsMobile() {
   return window.matchMedia('(max-width: 600px)').matches;
 }
 
 // Reuse each modal's own close button so its cleanup still runs — several of
 // them reset form state on close, which a bare classList.remove would skip.
-function dismissSheet(modal) {
+export function dismissSheet(modal) {
   const overlay = modal.closest('.modal-overlay');
   if (!overlay) return;
   const closeBtn = overlay.querySelector('.modal-close');
@@ -206,7 +212,7 @@ function dismissSheet(modal) {
   else overlay.classList.remove('active');
 }
 
-function bindSheetDrag() {
+export function bindSheetDrag() {
   document.addEventListener('touchstart', (e) => {
     sheetEl = null;
     if (!sheetIsMobile() || e.touches.length !== 1) return;
@@ -260,3 +266,10 @@ function bindSheetDrag() {
   document.addEventListener('touchend', release, { passive: true });
   document.addEventListener('touchcancel', release, { passive: true });
 }
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { SHEET_DISMISS: SHEET_DISMISS, SHEET_SLOP: SHEET_SLOP, addSubtask: addSubtask, bindSheetDrag: bindSheetDrag, closeModal: closeModal, dismissSheet: dismissSheet, handleAddCategory: handleAddCategory, handleDeleteTask: handleDeleteTask, handleSaveTask: handleSaveTask, openModal: openModal, populateProjectDropdown: populateProjectDropdown, populateScheduleHourDropdown: populateScheduleHourDropdown, renderSubtasks: renderSubtasks, sheetIsMobile: sheetIsMobile, toggleProjectRow: toggleProjectRow, toggleTaskDone: toggleTaskDone });

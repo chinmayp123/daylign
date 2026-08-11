@@ -1,10 +1,17 @@
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { populateCategoryDropdowns, render } from './app.js';
+import { appReconciled, saveToFirebase } from './firebase-sync.js';
+import { readPrefs } from './settings-prefs.js';
+import { getTodayStr, showToast } from './utils.js';
+
 // ========== Data Layer ==========
 // New installs and new profiles start EMPTY — no demo tasks or projects. The
 // app used to seed sample tasks so a first-ever run looked alive, but for real
 // accounts that just means someone's brand-new profile opens full of tasks that
 // were never theirs. Only the default categories remain, because creating a
 // task needs at least one category to file under.
-const DEFAULT_CATEGORIES = [
+export const DEFAULT_CATEGORIES = [
   { id: 'work', name: 'Work', color: '#6366f1' },
   { id: 'personal', name: 'Personal', color: '#22c55e' },
   { id: 'health', name: 'Health', color: '#ef4444' },
@@ -14,7 +21,7 @@ const DEFAULT_CATEGORIES = [
 // Parse one localStorage key defensively. A single corrupt/truncated value
 // (partial write, quota failure, aborted sync) must never crash the whole app
 // and make it look like all data is gone — fall back to the default instead.
-function safeParse(key, fallback) {
+export function safeParse(key, fallback) {
   const raw = localStorage.getItem(key);
   if (raw === null || raw === undefined) return fallback;
   try {
@@ -28,7 +35,7 @@ function safeParse(key, fallback) {
   }
 }
 
-function loadData() {
+export function loadData() {
   return {
     tasks: safeParse('tf_tasks', []),
     categories: safeParse('tf_categories', [...DEFAULT_CATEGORIES]),
@@ -56,9 +63,9 @@ function loadData() {
 // whole slice of data from being cached/synced).
 // True once we've told the user their device storage is full, so the warning
 // isn't re-toasted on every keystroke.
-let storageWarned = false;
+export let storageWarned = false;
 
-function writeStateToLocal(d) {
+export function writeStateToLocal(d) {
   localStorage.setItem('tf_tasks', JSON.stringify(d.tasks));
   localStorage.setItem('tf_categories', JSON.stringify(d.categories));
   localStorage.setItem('tf_gym', JSON.stringify(d.gym));
@@ -76,7 +83,7 @@ function writeStateToLocal(d) {
   localStorage.setItem('tf_ai_usage', JSON.stringify(d.aiUsage || {}));
 }
 
-function saveData(data) {
+export function saveData(data) {
   // A full or disabled localStorage used to throw straight out of saveData,
   // which skipped the cloud push below AND aborted the calling handler
   // mid-way — the edit stayed in memory, the UI never re-rendered, and sync
@@ -110,7 +117,7 @@ function saveData(data) {
   if (typeof saveToFirebase === 'function') saveToFirebase(data);
 }
 
-function applyFirebaseData(data) {
+export function applyFirebaseData(data) {
   state.tasks = data.tasks || [];
   state.categories = data.categories || [];
   state.projects = data.projects || [];
@@ -147,14 +154,14 @@ function applyFirebaseData(data) {
 // Calendar and Dashboard are core and always present.
 // The keys stay 'gym'/'cardio' — they name stored data, not the UI. The labels
 // follow the merged Training tab, where these are its two modes.
-const TOGGLEABLE_MODULES = [
+export const TOGGLEABLE_MODULES = [
   { key: 'gym',    label: 'Strength', desc: 'Lifting, body weight, PRs — the Strength side of Training' },
   { key: 'cardio', label: 'Cardio',   desc: 'Running, cycling, swimming, race training' },
   { key: 'diet',   label: 'Diet',     desc: 'Food logging, macros, water' },
 ];
 
 // Missing/true = enabled. Only an explicit false hides a module.
-function moduleEnabled(key) {
+export function moduleEnabled(key) {
   return !state.modules || state.modules[key] !== false;
 }
 
@@ -164,7 +171,7 @@ function moduleEnabled(key) {
 // into their cloud node. New profiles get this instead: no tasks, no demo
 // projects, everything empty. The default categories stay because task
 // creation needs at least one category to file under.
-function starterState() {
+export function starterState() {
   return {
     tasks: [],
     categories: [...DEFAULT_CATEGORIES],
@@ -185,7 +192,7 @@ function starterState() {
 // Reset THIS device's cached data and the in-memory state to a clean slate.
 // Used when creating a fresh profile (so its first push is clean) and by the
 // Settings "start fresh" repair. Keeps the device-local API key and view.
-function resetLocalStateToStarter() {
+export function resetLocalStateToStarter() {
   Object.keys(localStorage)
     .filter(k => k.indexOf('tf_') === 0 && k !== 'tf_anthropic_key' && k !== 'tf_view')
     .forEach(k => localStorage.removeItem(k));
@@ -199,33 +206,55 @@ function resetLocalStateToStarter() {
 // private modes) every getItem throws SecurityError. That used to abort this
 // file at parse time, leaving `state` in the temporal dead zone and taking the
 // whole app down to a blank screen. Fall back to an in-memory session instead.
-let state;
+export let state;
 try {
   state = loadData();
 } catch (e) {
   console.warn('localStorage unavailable — running in memory for this session:', e);
   state = starterState();
 }
-let currentView = localStorage.getItem('tf_view') || 'dashboard';
-let calendarDate = new Date();
-let miniCalDate = new Date();
-let editingSubtasks = [];
-let activeTaskTab = null;
-let activeBoardFilter = null;
-let boardFoldersCollapsed = {};
-let scheduleDate = new Date();
-let calViewMode = 'month';
+export let currentView = localStorage.getItem('tf_view') || 'dashboard';
+export let calendarDate = new Date();
+export let miniCalDate = new Date();
+export let editingSubtasks = [];
+export let activeTaskTab = null;
+export let activeBoardFilter = null;
+export let boardFoldersCollapsed = {};
+export let scheduleDate = new Date();
+export let calViewMode = 'month';
 // Blank set rows for the gym form. Count comes from the device preference
 // (Settings -> Workout defaults) so it is honoured everywhere the form resets.
-function defaultGymSets() {
+export function defaultGymSets() {
   let n = 1;
   try { n = (typeof readPrefs === 'function') ? Math.max(1, Math.min(10, readPrefs().defaultSets || 1)) : 1; } catch (e) { n = 1; }
   const rows = [];
   for (let i = 0; i < n; i++) rows.push({ reps: '', weight: '' });
   return rows;
 }
-let gymSets = [{ reps: '', weight: '' }];
-let gymViewDate = getTodayStr();
-let dietViewDate = getTodayStr();
-let dietBaseMacros = null; // {calories, protein, carbs, fat} per 1 serving
-let activeProject = null; // null = all, or a project id
+export let gymSets = [{ reps: '', weight: '' }];
+export let gymViewDate = getTodayStr();
+export let dietViewDate = getTodayStr();
+export let dietBaseMacros = null; // {calories, protein, carbs, fat} per 1 serving
+export let activeProject = null; // null = all, or a project id
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { DEFAULT_CATEGORIES: DEFAULT_CATEGORIES, TOGGLEABLE_MODULES: TOGGLEABLE_MODULES, applyFirebaseData: applyFirebaseData, defaultGymSets: defaultGymSets, loadData: loadData, moduleEnabled: moduleEnabled, resetLocalStateToStarter: resetLocalStateToStarter, safeParse: safeParse, saveData: saveData, starterState: starterState, writeStateToLocal: writeStateToLocal });
+
+// --- cross-module setters ---
+// Imported bindings are read-only, so other modules cannot assign to these
+// directly the way they did as globals. One setter each, nothing clever.
+export function setActiveBoardFilter(v) { activeBoardFilter = v; }
+export function setActiveProject(v) { activeProject = v; }
+export function setActiveTaskTab(v) { activeTaskTab = v; }
+export function setCalViewMode(v) { calViewMode = v; }
+export function setCurrentView(v) { currentView = v; }
+export function setDietBaseMacros(v) { dietBaseMacros = v; }
+export function setDietViewDate(v) { dietViewDate = v; }
+export function setEditingSubtasks(v) { editingSubtasks = v; }
+export function setGymSets(v) { gymSets = v; }
+export function setGymViewDate(v) { gymViewDate = v; }
+export function setScheduleDate(v) { scheduleDate = v; }

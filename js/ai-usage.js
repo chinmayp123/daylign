@@ -1,3 +1,8 @@
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { saveData, state } from './state.js';
+import { getTodayStr } from './utils.js';
+
 // ========== AI usage tracking ==========
 // Daylign calls Anthropic directly from the browser for photo food logging and
 // voice commands. Anthropic does not return your account's billed spend in the
@@ -12,23 +17,23 @@
 
 // Public per-1M-token rates (USD). Keep in sync with the models the two
 // features use (see FOOD_PHOTO_MODEL / VOICE_MODEL).
-const AI_MODEL_RATES = {
+export const AI_MODEL_RATES = {
   'claude-opus-4-8':  { in: 5.00, out: 25.00 },
   'claude-sonnet-5':  { in: 3.00, out: 15.00 },
   'claude-haiku-4-5': { in: 1.00, out: 5.00 },
 };
 
-function aiRateFor(model) {
+export function aiRateFor(model) {
   return AI_MODEL_RATES[model] || AI_MODEL_RATES['claude-opus-4-8'];
 }
 
-function estimateAiCost(inTok, outTok, model) {
+export function estimateAiCost(inTok, outTok, model) {
   const r = aiRateFor(model);
   return (inTok / 1e6) * r.in + (outTok / 1e6) * r.out;
 }
 
 // Record one call. `usage` is the Anthropic response's usage object.
-function logAiCall(feature, model, usage) {
+export function logAiCall(feature, model, usage) {
   if (!usage) return;
   const inTok = Number(usage.input_tokens) || 0;
   const outTok = Number(usage.output_tokens) || 0;
@@ -50,7 +55,7 @@ function logAiCall(feature, model, usage) {
 }
 
 // Roll the whole log into totals + per-feature + per-day views.
-function aiUsageSummary() {
+export function aiUsageSummary() {
   const log = state.aiUsage || {};
   const totals = { calls: 0, inTok: 0, outTok: 0, cost: 0 };
   const byFeature = {};
@@ -74,19 +79,19 @@ function aiUsageSummary() {
   return { totals, byFeature, byDay };
 }
 
-function fmtUsd(n) {
+export function fmtUsd(n) {
   if (n < 0.01 && n > 0) return '<$0.01';
   return '$' + n.toFixed(2);
 }
-function fmtTok(n) {
+export function fmtTok(n) {
   if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
   if (n >= 1e3) return (n / 1e3).toFixed(1) + 'k';
   return String(n);
 }
 
-const AI_FEATURE_LABELS = { photo: '📷 Photo logging', voice: '🎙️ Voice commands' };
+export const AI_FEATURE_LABELS = { photo: '📷 Photo logging', voice: '🎙️ Voice commands' };
 
-function renderAiUsageReport() {
+export function renderAiUsageReport() {
   const host = document.getElementById('aiUsageReport');
   if (!host) return;
   const { totals, byFeature, byDay } = aiUsageSummary();
@@ -134,3 +139,10 @@ function renderAiUsageReport() {
     <div class="ai-usage-days">${dayRows}</div>
     <p class="ai-usage-note">Estimated from token usage × each model's public rate. For your actual billed total, see console.anthropic.com → Usage.</p>`;
 }
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { AI_FEATURE_LABELS: AI_FEATURE_LABELS, AI_MODEL_RATES: AI_MODEL_RATES, aiRateFor: aiRateFor, aiUsageSummary: aiUsageSummary, estimateAiCost: estimateAiCost, fmtTok: fmtTok, fmtUsd: fmtUsd, logAiCall: logAiCall, renderAiUsageReport: renderAiUsageReport });

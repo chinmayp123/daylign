@@ -1,3 +1,11 @@
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { HEALTH_SHORTCUTS, applyModuleNav, render, switchView } from './app.js';
+import { getGoals } from './diet-goals.js';
+import { currentProfile } from './profile.js';
+import { TOGGLEABLE_MODULES, saveData, state } from './state.js';
+import { esc, showToast } from './utils.js';
+
 // ========== Onboarding ==========
 // A short first-run flow for a newly created profile: welcome, pick the
 // modules you want, set the handful of goals that drive the rings and coach.
@@ -8,13 +16,13 @@
 // state has settled, so a returning person (whose cloud data carries the
 // _onboarded marker) is never walked through it again.
 
-let obStep = 0;
-let obDraft = null;
+export let obStep = 0;
+export let obDraft = null;
 
 // Only onboard a genuinely new profile that has not completed it. getGoals()
 // carries _onboarded once finished/skipped, and it syncs, so every device and
 // every future session sees it.
-function maybeStartOnboarding() {
+export function maybeStartOnboarding() {
   if (!window.__pendingOnboarding) return;
   window.__pendingOnboarding = false;
   const goals = (typeof getGoals === 'function') ? getGoals() : {};
@@ -22,7 +30,7 @@ function maybeStartOnboarding() {
   if (typeof startOnboarding === 'function') startOnboarding();
 }
 
-function onboardSteps() {
+export function onboardSteps() {
   // The goals step is pointless if the person tracks neither fitness nor food,
   // so it drops out when both Gym and Diet are off.
   const wantsGoals = obDraft.modules.gym !== false || obDraft.modules.diet !== false;
@@ -34,7 +42,7 @@ function onboardSteps() {
     .concat(['done']);
 }
 
-function startOnboarding() {
+export function startOnboarding() {
   const host = document.getElementById('onboard');
   if (!host) return;
   obStep = 0;
@@ -47,7 +55,7 @@ function startOnboarding() {
   renderOnboardStep();
 }
 
-function finishOnboarding(save) {
+export function finishOnboarding(save) {
   const host = document.getElementById('onboard');
   if (save) {
     state.modules = obDraft.modules;
@@ -66,13 +74,13 @@ function finishOnboarding(save) {
   if (typeof showToast === 'function' && save) showToast('You’re all set');
 }
 
-function obGo(delta) {
+export function obGo(delta) {
   const steps = onboardSteps();
   obStep = Math.max(0, Math.min(steps.length - 1, obStep + delta));
   renderOnboardStep();
 }
 
-function renderOnboardStep() {
+export function renderOnboardStep() {
   const host = document.getElementById('onboard');
   if (!host) return;
   const steps = onboardSteps();
@@ -159,7 +167,7 @@ function renderOnboardStep() {
   bindOnboardStep(step);
 }
 
-function bindOnboardStep(step) {
+export function bindOnboardStep(step) {
   const host = document.getElementById('onboard');
   const next = document.getElementById('obNext');
   const back = document.getElementById('obBack');
@@ -189,7 +197,7 @@ function bindOnboardStep(step) {
 }
 
 // Read the goals inputs into the draft, tolerating a missing diet step.
-function captureGoalsStep() {
+export function captureGoalsStep() {
   const read = (id, prev) => {
     const el = document.getElementById(id);
     if (!el) return prev;
@@ -200,3 +208,10 @@ function captureGoalsStep() {
   obDraft.goals.calories = read('obCalories', obDraft.goals.calories);
   obDraft.goals.protein = read('obProtein', obDraft.goals.protein);
 }
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { bindOnboardStep: bindOnboardStep, captureGoalsStep: captureGoalsStep, finishOnboarding: finishOnboarding, maybeStartOnboarding: maybeStartOnboarding, obGo: obGo, onboardSteps: onboardSteps, renderOnboardStep: renderOnboardStep, startOnboarding: startOnboarding });

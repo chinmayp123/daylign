@@ -1,23 +1,32 @@
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { logAiCall } from './ai-usage.js';
+import { render, switchView } from './app.js';
+import { rememberFood } from './diet-food.js';
+import { defaultMealForNow, getAnthropicKey } from './food-photo.js';
+import { saveData, state } from './state.js';
+import { formatDate, getTodayStr } from './utils.js';
+
 // ========== Voice / Natural-Language Commands ==========
 // Tap the mic (or type), speak naturally ("log 40 oz water", "add a task to
 // pay rent tomorrow, high priority", "I weighed 163 this morning", "go to
 // gym"). Speech is transcribed on-device via the Web Speech API, then Claude
 // turns the text into structured commands the app runs. Reuses the same
 // Anthropic key stored by the photo feature (localStorage only, never synced).
-const VOICE_MODEL = 'claude-haiku-4-5'; // fast + cheap for simple command parsing
+export const VOICE_MODEL = 'claude-haiku-4-5'; // fast + cheap for simple command parsing
 
-let voiceRecognition = null;
-let voiceListening = false;
+export let voiceRecognition = null;
+export let voiceListening = false;
 
-function voiceKey() {
+export function voiceKey() {
   return (typeof getAnthropicKey === 'function') ? getAnthropicKey() : (localStorage.getItem('tf_anthropic_key') || '');
 }
 
 // 'gym' and 'cardio' stay listed as aliases — switchView maps them onto
 // Training's two modes, so older phrasings keep working.
-const VOICE_VIEWS = ['dashboard', 'tasks', 'board', 'calendar', 'training', 'gym', 'cardio', 'diet', 'settings'];
+export const VOICE_VIEWS = ['dashboard', 'tasks', 'board', 'calendar', 'training', 'gym', 'cardio', 'diet', 'settings'];
 
-const VOICE_SCHEMA = {
+export const VOICE_SCHEMA = {
   type: 'object',
   additionalProperties: false,
   required: ['commands'],
@@ -65,7 +74,7 @@ const VOICE_SCHEMA = {
   },
 };
 
-function voiceContextPrompt() {
+export function voiceContextPrompt() {
   const today = getTodayStr();
   const weekday = new Date(today + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long' });
   const cats = (state.categories || []).map(c => `${c.id} (${c.name})`).join(', ');
@@ -86,7 +95,7 @@ Rules:
 - If a part of the request can't be mapped to any action, emit an unrecognized command with the leftover text.`;
 }
 
-async function runVoiceCommand(text) {
+export async function runVoiceCommand(text) {
   const resultEl = $('#voiceResult');
   const key = voiceKey();
   if (!key) {
@@ -150,7 +159,7 @@ async function runVoiceCommand(text) {
 }
 
 // Run each command, collecting a human summary + an undo fn per successful one.
-function executeVoiceCommands(commands) {
+export function executeVoiceCommands(commands) {
   const resultEl = $('#voiceResult');
   const today = getTodayStr();
   const done = [];
@@ -277,11 +286,11 @@ function executeVoiceCommands(commands) {
 }
 
 // ---- Speech recognition ----
-function voiceSupported() {
+export function voiceSupported() {
   return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 }
 
-function startVoiceListening() {
+export function startVoiceListening() {
   if (!voiceSupported()) return;
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   stopVoiceListening();
@@ -320,14 +329,14 @@ function startVoiceListening() {
   catch (e) { stopVoiceListening(); $('#voiceHint').textContent = 'Type your command below.'; }
 }
 
-function stopVoiceListening() {
+export function stopVoiceListening() {
   if (voiceRecognition) { try { voiceRecognition.stop(); } catch (e) {} voiceRecognition = null; }
   voiceListening = false;
   const micBtn = $('#voiceMicBtn');
   if (micBtn) micBtn.classList.remove('listening');
 }
 
-function openVoicePanel() {
+export function openVoicePanel() {
   const panel = $('#voicePanel');
   if (!panel) return;
   panel.classList.add('active');
@@ -345,7 +354,7 @@ function openVoicePanel() {
   }
 }
 
-function closeVoicePanel() {
+export function closeVoicePanel() {
   stopVoiceListening();
   const panel = $('#voicePanel');
   if (panel) panel.classList.remove('active');
@@ -356,7 +365,7 @@ function closeVoicePanel() {
 // gym date nav. Hide it while scrolling down and bring it back on scroll up,
 // which is the standard behaviour and keeps it out of the way exactly when the
 // user is reading rather than acting.
-function bindFabAutoHide(fab) {
+export function bindFabAutoHide(fab) {
   let lastY = window.scrollY;
   let ticking = false;
   const THRESHOLD = 8; // ignore sub-pixel jitter and rubber-banding
@@ -378,7 +387,7 @@ function bindFabAutoHide(fab) {
   }, { passive: true });
 }
 
-function bindVoiceEvents() {
+export function bindVoiceEvents() {
   const fab = $('#voiceFab');
   if (!fab) return;
   fab.addEventListener('click', openVoicePanel);
@@ -399,3 +408,10 @@ function bindVoiceEvents() {
     if (e.key === 'Enter') { e.preventDefault(); stopVoiceListening(); runVoiceCommand($('#voiceInput').value); }
   });
 }
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { VOICE_MODEL: VOICE_MODEL, VOICE_SCHEMA: VOICE_SCHEMA, VOICE_VIEWS: VOICE_VIEWS, bindFabAutoHide: bindFabAutoHide, bindVoiceEvents: bindVoiceEvents, closeVoicePanel: closeVoicePanel, executeVoiceCommands: executeVoiceCommands, openVoicePanel: openVoicePanel, runVoiceCommand: runVoiceCommand, startVoiceListening: startVoiceListening, stopVoiceListening: stopVoiceListening, voiceContextPrompt: voiceContextPrompt, voiceKey: voiceKey, voiceSupported: voiceSupported });

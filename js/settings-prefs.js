@@ -1,3 +1,7 @@
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { esc, showToast } from './utils.js';
+
 // ========== Device preferences ==========
 // Appearance accent, dashboard card visibility, workout defaults and
 // accessibility options. Stored device-local in one localStorage blob, the
@@ -5,9 +9,9 @@
 // THIS device should look and behave, so syncing them across devices would be
 // wrong, and it keeps them out of the 15-key cloud persistence path entirely.
 
-const PREFS_KEY = 'daylign_prefs';
+export const PREFS_KEY = 'daylign_prefs';
 
-const ACCENTS = [
+export const ACCENTS = [
   { key: 'indigo', label: 'Indigo', hex: '#6d6af8', hover: '#8b8afc' },
   { key: 'violet', label: 'Violet', hex: '#a78bfa', hover: '#c4b5fd' },
   { key: 'blue',   label: 'Blue',   hex: '#5aa5f9', hover: '#84c0fb' },
@@ -18,7 +22,7 @@ const ACCENTS = [
 
 // Dashboard cards the user can hide. Each maps to a real element, so a toggle
 // can never point at something that no longer exists without showing up here.
-const DASH_WIDGETS = [
+export const DASH_WIDGETS = [
   { key: 'brief',     label: 'Daily brief',     sel: '#dailyBrief' },
   { key: 'hero',      label: 'Today hero',      sel: '#todayHero' },
   { key: 'plan',      label: 'Today plan',      sel: '#todayPlan' },
@@ -35,7 +39,7 @@ const DASH_WIDGETS = [
   { key: 'schedule',  label: 'Schedule',        sel: '#scheduleCard' },
 ];
 
-const PREF_DEFAULTS = {
+export const PREF_DEFAULTS = {
   accent: 'indigo',
   hidden: [],          // dashboard widget keys to hide
   restSeconds: 60,     // default rest timer
@@ -46,7 +50,7 @@ const PREF_DEFAULTS = {
   haptics: true,       // tactile feedback where the platform allows it
 };
 
-function readPrefs() {
+export function readPrefs() {
   try {
     const raw = localStorage.getItem(PREFS_KEY);
     if (!raw) return Object.assign({}, PREF_DEFAULTS);
@@ -56,12 +60,12 @@ function readPrefs() {
   }
 }
 
-function writePrefs(p) {
+export function writePrefs(p) {
   try { localStorage.setItem(PREFS_KEY, JSON.stringify(p)); }
   catch (e) { if (typeof showToast === 'function') showToast('Could not save preferences on this device'); }
 }
 
-function setPref(key, value) {
+export function setPref(key, value) {
   const p = readPrefs();
   p[key] = value;
   writePrefs(p);
@@ -71,7 +75,7 @@ function setPref(key, value) {
 
 // Everything is applied by writing CSS variables / classes on the root, so a
 // change takes effect without re-rendering any view.
-function applyPrefs() {
+export function applyPrefs() {
   const p = readPrefs();
   const root = document.documentElement;
 
@@ -106,13 +110,13 @@ function applyPrefs() {
   }
 }
 
-function hexToGlow(hex) {
+export function hexToGlow(hex) {
   const n = parseInt(hex.slice(1), 16);
   return 'rgba(' + ((n >> 16) & 255) + ', ' + ((n >> 8) & 255) + ', ' + (n & 255) + ', 0.16)';
 }
 
 // ---------- UI ----------
-function renderSettingsPrefsPanel() {
+export function renderSettingsPrefsPanel() {
   const p = readPrefs();
 
   const accentHost = document.getElementById('accentPicker');
@@ -145,7 +149,7 @@ function renderSettingsPrefsPanel() {
     });
 }
 
-function bindSettingsPrefs() {
+export function bindSettingsPrefs() {
   const accentHost = document.getElementById('accentPicker');
   if (accentHost) accentHost.addEventListener('click', (e) => {
     const b = e.target.closest('[data-accent]');
@@ -184,3 +188,10 @@ function bindSettingsPrefs() {
 
 // Applied as early as possible so the accent doesn't flash on load.
 applyPrefs();
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { ACCENTS: ACCENTS, DASH_WIDGETS: DASH_WIDGETS, PREFS_KEY: PREFS_KEY, PREF_DEFAULTS: PREF_DEFAULTS, applyPrefs: applyPrefs, bindSettingsPrefs: bindSettingsPrefs, hexToGlow: hexToGlow, readPrefs: readPrefs, renderSettingsPrefsPanel: renderSettingsPrefsPanel, setPref: setPref, writePrefs: writePrefs });

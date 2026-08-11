@@ -1,9 +1,18 @@
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { render } from './app.js';
+import { getGoals } from './diet-goals.js';
+import { getExternalCycleDistance, getExternalRunDistance, getExternalSwimDistance, getExternalWorkouts } from './firebase-sync.js';
+import { latestBodyWeightLbs, offsetDateStr } from './gym.js';
+import { moduleEnabled, saveData, state } from './state.js';
+import { emptyState, esc, formatDate, getTodayStr, showToast, toLocalDateStr } from './utils.js';
+
 // ========== Cardio ==========
 // Endurance training: running, cycling, swimming. Separate from Gym because
 // the unit of work is a session (distance + duration), not sets and reps, and
 // the interesting numbers are pace and weekly volume rather than tonnage.
 
-const CARDIO_TYPES = {
+export const CARDIO_TYPES = {
   run:  { label: 'Run',   icon: '🏃', unit: 'mi', unitLong: 'miles', paceLabel: 'min/mi' },
   ride: { label: 'Ride',  icon: '🚴', unit: 'mi', unitLong: 'miles', paceLabel: 'mph' },
   swim: { label: 'Swim',  icon: '🏊', unit: 'yd', unitLong: 'yards', paceLabel: 'min/100yd' },
@@ -11,24 +20,24 @@ const CARDIO_TYPES = {
 
 // Races people actually train for, in miles. Half marathon is the default
 // because that is what this view was built for.
-const RACE_DISTANCES = {
+export const RACE_DISTANCES = {
   '5k':      { label: '5K',            miles: 3.107 },
   '10k':     { label: '10K',           miles: 6.214 },
   'half':    { label: 'Half Marathon', miles: 13.109 },
   'full':    { label: 'Marathon',      miles: 26.219 },
 };
 
-let cardioDate = getTodayStr();
-let cardioType = 'run';
+export let cardioDate = getTodayStr();
+export let cardioType = 'run';
 // The type tab defaults to whatever you actually train, resolved once per
 // session from your history. Hard-defaulting to 'run' meant a cyclist had to
 // re-pick "Ride" every single time they opened the view.
-let cardioTypeResolved = false;
-let cardioRunType = 'easy'; // intensity for the run being logged
+export let cardioTypeResolved = false;
+export let cardioRunType = 'easy'; // intensity for the run being logged
 
 // Run intensity types (handoff §3), colour-coded. Only apply to runs — a ride
 // or swim just has a distance and a duration.
-const RUN_TYPES = {
+export const RUN_TYPES = {
   easy:     { label: 'Easy',     color: 'var(--green)' },
   tempo:    { label: 'Tempo',    color: 'var(--yellow)' },
   interval: { label: 'Interval', color: 'var(--red)' },
@@ -39,11 +48,11 @@ const RUN_TYPES = {
 // Heart-rate zones (Z1–Z5). Thresholds are % of an estimated max HR (220−age),
 // falling back to age 30 when we don't know it. The zone bar highlights the
 // zone a logged avg HR lands in — a rough but useful read of how hard it was.
-function runnerMaxHr() {
+export function runnerMaxHr() {
   const age = (state.goals && Number(state.goals.age)) || (typeof getGoals === 'function' && Number(getGoals().age)) || 30;
   return 220 - (age > 0 && age < 100 ? age : 30);
 }
-function hrZone(avgHr) {
+export function hrZone(avgHr) {
   if (!(avgHr > 0)) return 0;
   const pct = avgHr / runnerMaxHr();
   if (pct < 0.6) return 1;
@@ -52,10 +61,10 @@ function hrZone(avgHr) {
   if (pct < 0.9) return 4;
   return 5;
 }
-const ZONE_COLORS = ['', 'var(--text-muted)', 'var(--blue)', 'var(--green)', 'var(--yellow)', 'var(--red)'];
-const ZONE_NAMES = ['', 'Recovery', 'Easy', 'Aerobic', 'Threshold', 'VO₂ max'];
+export const ZONE_COLORS = ['', 'var(--text-muted)', 'var(--blue)', 'var(--green)', 'var(--yellow)', 'var(--red)'];
+export const ZONE_NAMES = ['', 'Recovery', 'Easy', 'Aerobic', 'Threshold', 'VO₂ max'];
 
-function cardioGoals() {
+export function cardioGoals() {
   const g = state.goals || {};
   return {
     raceKey: RACE_DISTANCES[g.raceKey] ? g.raceKey : 'half',
@@ -64,14 +73,14 @@ function cardioGoals() {
   };
 }
 
-function cardioSessionsFor(dateStr) {
+export function cardioSessionsFor(dateStr) {
   return (state.cardio || []).filter(s => s.date === dateStr);
 }
 
 // ---------- Pace ----------
 // Each discipline reports the number its athletes actually talk in: runners
 // think in minutes per mile, cyclists in mph, swimmers in minutes per 100yd.
-function paceFor(session) {
+export function paceFor(session) {
   const dist = Number(session.distance) || 0;
   const mins = Number(session.duration) || 0;
   if (dist <= 0 || mins <= 0) return null;
@@ -84,7 +93,7 @@ function paceFor(session) {
   return { value: perMile, label: 'min/mi', text: formatPaceMinutes(perMile) + ' /mi' };
 }
 
-function formatPaceMinutes(mins) {
+export function formatPaceMinutes(mins) {
   if (!isFinite(mins) || mins <= 0) return '—';
   const m = Math.floor(mins);
   const s = Math.round((mins - m) * 60);
@@ -93,7 +102,7 @@ function formatPaceMinutes(mins) {
   return m + ':' + String(s).padStart(2, '0');
 }
 
-function formatDuration(mins) {
+export function formatDuration(mins) {
   const total = Math.round(Number(mins) || 0);
   const h = Math.floor(total / 60);
   const m = total % 60;
@@ -104,7 +113,7 @@ function formatDuration(mins) {
 // MET values scale with effort, so a 7:00/mi run does not score the same as a
 // 12:00/mi shuffle. These linear fits track the Compendium of Physical
 // Activities closely across the range people actually train in.
-function cardioMet(session) {
+export function cardioMet(session) {
   const pace = paceFor(session);
   // No pace means no distance was logged (common for indoor bikes). The work
   // still happened, so fall back to a moderate MET for the discipline rather
@@ -126,7 +135,7 @@ function cardioMet(session) {
   return Math.max(6, Math.min(19, 1.65 * mph));
 }
 
-function cardioBurnForDate(dateStr) {
+export function cardioBurnForDate(dateStr) {
   const kg = latestBodyWeightLbs() * 0.4536;
   return Math.round(cardioSessionsFor(dateStr).reduce((cal, s) => {
     return cal + cardioMet(s) * kg * ((Number(s.duration) || 0) / 60);
@@ -134,13 +143,13 @@ function cardioBurnForDate(dateStr) {
 }
 
 // ---------- Weekly volume ----------
-function cardioWeekStart(dateStr) {
+export function cardioWeekStart(dateStr) {
   const d = new Date(dateStr + 'T12:00:00');
   d.setDate(d.getDate() - d.getDay()); // weeks start Sunday, matching the calendar
   return toLocalDateStr(d);
 }
 
-function cardioWeekStats(weekStartStr) {
+export function cardioWeekStats(weekStartStr) {
   const start = new Date(weekStartStr + 'T12:00:00');
   const days = [];
   for (let i = 0; i < 7; i++) {
@@ -171,7 +180,7 @@ function cardioWeekStats(weekStartStr) {
 // across race distances, and honest about its limits — it assumes you have
 // actually trained for the longer distance, which is exactly what the weekly
 // mileage check below is for.
-function predictRaceTime(raceMiles) {
+export function predictRaceTime(raceMiles) {
   const runs = (state.cardio || [])
     .filter(s => s.type === 'run' && Number(s.distance) >= 3 && Number(s.duration) > 0)
     .sort((a, b) => (a.date < b.date ? 1 : -1))
@@ -187,7 +196,7 @@ function predictRaceTime(raceMiles) {
   return best;
 }
 
-function formatRaceTime(mins) {
+export function formatRaceTime(mins) {
   const total = Math.round(mins * 60);
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
@@ -196,7 +205,7 @@ function formatRaceTime(mins) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-function daysUntil(dateStr) {
+export function daysUntil(dateStr) {
   if (!dateStr) return null;
   const race = new Date(dateStr + 'T12:00:00');
   const today = new Date(getTodayStr() + 'T12:00:00');
@@ -207,7 +216,7 @@ function daysUntil(dateStr) {
 // Deliberately few rules, each tied to a number on screen. Endurance advice is
 // mostly "build gradually and run long once a week"; anything more prescriptive
 // would be guessing at a plan we cannot see.
-function cardioCoach() {
+export function cardioCoach() {
   const g = cardioGoals();
   const race = RACE_DISTANCES[g.raceKey];
   const thisWeek = cardioWeekStats(cardioWeekStart(getTodayStr()));
@@ -261,7 +270,7 @@ function cardioCoach() {
 
 // ---------- Apple Watch workouts (imported from Apple Health) ----------
 // Map Apple's workout activity name to one of our cardio types.
-function mapWatchWorkoutType(t) {
+export function mapWatchWorkoutType(t) {
   const s = String(t || '').toLowerCase();
   if (s.indexOf('run') !== -1) return 'run';
   if (s.indexOf('cycl') !== -1 || s.indexOf('bike') !== -1 || s.indexOf('ride') !== -1) return 'ride';
@@ -273,13 +282,13 @@ function mapWatchWorkoutType(t) {
 // A watch workout counts as already in the log if a cardio session on that day
 // matches its type and distance — stops a hand-logged run and its watch copy
 // both landing in the log.
-function watchWorkoutImported(dateStr, w, ctype) {
+export function watchWorkoutImported(dateStr, w, ctype) {
   const dist = Number(w.distance) || 0;
   return cardioSessionsFor(dateStr).some(s =>
     s.type === ctype && Math.abs((Number(s.distance) || 0) - dist) < Math.max(0.15, dist * 0.05));
 }
 
-function renderCardioWatchWorkouts() {
+export function renderCardioWatchWorkouts() {
   const wrap = $('#cardioWatchWorkouts');
   if (!wrap) return;
   const workouts = (typeof getExternalWorkouts === 'function') ? getExternalWorkouts(cardioDate) : [];
@@ -313,7 +322,7 @@ function renderCardioWatchWorkouts() {
     b.addEventListener('click', () => importWatchWorkout(cardioDate, workouts[Number(b.dataset.ww)])));
 }
 
-function importWatchWorkout(dateStr, w) {
+export function importWatchWorkout(dateStr, w) {
   const ctype = mapWatchWorkoutType(w.type);
   if (['run', 'ride', 'swim'].indexOf(ctype) === -1) { showToast('Only run, ride and swim import to Cardio'); return; }
   state.cardio = state.cardio || [];
@@ -332,7 +341,7 @@ function importWatchWorkout(dateStr, w) {
 }
 
 // ---------- Render ----------
-function renderCardio() {
+export function renderCardio() {
   const dateInput = $('#cardioDate');
   if (!dateInput) return;
   dateInput.value = cardioDate;
@@ -371,7 +380,7 @@ function renderCardio() {
   renderCardioCoach();
 }
 
-function renderCardioTypeTabs() {
+export function renderCardioTypeTabs() {
   const wrap = $('#cardioTypeTabs');
   if (!wrap) return;
   wrap.innerHTML = Object.keys(CARDIO_TYPES).map(t => {
@@ -395,7 +404,7 @@ function renderCardioTypeTabs() {
 }
 
 // Intensity chips for the run being logged.
-function renderCardioRunTypes() {
+export function renderCardioRunTypes() {
   const wrap = $('#cardioRunTypes');
   if (!wrap) return;
   wrap.innerHTML = Object.keys(RUN_TYPES).map(k => {
@@ -407,7 +416,7 @@ function renderCardioRunTypes() {
 }
 
 // Live pace readout + "Save run · X.X mi" button echo, updated as you type.
-function updateCardioSaveLabel() {
+export function updateCardioSaveLabel() {
   const dist = parseFloat(($('#cardioDistance') || {}).value) || 0;
   const dur = parseFloat(($('#cardioDuration') || {}).value) || 0;
   const paceEl = $('#cardioPace');
@@ -424,7 +433,7 @@ function updateCardioSaveLabel() {
 }
 
 // Z1–Z5 bar; highlights the zone the entered avg HR lands in.
-function renderCardioZoneBar() {
+export function renderCardioZoneBar() {
   const wrap = $('#cardioZoneBar');
   if (!wrap) return;
   const hr = parseFloat(($('#cardioHr') || {}).value) || 0;
@@ -443,7 +452,7 @@ function renderCardioZoneBar() {
 
 // Cross-check against what the watch recorded, without ever creating a session
 // from it — double counting a run is worse than not importing it.
-function renderCardioWatchChip() {
+export function renderCardioWatchChip() {
   const chip = $('#cardioWatchChip');
   if (!chip) return;
   const getters = {
@@ -464,7 +473,7 @@ function renderCardioWatchChip() {
     (logged > 0 ? ` · you logged ${Math.round(logged * 100) / 100} ${unit}` : ` · <button type="button" class="cardio-watch-fill" data-fill="${rounded}">use this</button>`);
 }
 
-function renderCardioDayList() {
+export function renderCardioDayList() {
   const list = $('#cardioDayList');
   if (!list) return;
   const sessions = cardioSessionsFor(cardioDate);
@@ -500,7 +509,7 @@ function renderCardioDayList() {
   }).join('') + `<div class="cardio-day-burn">≈ ${burn} cal burned</div>`;
 }
 
-function renderCardioWeek() {
+export function renderCardioWeek() {
   const wrap = $('#cardioWeekStats');
   if (!wrap) return;
   const g = cardioGoals();
@@ -535,7 +544,7 @@ function renderCardioWeek() {
     </div>`;
 }
 
-function renderCardioRace() {
+export function renderCardioRace() {
   const wrap = $('#cardioRace');
   if (!wrap) return;
   const g = cardioGoals();
@@ -565,7 +574,7 @@ function renderCardioRace() {
     </div>`;
 }
 
-function renderCardioCoach() {
+export function renderCardioCoach() {
   const wrap = $('#cardioCoach');
   if (!wrap) return;
   const recs = cardioCoach();
@@ -577,7 +586,7 @@ function renderCardioCoach() {
 }
 
 // ---------- Actions ----------
-function addCardioSession() {
+export function addCardioSession() {
   const distEl = $('#cardioDistance');
   const durEl = $('#cardioDuration');
   const notesEl = $('#cardioNotes');
@@ -624,13 +633,13 @@ function addCardioSession() {
   render();
 }
 
-function deleteCardioSession(id) {
+export function deleteCardioSession(id) {
   state.cardio = (state.cardio || []).filter(s => s.id !== id);
   saveData(state);
   render();
 }
 
-function bindCardioEvents() {
+export function bindCardioEvents() {
   // Cardio's markup now lives in the Cardio pane of the merged Training view.
   const view = $('#trainingCardio');
   if (!view) return;
@@ -728,7 +737,7 @@ function bindCardioEvents() {
 
 // The session you actually repeat: most-used type, then the most common
 // duration/distance logged for it. Null until there's something to learn from.
-function cardioUsual() {
+export function cardioUsual() {
   const log = (state.cardio || []).filter(s => s && s.type && Number(s.duration) > 0);
   if (!log.length) return null;
   const recent = log.slice(-30);
@@ -751,7 +760,7 @@ function cardioUsual() {
 
 // Consecutive days with a session. Today not being logged yet doesn't break
 // the streak — it only breaks once a full day is missed.
-function cardioStreak() {
+export function cardioStreak() {
   const days = new Set((state.cardio || []).filter(s => s && s.date).map(s => s.date));
   if (!days.size) return 0;
   const today = getTodayStr();
@@ -762,7 +771,7 @@ function cardioStreak() {
   return n;
 }
 
-function logUsualCardio(dateStr) {
+export function logUsualCardio(dateStr) {
   const u = cardioUsual();
   if (!u) return;
   state.cardio = state.cardio || [];
@@ -782,7 +791,7 @@ function logUsualCardio(dateStr) {
   render();
 }
 
-function renderCardioQuick() {
+export function renderCardioQuick() {
   const host = document.getElementById('cardioQuick');
   if (!host) return;
   const u = cardioUsual();
@@ -829,7 +838,7 @@ function renderCardioQuick() {
 // Compact one-tap version for the Today dashboard. A daily habit that lives
 // behind a nav tab doesn't get logged — this puts it where you already look.
 // Respects the Cardio module toggle, like every other cross-view surface.
-function renderTodayCardio() {
+export function renderTodayCardio() {
   const host = document.getElementById('todayCardio');
   if (!host) return;
   if (typeof moduleEnabled === 'function' && !moduleEnabled('cardio')) { host.innerHTML = ''; return; }
@@ -859,3 +868,10 @@ function renderTodayCardio() {
   const btn = document.getElementById('todayCardioBtn');
   if (btn) btn.addEventListener('click', () => logUsualCardio(getTodayStr()));
 }
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { CARDIO_TYPES: CARDIO_TYPES, RACE_DISTANCES: RACE_DISTANCES, RUN_TYPES: RUN_TYPES, ZONE_COLORS: ZONE_COLORS, ZONE_NAMES: ZONE_NAMES, addCardioSession: addCardioSession, bindCardioEvents: bindCardioEvents, cardioBurnForDate: cardioBurnForDate, cardioCoach: cardioCoach, cardioGoals: cardioGoals, cardioMet: cardioMet, cardioSessionsFor: cardioSessionsFor, cardioStreak: cardioStreak, cardioUsual: cardioUsual, cardioWeekStart: cardioWeekStart, cardioWeekStats: cardioWeekStats, daysUntil: daysUntil, deleteCardioSession: deleteCardioSession, formatDuration: formatDuration, formatPaceMinutes: formatPaceMinutes, formatRaceTime: formatRaceTime, hrZone: hrZone, importWatchWorkout: importWatchWorkout, logUsualCardio: logUsualCardio, mapWatchWorkoutType: mapWatchWorkoutType, paceFor: paceFor, predictRaceTime: predictRaceTime, renderCardio: renderCardio, renderCardioCoach: renderCardioCoach, renderCardioDayList: renderCardioDayList, renderCardioQuick: renderCardioQuick, renderCardioRace: renderCardioRace, renderCardioRunTypes: renderCardioRunTypes, renderCardioTypeTabs: renderCardioTypeTabs, renderCardioWatchChip: renderCardioWatchChip, renderCardioWatchWorkouts: renderCardioWatchWorkouts, renderCardioWeek: renderCardioWeek, renderCardioZoneBar: renderCardioZoneBar, renderTodayCardio: renderTodayCardio, runnerMaxHr: runnerMaxHr, updateCardioSaveLabel: updateCardioSaveLabel, watchWorkoutImported: watchWorkoutImported });

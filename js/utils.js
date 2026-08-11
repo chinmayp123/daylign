@@ -1,23 +1,28 @@
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { openModal } from './modal.js';
+import { readPrefs } from './settings-prefs.js';
+
 // ========== DOM Helpers ==========
-const $ = (sel) => document.querySelector(sel);
-const $$ = (sel) => document.querySelectorAll(sel);
+export const $ = (sel) => document.querySelector(sel);
+export const $$ = (sel) => document.querySelectorAll(sel);
 
 // ========== Utility Functions ==========
-function toLocalDateStr(d) {
+export function toLocalDateStr(d) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
-function getTodayStr() {
+export function getTodayStr() {
   return toLocalDateStr(new Date());
 }
 
-function esc(str) {
+export function esc(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
 }
 
-function formatDate(dateStr) {
+export function formatDate(dateStr) {
   if (!dateStr) return '';
   const d = new Date(dateStr + 'T00:00:00');
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -28,8 +33,8 @@ function formatDate(dateStr) {
 // in any of the app's ~230 listeners was completely invisible — the UI would
 // just stop responding with no explanation. Surface it instead, and keep the
 // last few for Settings diagnostics.
-const recentErrors = [];
-function recordError(kind, detail) {
+export const recentErrors = [];
+export function recordError(kind, detail) {
   const entry = { kind, detail: String(detail || '').slice(0, 300), at: new Date().toISOString() };
   recentErrors.push(entry);
   if (recentErrors.length > 10) recentErrors.shift();
@@ -49,7 +54,7 @@ window.addEventListener('unhandledrejection', (e) => {
 // re-doing their CSS and risking layout regressions across every view, so
 // instead this promotes them centrally after each render: they become
 // focusable, announce as buttons, and respond to Enter/Space.
-const KEYBOARD_CLICKABLE = [
+export const KEYBOARD_CLICKABLE = [
   '.task-row', '.task-check', '.board-card', '.board-folder-header',
   '.archived-toggle', '.health-tile', '.my-task-card', '.my-task-check',
   '.schedule-event', '.diet-food-entry-main', '.recent-meal-header',
@@ -57,7 +62,7 @@ const KEYBOARD_CLICKABLE = [
   '.today-sched-check', '.project-item', '.category-item', '.cal-day',
 ].join(', ');
 
-function enhanceKeyboardAccess() {
+export function enhanceKeyboardAccess() {
   document.querySelectorAll(KEYBOARD_CLICKABLE).forEach(el => {
     const tag = el.tagName;
     if (tag === 'BUTTON' || tag === 'A' || tag === 'INPUT') return;
@@ -84,7 +89,7 @@ document.addEventListener('keydown', (e) => {
 // information with a glyph, a reason, and (where one exists) the action that
 // fills the space — so an empty screen reads as "here's what to do next"
 // rather than "something is missing".
-const EMPTY_ICONS = {
+export const EMPTY_ICONS = {
   tasks: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>',
   calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
   dumbbell: '<path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/>',
@@ -96,7 +101,7 @@ const EMPTY_ICONS = {
 };
 
 // opts: { icon, title, hint, actionLabel, action }
-function emptyState(opts) {
+export function emptyState(opts) {
   const o = opts || {};
   const glyph = EMPTY_ICONS[o.icon] || EMPTY_ICONS.tasks;
   return `
@@ -128,7 +133,7 @@ document.addEventListener('click', (e) => {
 // Sum calories/protein/carbs/fat across a list of food-log entries. Missing
 // macros count as 0. Returns a fresh totals object. Used everywhere the diet
 // view tallies a day, a meal, or a history row.
-function sumMacros(entries) {
+export function sumMacros(entries) {
   return (entries || []).reduce((acc, e) => {
     acc.calories += (e.calories || 0);
     acc.protein += (e.protein || 0);
@@ -139,7 +144,7 @@ function sumMacros(entries) {
 }
 
 // Animate a numeric element from its current value to a target (count-up/down)
-function animateNumber(el, target) {
+export function animateNumber(el, target) {
   if (!el) return;
   target = Math.round(Number(target) || 0);
   const from = parseInt(el.textContent, 10) || 0;
@@ -160,7 +165,7 @@ function animateNumber(el, target) {
 }
 
 // Lightweight toast notification (bottom-right, auto-dismisses)
-function showToast(message) {
+export function showToast(message) {
   let host = document.getElementById('toastHost');
   if (!host) {
     host = document.createElement('div');
@@ -181,7 +186,7 @@ function showToast(message) {
 }
 
 // ========== US Holidays ==========
-function getUSHolidays(year) {
+export function getUSHolidays(year) {
   const holidays = [];
   holidays.push({ date: `${year}-01-01`, name: "New Year's Day" });
   holidays.push({ date: `${year}-06-19`, name: 'Juneteenth' });
@@ -197,7 +202,7 @@ function getUSHolidays(year) {
   return holidays;
 }
 
-function getNthWeekday(year, month, weekday, n) {
+export function getNthWeekday(year, month, weekday, n) {
   let count = 0;
   for (let d = 1; d <= 31; d++) {
     const date = new Date(year, month, d);
@@ -212,7 +217,7 @@ function getNthWeekday(year, month, weekday, n) {
   return null;
 }
 
-function getLastWeekday(year, month, weekday) {
+export function getLastWeekday(year, month, weekday) {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   for (let d = daysInMonth; d >= 1; d--) {
     const date = new Date(year, month, d);
@@ -234,15 +239,15 @@ function getLastWeekday(year, month, weekday) {
 // never promised, so it is written to fail silently and nothing is built on
 // the assumption that it works — if it does nothing, the app is merely as
 // quiet as it was before.
-let hapticSwitch = null;
-let hapticsProbed = false;
+export let hapticSwitch = null;
+export let hapticsProbed = false;
 
-function hapticsEnabled() {
+export function hapticsEnabled() {
   try { return typeof readPrefs !== 'function' || readPrefs().haptics !== false; }
   catch (e) { return true; }
 }
 
-function ensureHapticSwitch() {
+export function ensureHapticSwitch() {
   if (hapticsProbed) return hapticSwitch;
   hapticsProbed = true;
   try {
@@ -274,9 +279,9 @@ function ensureHapticSwitch() {
 // Call from inside a user gesture. Patterns follow the usual convention:
 // 'light' for a confirmation, 'success' for something completed, 'warn' for a
 // rejected action.
-const HAPTIC_PATTERNS = { light: 10, success: [12, 40, 18], warn: [26, 60, 26] };
+export const HAPTIC_PATTERNS = { light: 10, success: [12, 40, 18], warn: [26, 60, 26] };
 
-function haptic(kind) {
+export function haptic(kind) {
   if (!hapticsEnabled()) return;
   try {
     if (typeof navigator.vibrate === 'function') {
@@ -287,3 +292,10 @@ function haptic(kind) {
     if (proxy) proxy.click(); // iOS only ever gives one flavour of tick
   } catch (e) { /* haptics are a nicety — never let them surface */ }
 }
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { $: $, $$: $$, EMPTY_ICONS: EMPTY_ICONS, HAPTIC_PATTERNS: HAPTIC_PATTERNS, KEYBOARD_CLICKABLE: KEYBOARD_CLICKABLE, animateNumber: animateNumber, emptyState: emptyState, enhanceKeyboardAccess: enhanceKeyboardAccess, ensureHapticSwitch: ensureHapticSwitch, esc: esc, formatDate: formatDate, getLastWeekday: getLastWeekday, getNthWeekday: getNthWeekday, getTodayStr: getTodayStr, getUSHolidays: getUSHolidays, haptic: haptic, hapticsEnabled: hapticsEnabled, recentErrors: recentErrors, recordError: recordError, showToast: showToast, sumMacros: sumMacros, toLocalDateStr: toLocalDateStr });

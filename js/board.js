@@ -1,5 +1,13 @@
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { render } from './app.js';
+import { openModal } from './modal.js';
+import { activeBoardFilter, activeProject, boardFoldersCollapsed, saveData, setActiveBoardFilter, state } from './state.js';
+import { isArchived } from './tasks.js';
+import { emptyState, getTodayStr } from './utils.js';
+
 // ========== Board View ==========
-function renderBoard() {
+export function renderBoard() {
   const cats = state.categories.filter(c =>
     state.tasks.some(t => t.category === c.id)
   );
@@ -14,7 +22,7 @@ function renderBoard() {
 
   $$('#boardFilters .my-tasks-tab').forEach(tab => {
     tab.addEventListener('click', () => {
-      activeBoardFilter = tab.dataset.cat === 'all' ? null : tab.dataset.cat;
+      setActiveBoardFilter(tab.dataset.cat === 'all' ? null : tab.dataset.cat);
       renderBoard();
     });
   });
@@ -137,8 +145,8 @@ function renderBoard() {
 // listeners per column on EVERY render (9 per render, and render() fires on
 // every save). Bound once instead; the cards inside are re-bound per render
 // because they genuinely are replaced.
-let boardDropBound = false;
-function bindBoardDropTargets() {
+export let boardDropBound = false;
+export function bindBoardDropTargets() {
   if (boardDropBound) return;
   boardDropBound = true;
   $$('.column-tasks').forEach(col => {
@@ -160,3 +168,10 @@ function bindBoardDropTargets() {
     });
   });
 }
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { bindBoardDropTargets: bindBoardDropTargets, renderBoard: renderBoard });

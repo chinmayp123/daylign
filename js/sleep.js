@@ -1,3 +1,11 @@
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { renderDashboard } from './dashboard.js';
+import { getGoals } from './diet-goals.js';
+import { getExternalExerciseMinutes, getExternalSleep } from './firebase-sync.js';
+import { moduleEnabled, saveData, state } from './state.js';
+import { getTodayStr, showToast, toLocalDateStr } from './utils.js';
+
 // ========== Sleep + Readiness ==========
 // design_handoff_daylign_v2 section 6, ref 9c. Sleep was the missing input: the
 // app already read Apple Health sleep but nothing ever wrote it, and there was
@@ -8,27 +16,27 @@
 // state.sleep = { '<date>': { hours, quality } } where date is the WAKE-UP
 // morning, matching how getExternalSleep keys Apple Health data.
 
-const SLEEP_QUALITIES = [
+export const SLEEP_QUALITIES = [
   { key: 'poor',  label: 'Poor',  icon: '😴' },
   { key: 'good',  label: 'Good',  icon: '🙂' },
   { key: 'great', label: 'Great', icon: '⚡' },
 ];
 
 // Draft state for the stepper, so nothing is written until Save is pressed.
-let sleepDraftHours = null;
+export let sleepDraftHours = null;
 // True once the user has actually adjusted the stepper or picked a quality —
 // until then the card mirrors the watch/logged value instead of a stale draft.
-let sleepDraftDirty = false;
-let sleepDraftQuality = null;
+export let sleepDraftDirty = false;
+export let sleepDraftQuality = null;
 
-function sleepLog() {
+export function sleepLog() {
   if (!state.sleep || typeof state.sleep !== 'object') state.sleep = {};
   return state.sleep;
 }
 
 // Hours for a morning, preferring a hand-logged night over the watch: if
 // someone bothered to correct it, that is the better number.
-function sleepHoursFor(dateStr) {
+export function sleepHoursFor(dateStr) {
   const entry = sleepLog()[dateStr];
   if (entry && Number(entry.hours) > 0) return Number(entry.hours);
   if (typeof getExternalSleep === 'function') {
@@ -38,21 +46,21 @@ function sleepHoursFor(dateStr) {
   return null;
 }
 
-function sleepSourceFor(dateStr) {
+export function sleepSourceFor(dateStr) {
   const entry = sleepLog()[dateStr];
   if (entry && Number(entry.hours) > 0) return 'logged';
   if (typeof getExternalSleep === 'function' && getExternalSleep(dateStr) !== null) return 'watch';
   return null;
 }
 
-function formatSleepHours(h) {
+export function formatSleepHours(h) {
   const whole = Math.floor(h);
   const mins = Math.round((h - whole) * 60);
   return `${whole}:${String(mins).padStart(2, '0')}`;
 }
 
 // The last 7 mornings ending today, oldest first.
-function sleepRecentNights() {
+export function sleepRecentNights() {
   const out = [];
   const today = getTodayStr();
   for (let i = 6; i >= 0; i--) {
@@ -64,7 +72,7 @@ function sleepRecentNights() {
   return out;
 }
 
-function sleepAverage(nights) {
+export function sleepAverage(nights) {
   const withData = nights.filter(n => n.hours !== null);
   if (!withData.length) return null;
   return withData.reduce((n, x) => n + x.hours, 0) / withData.length;
@@ -90,11 +98,11 @@ function sleepAverage(nights) {
 // 95 on five hours no matter how usual five hours has become for you.
 
 // Nights of history used to establish "your normal".
-const SLEEP_BASELINE_NIGHTS = 14;
+export const SLEEP_BASELINE_NIGHTS = 14;
 
 // Median rather than mean — one 11-hour catch-up weekend should not redefine
 // your baseline and make every normal night afterwards look like a deficit.
-function sleepBaselineHours() {
+export function sleepBaselineHours() {
   const today = getTodayStr();
   const vals = [];
   for (let i = 1; i <= SLEEP_BASELINE_NIGHTS; i++) {
@@ -112,9 +120,9 @@ function sleepBaselineHours() {
 // Watch exercise minutes that count as a training day on their own. Set above
 // the incidental-movement band — a brisk walk to the shop registers ten or so
 // minutes and is not a session.
-const WATCH_TRAINING_MINUTES = 20;
+export const WATCH_TRAINING_MINUTES = 20;
 
-function readinessBreakdown() {
+export function readinessBreakdown() {
   const goalHours = (typeof getGoals === 'function' && getGoals().sleep) || 8;
   const nights = sleepRecentNights().slice(-3).filter(n => n.hours !== null);
   if (!nights.length) return null; // nothing to go on — say so rather than guess
@@ -219,12 +227,12 @@ function readinessBreakdown() {
   };
 }
 
-function readinessScore() {
+export function readinessScore() {
   const b = readinessBreakdown();
   return b ? b.score : null;
 }
 
-function readinessVerdict(score) {
+export function readinessVerdict(score) {
   if (score >= 75) return { label: 'Good to go', tone: 'good' };
   if (score >= 55) return { label: 'Steady', tone: 'warn' };
   return { label: 'Ease off', tone: 'bad' };
@@ -233,7 +241,7 @@ function readinessVerdict(score) {
 // Names the actual driver rather than asserting one. Saying "you have been
 // training heavy" when the real problem is sleep sends people to fix the wrong
 // thing — and the load half is only meaningful once there is history for it.
-function readinessAdvice(b) {
+export function readinessAdvice(b) {
   if (!b) return '';
   const { score, avgHours, goalHours, shortSleep, loadHigh, baselineHours, vsBaseline, cappedByDebt } = b;
   const avgTxt = formatSleepHours(avgHours);
@@ -271,7 +279,7 @@ function readinessAdvice(b) {
 }
 
 // ---------- Rendering ----------
-function renderSleepCard() {
+export function renderSleepCard() {
   const host = document.getElementById('sleepCard');
   if (!host) return;
   if (typeof moduleEnabled === 'function' && !moduleEnabled('gym') && !moduleEnabled('cardio')) {
@@ -344,7 +352,7 @@ function renderSleepCard() {
     </div>`;
 }
 
-function renderReadinessCard() {
+export function renderReadinessCard() {
   const host = document.getElementById('readinessCard');
   if (!host) return;
   if (typeof moduleEnabled === 'function' && !moduleEnabled('gym') && !moduleEnabled('cardio')) {
@@ -382,14 +390,14 @@ function renderReadinessCard() {
     </div>`;
 }
 
-function renderSleep() {
+export function renderSleep() {
   renderSleepCard();
   renderReadinessCard();
 }
 
 // Delegated on document: both cards are re-rendered wholesale by render(), so
 // listeners bound to their innards would not survive.
-function bindSleepEvents() {
+export function bindSleepEvents() {
   document.addEventListener('click', e => {
     const step = e.target.closest('[data-sleep-step]');
     if (step) {
@@ -421,3 +429,10 @@ function bindSleepEvents() {
     }
   });
 }
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { SLEEP_BASELINE_NIGHTS: SLEEP_BASELINE_NIGHTS, SLEEP_QUALITIES: SLEEP_QUALITIES, WATCH_TRAINING_MINUTES: WATCH_TRAINING_MINUTES, bindSleepEvents: bindSleepEvents, formatSleepHours: formatSleepHours, readinessAdvice: readinessAdvice, readinessBreakdown: readinessBreakdown, readinessScore: readinessScore, readinessVerdict: readinessVerdict, renderReadinessCard: renderReadinessCard, renderSleep: renderSleep, renderSleepCard: renderSleepCard, sleepAverage: sleepAverage, sleepBaselineHours: sleepBaselineHours, sleepHoursFor: sleepHoursFor, sleepLog: sleepLog, sleepRecentNights: sleepRecentNights, sleepSourceFor: sleepSourceFor });

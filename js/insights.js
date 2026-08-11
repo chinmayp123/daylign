@@ -1,3 +1,13 @@
+// Imports generated from the identifier graph during the module
+// migration. See the window shim at the foot of this file.
+import { getGoals } from './diet-goals.js';
+import { getExternalExerciseMinutes, getExternalSteps } from './firebase-sync.js';
+import { isFullSession, muscleGroupFor, offsetDateStr } from './gym.js';
+import { sleepHoursFor } from './sleep.js';
+import { state } from './state.js';
+import { MUSCLE_LABEL, MUSCLE_ORDER, setsOf } from './strength.js';
+import { esc, formatDate, getTodayStr, showToast } from './utils.js';
+
 // ========== Insights ==========
 // Cross-domain analytics over whatever history exists. Every chart is drawn as
 // inline SVG or height-% bars to match the rest of the app (no chart library,
@@ -8,31 +18,31 @@
 // same window because the log starts in April — the range chips say so rather
 // than pretending otherwise.
 
-let insightsRange = 'month'; // 'week' | 'month' | 'year' | 'all'
+export let insightsRange = 'month'; // 'week' | 'month' | 'year' | 'all'
 
-const INSIGHT_RANGES = [
+export const INSIGHT_RANGES = [
   { key: 'week',  label: 'Week',  days: 7 },
   { key: 'month', label: 'Month', days: 30 },
   { key: 'year',  label: 'Year',  days: 365 },
   { key: 'all',   label: 'All',   days: null },
 ];
 
-const MIN_CHART_POINTS = 3; // below this a chart is noise, so show a growing state
+export const MIN_CHART_POINTS = 3; // below this a chart is noise, so show a growing state
 
 // ---------- range helpers ----------
-function insightsStartDate() {
+export function insightsStartDate() {
   const r = INSIGHT_RANGES.find(x => x.key === insightsRange) || INSIGHT_RANGES[1];
   if (!r.days) return '0000-01-01';
   return offsetDateStr(getTodayStr(), -(r.days - 1));
 }
 
-function inRange(dateStr) {
+export function inRange(dateStr) {
   return !!dateStr && dateStr >= insightsStartDate() && dateStr <= getTodayStr();
 }
 
 // Every date in the active window, oldest first (bounded so "all" on a long
 // history doesn't try to plot thousands of columns).
-function insightsDays(maxDays) {
+export function insightsDays(maxDays) {
   const start = insightsStartDate();
   const today = getTodayStr();
   const out = [];
@@ -47,7 +57,7 @@ function insightsDays(maxDays) {
 
 // Collapse a daily series into weekly buckets when the window is long, so a
 // year of data doesn't render 365 unreadable columns.
-function bucketSeries(days, valueFor) {
+export function bucketSeries(days, valueFor) {
   const raw = days.map(d => ({ date: d, value: valueFor(d) }));
   if (raw.length <= 31) return raw;
   const size = Math.ceil(raw.length / 26);
@@ -70,7 +80,7 @@ function bucketSeries(days, valueFor) {
 // Every chart gets a readable numeric summary underneath it. Hover tooltips
 // were the only way to see a value, and a phone has no hover — so the charts
 // looked like data without ever showing any.
-function chartStats(series, opts) {
+export function chartStats(series, opts) {
   const o = opts || {};
   const pts = series.filter(p => p.value !== null && (o.includeZero || p.value > 0));
   if (!pts.length) return '';
@@ -100,7 +110,7 @@ function chartStats(series, opts) {
     '<div class="ins-stat-l">' + esc(c[0]) + '</div></div>').join('') + '</div>';
 }
 
-function tipVal(v, opts) {
+export function tipVal(v, opts) {
   const o = opts || {};
   const n = o.decimals ? Math.round(v * 10) / 10 : Math.round(v);
   return n.toLocaleString() + (o.unit || '');
@@ -109,7 +119,7 @@ function tipVal(v, opts) {
 // One tooltip shared by every chart on the page, driven by pointer events so it
 // works identically under a mouse and under a thumb. Native title= did neither
 // well: a second of hover delay on desktop, and nothing at all on iOS.
-function attachChartHovers(host) {
+export function attachChartHovers(host) {
   if (!host) return;
 
   // renderInsights replaces host.innerHTML on every range change, which throws
@@ -179,7 +189,7 @@ function attachChartHovers(host) {
   window.addEventListener('scroll', hide, { passive: true });
 }
 
-function insightLine(series, opts) {
+export function insightLine(series, opts) {
   const o = opts || {};
   const pts = series.filter(p => p.value !== null);
   if (pts.length < MIN_CHART_POINTS) return insightGrowing(pts.length, o.unit);
@@ -243,7 +253,7 @@ function insightLine(series, opts) {
 
 // Column chart with an optional goal line. Zero-value days stay as stubs so a
 // gap in the habit is visible rather than invisible.
-function insightBars(series, opts) {
+export function insightBars(series, opts) {
   const o = opts || {};
   const withData = series.filter(p => p.value !== null && p.value > 0);
   if (withData.length < MIN_CHART_POINTS) return insightGrowing(withData.length, o.unit);
@@ -275,7 +285,7 @@ function insightBars(series, opts) {
     </div>`;
 }
 
-function insightGrowing(have, unit) {
+export function insightGrowing(have, unit) {
   const need = MIN_CHART_POINTS - have;
   return `
     <div class="ins-growing">
@@ -286,7 +296,7 @@ function insightGrowing(have, unit) {
 }
 
 // ---------- data series ----------
-function dietTotalsByDate() {
+export function dietTotalsByDate() {
   const map = {};
   (state.diet || []).forEach(e => {
     if (!e || !e.date) return;
@@ -301,14 +311,14 @@ function dietTotalsByDate() {
 
 // state.water[date] is an ARRAY of individual pours ([8, 12, 20]), not a total
 // — Firebase may also hand it back as a numeric-keyed object.
-function waterOzFor(dateStr) {
+export function waterOzFor(dateStr) {
   const e = state.water && state.water[dateStr];
   if (!e) return 0;
   const arr = Array.isArray(e) ? e : (typeof e === 'object' ? Object.values(e) : [e]);
   return arr.reduce((s, v) => s + (Number(v) || 0), 0);
 }
 
-function gymSetsByDate() {
+export function gymSetsByDate() {
   const map = {};
   (state.gym || []).forEach(e => {
     if (!e || !e.date) return;
@@ -319,7 +329,7 @@ function gymSetsByDate() {
 }
 
 // ---------- summary ----------
-function insightsSummary() {
+export function insightsSummary() {
   const days = insightsDays();
   const diet = dietTotalsByDate();
   const sets = gymSetsByDate();
@@ -342,7 +352,7 @@ function insightsSummary() {
 }
 
 // ---------- render ----------
-function renderInsights() {
+export function renderInsights() {
   const host = document.getElementById('insightsBody');
   if (!host) return;
 
@@ -464,7 +474,7 @@ function renderInsights() {
 // — the ring sits at a quarter full forever and you learn to skip past it. When
 // the gap is that wide, name the real baseline and propose a next step that is
 // actually in reach, rather than silently rendering failure every day.
-function stepCoachNote(series, goal, weightLbs) {
+export function stepCoachNote(series, goal, weightLbs) {
   const vals = series.filter(p => p.value !== null && p.value > 0).map(p => p.value);
   if (vals.length < 5) return '';
   const sorted = vals.slice().sort((a, b) => a - b);
@@ -482,7 +492,7 @@ function stepCoachNote(series, goal, weightLbs) {
   </p>`;
 }
 
-function exportInsightsCsv() {
+export function exportInsightsCsv() {
   const days = insightsDays();
   const diet = dietTotalsByDate();
   const sets = gymSetsByDate();
@@ -519,3 +529,10 @@ function exportInsightsCsv() {
     if (typeof showToast === 'function') showToast('Could not export on this device');
   }
 }
+
+
+// --- transitional global shim ---
+// Functions and constants only. Mutable bindings are deliberately NOT
+// republished: window would hold a frozen copy from module-eval time, so a
+// missed reference would read stale data instead of failing loudly.
+Object.assign(window, { INSIGHT_RANGES: INSIGHT_RANGES, MIN_CHART_POINTS: MIN_CHART_POINTS, attachChartHovers: attachChartHovers, bucketSeries: bucketSeries, chartStats: chartStats, dietTotalsByDate: dietTotalsByDate, exportInsightsCsv: exportInsightsCsv, gymSetsByDate: gymSetsByDate, inRange: inRange, insightBars: insightBars, insightGrowing: insightGrowing, insightLine: insightLine, insightsDays: insightsDays, insightsStartDate: insightsStartDate, insightsSummary: insightsSummary, renderInsights: renderInsights, stepCoachNote: stepCoachNote, tipVal: tipVal, waterOzFor: waterOzFor });
