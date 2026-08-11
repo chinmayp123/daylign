@@ -9317,3 +9317,71 @@ html.layout-editing .layout-item.is-dragging {
 @media (prefers-reduced-motion: reduce) {
   .ptr.is-spinning .ptr-spinner { animation-duration: 1.6s; }
 }
+
+/* ==========================================================================
+   Thumb-zone primary action — mobile only
+   "+ New Task" and "+ Add Exercise" lived in the top ~200px of a 6.1" screen,
+   which is a stretch one-handed, and they are the two most-used controls in
+   the app. This is the same action rendered where the thumb already is.
+
+   Desktop keeps the header button and never sees this: a cursor has no reach
+   problem, and a floating pill over content would only be in the way.
+   ========================================================================== */
+.primary-fab { display: none; }
+
+@media (max-width: 600px) {
+  /* The header twin would be a duplicate control on the same screen. */
+  .header #addTaskBtn { display: none !important; }
+
+  .primary-fab {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    position: fixed;
+    right: 16px;
+    /* Clears the bottom nav plus the home indicator. */
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+    z-index: 900;
+    min-height: 48px;
+    padding: 0 18px 0 15px;
+    border: none;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    box-shadow: 0 6px 20px rgba(109, 106, 248, 0.45);
+    cursor: pointer;
+    transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.18s ease;
+  }
+  .primary-fab:active { transform: scale(0.96); }
+  .primary-fab[hidden] { display: none; }
+
+  /* Voice becomes the secondary control and steps up out of the way. It keeps
+     its icon-only form — the labelled pill is the one you reach for. */
+  .voice-fab {
+    bottom: calc(144px + env(safe-area-inset-bottom, 0px));
+    right: 18px;
+    width: 46px;
+    height: 46px;
+  }
+  .voice-fab svg { width: 19px; height: 19px; }
+
+  /* Both tuck together on scroll. */
+  .primary-fab.fab-tucked {
+    transform: translateY(120px) scale(0.9);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .primary-fab.fab-tucked:focus-visible {
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primary-fab { transition: opacity 0.18s ease; }
+  .primary-fab.fab-tucked { transform: none; }
+}

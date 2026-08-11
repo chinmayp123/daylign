@@ -360,14 +360,17 @@ function bindFabAutoHide(fab) {
   let lastY = window.scrollY;
   let ticking = false;
   const THRESHOLD = 8; // ignore sub-pixel jitter and rubber-banding
+  // Both floating controls move together — tucking one and leaving the other
+  // would just look broken.
+  const targets = () => [fab, document.getElementById('primaryFab')].filter(Boolean);
   const update = () => {
     ticking = false;
     const y = window.scrollY;
     const dy = y - lastY;
     if (Math.abs(dy) < THRESHOLD) return;
     // Never hide at the very top, where there is nothing to scroll past.
-    if (dy > 0 && y > 120) fab.classList.add('fab-tucked');
-    else fab.classList.remove('fab-tucked');
+    const tuck = dy > 0 && y > 120;
+    targets().forEach(el => el.classList.toggle('fab-tucked', tuck));
     lastY = y;
   };
   window.addEventListener('scroll', () => {

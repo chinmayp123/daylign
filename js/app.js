@@ -93,6 +93,11 @@ function bindEvents() {
 
   // Header primary-action button — context-aware (see switchView for labels)
   $('#addTaskBtn').addEventListener('click', headerPrimaryAction);
+  const primaryFab = $('#primaryFab');
+  if (primaryFab) primaryFab.addEventListener('click', () => {
+    if (typeof haptic === 'function') haptic('light');
+    headerPrimaryAction();
+  });
   $('#modalClose').addEventListener('click', closeModal);
   $('#cancelBtn').addEventListener('click', closeModal);
   $('#taskModal').addEventListener('click', (e) => {
@@ -411,14 +416,28 @@ function renderModuleToggles() {
 function updateHeaderActionBtn(view) {
   const btn = $('#addTaskBtn');
   if (!btn) return;
-  if (view === 'settings') { btn.style.display = 'none'; return; }
-  btn.style.display = '';
-  if (view === 'training') {
-    const cardio = typeof effectiveTrainingMode === 'function' && effectiveTrainingMode() === 'cardio';
-    btn.textContent = cardio ? 'Log Session' : '+ Add Exercise';
+  const setBoth = (label) => {
+    btn.textContent = label;
+    // The thumb-zone twin carries the same label without the leading "+",
+    // since it already has a plus icon of its own.
+    const fabLabel = $('#primaryFabLabel');
+    if (fabLabel) fabLabel.textContent = label.replace(/^\+\s*/, '');
+  };
+  const fab = $('#primaryFab');
+  // Settings has no primary action, so neither control should be offering one.
+  if (view === 'settings') {
+    btn.style.display = 'none';
+    if (fab) fab.hidden = true;
     return;
   }
-  btn.textContent = HEADER_ACTION_LABELS[view] || '+ New Task';
+  btn.style.display = '';
+  if (fab) fab.hidden = false;
+  if (view === 'training') {
+    const cardio = typeof effectiveTrainingMode === 'function' && effectiveTrainingMode() === 'cardio';
+    setBoth(cardio ? 'Log Session' : '+ Add Exercise');
+    return;
+  }
+  setBoth(HEADER_ACTION_LABELS[view] || '+ New Task');
 }
 
 // Views that use the category/project sidebar sections. Everything else (the
