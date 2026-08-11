@@ -72,11 +72,42 @@ function sleepAverage(nights) {
 
 // ---------- Readiness ----------
 // 0-100, deliberately simple and explainable rather than clever:
-//   sleep (0-100)  — last 3 nights against the sleep goal, on a steep curve
+//   sleep (0-100)  — last 3 nights against your own recent baseline, ceilinged
+//                    by how far that baseline sits under the goal
 //   load  (0-100)  — how hard the last 3 days were vs the usual fortnight
 // Blended 65/35 once there is enough history to know a usual load; until then
 // readiness is the sleep read alone. A number nobody can explain is a number
 // nobody trusts.
+//
+// Scoring purely against the goal was worse than useless: at a 5.5h average
+// against an 8h goal the sleep term pinned at ~17 and readiness sat at 46 for
+// weeks, unmoved by a good night or a bad one. A number that never changes
+// teaches you to ignore it, and it was being read as a verdict on health
+// rather than what it measured — distance from a target typed in months ago.
+//
+// So the score now answers "how are you doing against your own normal", which
+// actually moves, while an absolute ceiling keeps it honest: you cannot score
+// 95 on five hours no matter how usual five hours has become for you.
+
+// Nights of history used to establish "your normal".
+const SLEEP_BASELINE_NIGHTS = 14;
+
+// Median rather than mean — one 11-hour catch-up weekend should not redefine
+// your baseline and make every normal night afterwards look like a deficit.
+function sleepBaselineHours() {
+  const today = getTodayStr();
+  const vals = [];
+  for (let i = 1; i <= SLEEP_BASELINE_NIGHTS; i++) {
+    const d = new Date(today + 'T00:00:00');
+    d.setDate(d.getDate() - i);
+    const h = sleepHoursFor(toLocalDateStr(d));
+    if (h !== null) vals.push(h);
+  }
+  if (vals.length < 4) return null; // not enough to call anything "normal" yet
+  vals.sort((a, b) => a - b);
+  const m = Math.floor(vals.length / 2);
+  return vals.length % 2 ? vals[m] : (vals[m - 1] + vals[m]) / 2;
+}
 
 // Watch exercise minutes that count as a training day on their own. Set above
 // the incidental-movement band — a brisk walk to the shop registers ten or so
@@ -90,11 +121,29 @@ function readinessBreakdown() {
 
   const avg = nights.reduce((n, x) => n + x.hours, 0) / nights.length;
 
-  // Sleep debt is not linear — 65% of your goal does not leave you 65% ready.
-  // Hitting the goal is 100; three hours under it is 0, with a steep slope in
-  // between (for an 8h goal: 8h=100, 7h=67, 6.5h=50, 5h=0).
   const clamp01 = v => Math.max(0, Math.min(1, v));
-  let sleepPart = clamp01((avg - (goalHours - 3)) / 3) * 100;
+  const sleepBase = sleepBaselineHours();
+
+  // Two questions, both of which matter, neither of which is sufficient alone.
+  //
+  //   relPart — how do the last three nights compare to your own normal?
+  //             Sitting on baseline scores 55; each hour either way moves it 25.
+  //             This is what makes the score responsive day to day.
+  //
+  //   absPart — is that much sleep actually enough, against the goal?
+  //             This is what stops "normal for you" from meaning "fine".
+  //
+  // They are averaged rather than min'd. Taking the lower of the two was the
+  // first attempt and it was wrong in both directions: someone hitting 8h every
+  // night scored the same 71 as someone chronically on 5h, because relPart pins
+  // at 55 whenever you are on your own baseline, whatever that baseline is. And
+  // a single good night on a 5h baseline outscored genuinely good sleep.
+  const relPart = sleepBase !== null
+    ? clamp01(0.55 + (avg - sleepBase) / 4) * 100
+    : null;
+  const absPart = clamp01((avg - 3.5) / Math.max(1, goalHours - 3.5)) * 100;
+
+  let sleepPart = relPart !== null ? (relPart + absPart) / 2 : absPart;
 
   // Quality nudges it either way when the person actually told us.
   nights.forEach(n => {
@@ -158,6 +207,12 @@ function readinessBreakdown() {
     score: Math.max(0, Math.min(100, score)),
     avgHours: avg,
     goalHours: goalHours,
+    baselineHours: sleepBase,
+    // Above or below your own normal — the thing the score now tracks.
+    vsBaseline: sleepBase !== null ? avg - sleepBase : null,
+    // True when the absolute shortfall, not the recent trend, is holding the
+    // score down. Lets the advice name the real limiter instead of guessing.
+    cappedByDebt: relPart !== null && absPart < relPart - 12,
     shortSleep: avg < goalHours - 1,
     // Only true when we had enough history to actually judge load.
     loadHigh: loadKnown && loadPart < 70,
@@ -180,20 +235,39 @@ function readinessVerdict(score) {
 // thing — and the load half is only meaningful once there is history for it.
 function readinessAdvice(b) {
   if (!b) return '';
-  const { score, avgHours, goalHours, shortSleep, loadHigh } = b;
+  const { score, avgHours, goalHours, shortSleep, loadHigh, baselineHours, vsBaseline, cappedByDebt } = b;
+  const avgTxt = formatSleepHours(avgHours);
+
+  // Movement against your own normal is the most actionable sentence available
+  // — it is the difference between "you are slipping" and "this is just you".
+  let trend = '';
+  if (vsBaseline !== null && baselineHours !== null) {
+    const d = Math.round(Math.abs(vsBaseline) * 10) / 10;
+    if (d >= 0.5) {
+      trend = vsBaseline > 0
+        ? ` That is ${d}h above your usual ${formatSleepHours(baselineHours)}.`
+        : ` That is ${d}h below your usual ${formatSleepHours(baselineHours)}.`;
+    } else {
+      trend = ` That is right on your usual ${formatSleepHours(baselineHours)}.`;
+    }
+  }
+
   if (score >= 75) {
-    if (loadHigh) return 'Sleeping well, though recent load is above your usual. Good to go — just do not stack another hard day on top.';
-    return `Sleep is holding at ${formatSleepHours(avgHours)} and effort has been manageable. Good day for the hard session.`;
+    if (loadHigh) return `Sleeping well at ${avgTxt}, though recent load is above your usual. Good to go — just do not stack another hard day on top.${trend}`;
+    return `Sleep is holding at ${avgTxt} and effort has been manageable. Good day for the hard session.${trend}`;
   }
   if (score >= 55) {
-    if (shortSleep && loadHigh) return `${formatSleepHours(avgHours)} average against a ${goalHours}h goal, on top of a heavy stretch. Keep today moderate.`;
-    if (shortSleep) return `Averaging ${formatSleepHours(avgHours)} against a ${goalHours}h goal — sleep is the limiter today, not your legs. Keep it moderate.`;
-    if (loadHigh) return 'Sleep is fine; it is the training load that is elevated. Moderate effort today.';
-    return 'Middle of the road. Nothing is flagging, so train by feel.';
+    // When the ceiling is what is holding the score down, say so plainly: the
+    // last three nights may be perfectly normal for him and still be short.
+    if (cappedByDebt) return `${avgTxt} a night.${trend} Normal for you, but still under your ${goalHours}h goal — that shortfall is what is capping this, not anything you did this week.`;
+    if (shortSleep && loadHigh) return `${avgTxt} average on top of a heavy stretch. Keep today moderate.${trend}`;
+    if (loadHigh) return `Sleep is fine; it is the training load that is elevated. Moderate effort today.${trend}`;
+    return `Middle of the road. Nothing is flagging, so train by feel.${trend}`;
   }
-  if (shortSleep && loadHigh) return 'Short sleep and a heavy training stretch together. Take today easy, or rest outright.';
-  if (shortSleep) return `Only ${formatSleepHours(avgHours)} a night against a ${goalHours}h goal. Sleep is the thing to fix before adding any more training.`;
-  return 'Recent load is well above your usual. A rest day now beats a forced one later.';
+  if (shortSleep && loadHigh) return `Short sleep and a heavy training stretch together. Take today easy, or rest outright.${trend}`;
+  if (vsBaseline !== null && vsBaseline < -0.75) return `${avgTxt} — down on your own usual, not just the goal. Something changed this week; ease off until it comes back.${trend}`;
+  if (shortSleep) return `Only ${avgTxt} a night against a ${goalHours}h goal. Sleep is the thing to fix before adding any more training.${trend}`;
+  return `Recent load is well above your usual. A rest day now beats a forced one later.${trend}`;
 }
 
 // ---------- Rendering ----------
