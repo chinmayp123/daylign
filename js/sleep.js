@@ -16,6 +16,9 @@ const SLEEP_QUALITIES = [
 
 // Draft state for the stepper, so nothing is written until Save is pressed.
 let sleepDraftHours = null;
+// True once the user has actually adjusted the stepper or picked a quality —
+// until then the card mirrors the watch/logged value instead of a stale draft.
+let sleepDraftDirty = false;
 let sleepDraftQuality = null;
 
 function sleepLog() {
@@ -186,8 +189,17 @@ function renderSleepCard() {
   const today = getTodayStr();
   const existing = sleepLog()[today];
   const watch = (typeof getExternalSleep === 'function') ? getExternalSleep(today) : null;
-  if (sleepDraftHours === null) {
-    sleepDraftHours = (existing && Number(existing.hours)) || watch || 7.5;
+  // Keep the stepper pinned to the real value until the user actually touches
+  // it. The draft used to be set once, on first render — which happens BEFORE
+  // the watch data has loaded from Firebase, so it fell through to the
+  // hardcoded 7.5 and then refused to update when the real number arrived.
+  // The card ended up showing "7:30 — from your watch" over a 5.0h night, and
+  // pressing Save would have written that made-up 7.5 over the real reading.
+  const sourceHours = (existing && Number(existing.hours)) || watch || null;
+  if (!sleepDraftDirty) {
+    sleepDraftHours = sourceHours !== null ? sourceHours : 7.5;
+  } else if (sleepDraftHours === null) {
+    sleepDraftHours = sourceHours !== null ? sourceHours : 7.5;
   }
   if (sleepDraftQuality === null && existing && existing.quality) sleepDraftQuality = existing.quality;
 
@@ -288,6 +300,7 @@ function bindSleepEvents() {
     const step = e.target.closest('[data-sleep-step]');
     if (step) {
       const delta = Number(step.dataset.sleepStep) || 0;
+      sleepDraftDirty = true;
       sleepDraftHours = Math.max(0, Math.min(14, Math.round((sleepDraftHours + delta) * 100) / 100));
       const val = document.getElementById('sleepHoursVal');
       if (val) val.textContent = formatSleepHours(sleepDraftHours);
@@ -295,6 +308,7 @@ function bindSleepEvents() {
     }
     const q = e.target.closest('[data-sleep-quality]');
     if (q) {
+      sleepDraftDirty = true;
       sleepDraftQuality = q.dataset.sleepQuality;
       renderSleepCard();
       return;
