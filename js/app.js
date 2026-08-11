@@ -256,11 +256,11 @@ function headerPrimaryAction() {
   if (currentView === 'training') {
     // Follows the active mode, so the button always means the thing on screen.
     const cardio = typeof effectiveTrainingMode === 'function' && effectiveTrainingMode() === 'cardio';
-    if (!cardio) {
-      // Strength: "Log Weight" opens the weight-trend sheet (5b).
-      if (typeof openWeightSheet === 'function') { openWeightSheet(); return; }
-    }
-    const el = $(cardio ? '#cardioDistance' : '#weightInput');
+    // Strength: jump straight to logging an exercise. Weigh-ins happen maybe
+    // twice a week, so handing the one prominent button to weight made the
+    // daily action the harder one. Weight still has its own readout + Log
+    // button in the Training shell, which is plenty for a twice-weekly task.
+    const el = $(cardio ? '#cardioDistance' : '#gymExerciseName');
     if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
   } else if (currentView === 'diet') {
     // Logging now lives inline on each meal (usuals tiles, search, snap). The
@@ -384,7 +384,7 @@ function updateHeaderActionBtn(view) {
   btn.style.display = '';
   if (view === 'training') {
     const cardio = typeof effectiveTrainingMode === 'function' && effectiveTrainingMode() === 'cardio';
-    btn.textContent = cardio ? 'Log Session' : 'Log Weight';
+    btn.textContent = cardio ? 'Log Session' : '+ Add Exercise';
     return;
   }
   btn.textContent = HEADER_ACTION_LABELS[view] || '+ New Task';
