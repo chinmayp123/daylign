@@ -77,6 +77,12 @@ function sleepAverage(nights) {
 // Blended 65/35 once there is enough history to know a usual load; until then
 // readiness is the sleep read alone. A number nobody can explain is a number
 // nobody trusts.
+
+// Watch exercise minutes that count as a training day on their own. Set above
+// the incidental-movement band — a brisk walk to the shop registers ten or so
+// minutes and is not a session.
+const WATCH_TRAINING_MINUTES = 20;
+
 function readinessBreakdown() {
   const goalHours = (typeof getGoals === 'function' && getGoals().sleep) || 8;
   const nights = sleepRecentNights().slice(-3).filter(n => n.hours !== null);
@@ -110,8 +116,22 @@ function readinessBreakdown() {
     return s;
   };
   const last3 = dayset(3), last14 = dayset(14);
-  const countIn = set => (state.gym || []).filter(e => set.has(e.date)).length
-    + (state.cardio || []).filter(s => set.has(s.date)).length;
+  // Count training DAYS, not logged rows. A six-exercise session is one hard
+  // day, not six — counting rows made a normal leg day read as a week of work.
+  // The watch is also a source here: a 40 minute ride is a training day whether
+  // or not it ever got typed into the cardio card.
+  const countIn = set => {
+    const days = new Set();
+    (state.gym || []).forEach(e => { if (e && set.has(e.date)) days.add(e.date); });
+    (state.cardio || []).forEach(s => { if (s && set.has(s.date)) days.add(s.date); });
+    if (typeof getExternalExerciseMinutes === 'function') {
+      set.forEach(d => {
+        const m = getExternalExerciseMinutes(d);
+        if (m !== null && m >= WATCH_TRAINING_MINUTES) days.add(d);
+      });
+    }
+    return days.size;
+  };
   const baselineSessions = countIn(last14);
   const recent = countIn(last3) / 3;
   const baseline = baselineSessions / 14;

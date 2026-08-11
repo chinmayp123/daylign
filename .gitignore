@@ -2,3 +2,4 @@
 
 # Test/QA screenshots written to repo root during dev — never commit
 /*.png
+.playwright-mcp/

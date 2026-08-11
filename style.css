@@ -8440,6 +8440,15 @@ body.app-loading #syncProgress { opacity: 1; }
 
 .ins-card { margin-bottom: 16px; animation: riseIn .4s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
 .ins-note { font-size: 11px; color: var(--text-muted); margin-top: 10px; line-height: 1.45; }
+.ins-note-warn {
+  background: rgba(251, 191, 36, 0.09);
+  border-left: 2px solid var(--yellow);
+  border-radius: 0 8px 8px 0;
+  padding: 9px 11px;
+  color: #cfcfe0;
+  font-size: 12px;
+}
+.ins-note-warn strong { color: var(--yellow); font-weight: 600; }
 
 /* line chart */
 .ins-chart { width: 100%; height: 150px; display: block; }

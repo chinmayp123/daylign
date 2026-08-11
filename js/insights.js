@@ -280,6 +280,16 @@ function renderInsights() {
   const setsSeries = bucketSeries(days, d => sets[d] || 0);
   const weightSeries = bucketSeries(days, d => (state.weight && state.weight[d]) ? state.weight[d] : null);
   const sleepSeries = bucketSeries(days, d => (typeof sleepHoursFor === 'function') ? sleepHoursFor(d) : null);
+  // Watch metrics. These have been syncing since July but lived only in today's
+  // dashboard ring, so a flat 2,300-step average was invisible over a month.
+  const stepSeries = bucketSeries(days, d => (typeof getExternalSteps === 'function') ? getExternalSteps(d) : null);
+  const moveSeries = bucketSeries(days, d => (typeof getExternalExerciseMinutes === 'function') ? getExternalExerciseMinutes(d) : null);
+  const hasSteps = stepSeries.some(p => p.value !== null);
+  const hasMove = moveSeries.some(p => p.value !== null);
+  // Most recent weigh-in of all time, not just this range — step burn scales
+  // with bodyweight and a 7-day window often holds no weigh-in at all.
+  const allWeighIns = Object.keys(state.weight || {}).sort();
+  const latestWeight = allWeighIns.length ? Number(state.weight[allWeighIns[allWeighIns.length - 1]]) : null;
 
   // muscle split for the window
   let muscleBody = '';
@@ -331,6 +341,8 @@ function renderInsights() {
     ${card('Water', goals.water ? `goal ${goals.water} oz` : '', insightBars(waterSeries, { goal: goals.water, unit: ' oz', color: 'var(--blue)' }) + chartStats(waterSeries, { goal: goals.water, unit: ' oz', showTotal: true }))}
     ${card('Body weight', goals.weight ? `goal ${goals.weight} lbs` : '', insightLine(weightSeries, { goal: goals.weight, color: 'var(--green)', fill: 'rgba(52,211,153,0.22)', id: 2, unit: '' }) + chartStats(weightSeries, { unit: ' lbs', decimals: true }))}
     ${card('Sleep', 'hours', insightBars(sleepSeries, { goal: goals.sleep || 8, unit: 'h', color: 'var(--purple)' }) + chartStats(sleepSeries, { goal: goals.sleep || 8, unit: 'h', decimals: true }))}
+    ${hasSteps ? card('Steps', `goal ${(goals.steps || 8000).toLocaleString()}`, insightBars(stepSeries, { goal: goals.steps || 8000, unit: '', color: 'var(--yellow)' }) + chartStats(stepSeries, { goal: goals.steps || 8000, showTotal: true }) + stepCoachNote(stepSeries, goals.steps || 8000, latestWeight), 'From your watch. This is the number that sets your daily burn on the days you do not train.') : ''}
+    ${hasMove ? card('Movement', 'watch minutes', insightBars(moveSeries, { unit: ' min', color: 'var(--blue)' }) + chartStats(moveSeries, { unit: ' min', showTotal: true }), 'Apple Health exercise minutes — rides included, whether or not you logged them.') : ''}
     ${card('Tasks', `${rate}% done`, `
       <div class="ins-tiles ins-tiles-sm">
         ${tile(doneInRange, 'Completed')}
@@ -347,11 +359,34 @@ function renderInsights() {
 }
 
 // One row per day in the active range, every metric side by side.
+// A goal you have never once reached stops being a target and becomes wallpaper
+// — the ring sits at a quarter full forever and you learn to skip past it. When
+// the gap is that wide, name the real baseline and propose a next step that is
+// actually in reach, rather than silently rendering failure every day.
+function stepCoachNote(series, goal, weightLbs) {
+  const vals = series.filter(p => p.value !== null && p.value > 0).map(p => p.value);
+  if (vals.length < 5) return '';
+  const sorted = vals.slice().sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)];
+  const hit = vals.filter(v => v >= goal).length;
+  if (hit >= Math.ceil(vals.length * 0.2)) return ''; // goal is live — leave it alone
+  const target = Math.max(3000, Math.round((median + 1500) / 500) * 500);
+  if (target >= goal) return '';
+  const kcal = Math.round((target - median) * (weightLbs || 160) * 0.00025);
+  return `<p class="ins-note ins-note-warn">
+    Your usual day is <strong>${median.toLocaleString()}</strong> steps, and you have cleared
+    ${goal.toLocaleString()} on <strong>${hit} of ${vals.length}</strong> days.
+    A goal nothing ever reaches is just a red ring. Try <strong>${target.toLocaleString()}</strong> first
+    — about ${kcal} kcal a day over your baseline, and reachable on a rest day.
+  </p>`;
+}
+
 function exportInsightsCsv() {
   const days = insightsDays();
   const diet = dietTotalsByDate();
   const sets = gymSetsByDate();
-  const rows = [['date', 'calories', 'protein', 'carbs', 'fat', 'sets', 'water_oz', 'weight_lbs', 'sleep_hours']];
+  const rows = [['date', 'calories', 'protein', 'carbs', 'fat', 'sets', 'water_oz', 'weight_lbs', 'sleep_hours', 'steps', 'exercise_min', 'active_kcal']];
+  const ext = (fn, d) => (typeof window[fn] === 'function' ? window[fn](d) : null);
   days.forEach(d => {
     const t = diet[d];
     rows.push([
@@ -364,6 +399,9 @@ function exportInsightsCsv() {
       waterOzFor(d) || '',
       (state.weight && state.weight[d]) || '',
       (typeof sleepHoursFor === 'function' && sleepHoursFor(d)) || '',
+      ext('getExternalSteps', d) || '',
+      ext('getExternalExerciseMinutes', d) || '',
+      Math.round(ext('getExternalActiveEnergy', d) || 0) || '',
     ]);
   });
   const csv = rows.map(r => r.join(',')).join('\n');
