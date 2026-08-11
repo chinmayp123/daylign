@@ -8951,3 +8951,40 @@ html.layout-editing .layout-item.is-dragging {
 .header-search-btn:hover { border-color: var(--accent); color: var(--accent-hover); }
 /* On wide screens the always-visible task search box already covers this. */
 @media (min-width: 901px) { .header-search-btn { display: none; } }
+
+/* Insights: readable numbers under every chart (no hover on touch) */
+.ins-axis {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.ins-axis-scale { color: var(--text-secondary); font-weight: 600; }
+.ins-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.ins-stat { text-align: center; }
+.ins-stat-v {
+  font-family: var(--font-display);
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.15;
+  white-space: nowrap;
+}
+.ins-stat-l {
+  font-size: 9.5px;
+  color: var(--text-muted);
+  margin-top: 3px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}

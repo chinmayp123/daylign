@@ -66,6 +66,40 @@ function bucketSeries(days, valueFor) {
 // ---------- chart primitives ----------
 // Area + line chart. Points with null values create gaps rather than dropping
 // to zero, which would invent a bad day where there is simply no log.
+
+// Every chart gets a readable numeric summary underneath it. Hover tooltips
+// were the only way to see a value, and a phone has no hover — so the charts
+// looked like data without ever showing any.
+function chartStats(series, opts) {
+  const o = opts || {};
+  const pts = series.filter(p => p.value !== null && (o.includeZero || p.value > 0));
+  if (!pts.length) return '';
+  const vals = pts.map(p => p.value);
+  const sum = vals.reduce((a, b) => a + b, 0);
+  const avg = sum / vals.length;
+  const max = Math.max.apply(null, vals);
+  const min = Math.min.apply(null, vals);
+  const last = vals[vals.length - 1];
+  const u = o.unit || '';
+  const r = (v) => (o.decimals ? Math.round(v * 10) / 10 : Math.round(v));
+
+  const cells = [
+    ['Latest', r(last) + u],
+    ['Avg', r(avg) + u],
+    ['Range', r(min) + '–' + r(max) + u],
+  ];
+  if (o.showTotal) cells.push(['Total', r(sum) + u]);
+  if (o.goal) {
+    const hit = vals.filter(v => v >= o.goal).length;
+    cells.push(['Hit goal', hit + '/' + vals.length + ' days']);
+  }
+  cells.push(['Logged', pts.length + ' of ' + series.length + ' days']);
+
+  return '<div class="ins-stats">' + cells.map(c =>
+    '<div class="ins-stat"><div class="ins-stat-v tnum">' + esc(String(c[1])) + '</div>' +
+    '<div class="ins-stat-l">' + esc(c[0]) + '</div></div>').join('') + '</div>';
+}
+
 function insightLine(series, opts) {
   const o = opts || {};
   const pts = series.filter(p => p.value !== null);
@@ -108,7 +142,12 @@ function insightLine(series, opts) {
         stroke-linejoin="round" pathLength="100" points="${coords.join(' ')}"/>
       <circle cx="${x(pts[pts.length - 1].date)}" cy="${y(pts[pts.length - 1].value)}" r="4.5"
         fill="${color}" stroke="var(--bg-card)" stroke-width="2"/>
-    </svg>`;
+    </svg>
+    <div class="ins-axis">
+      <span>${formatDate(pts[0].date)}</span>
+      <span class="ins-axis-scale">${Math.round(lo)}–${Math.round(hi)}${o.unit || ''}</span>
+      <span>${formatDate(pts[pts.length - 1].date)}</span>
+    </div>`;
 }
 
 // Column chart with an optional goal line. Zero-value days stay as stubs so a
@@ -132,8 +171,13 @@ function insightBars(series, opts) {
 
   return `
     <div class="ins-barwrap">
-      ${goalPct !== null && goalPct >= 0 ? `<div class="ins-goal-line" style="top:${goalPct}%"><span>goal</span></div>` : ''}
+      ${goalPct !== null && goalPct >= 0 ? `<div class="ins-goal-line" style="top:${goalPct}%"><span>goal ${Math.round(o.goal)}</span></div>` : ''}
       <div class="ins-bars">${cols}</div>
+    </div>
+    <div class="ins-axis">
+      <span>${formatDate(series[0].date)}</span>
+      <span class="ins-axis-scale">peak ${Math.round(max)}${o.unit || ''}</span>
+      <span>${formatDate(series[series.length - 1].date)}</span>
     </div>`;
 }
 
@@ -280,13 +324,13 @@ function renderInsights() {
       ${tile(s.tasksDone, 'Tasks done', rate ? `${rate}% completion` : '')}
     </div>
 
-    ${card('Calories', goals.calories ? `goal ${goals.calories}` : '', insightLine(calSeries, { goal: goals.calories, id: 1 }), 'Daily intake. Gaps are days with nothing logged, not zero-calorie days.')}
-    ${card('Protein', goals.protein ? `goal ${goals.protein}g` : '', insightBars(proSeries, { goal: goals.protein, unit: 'g', color: 'var(--green)' }), 'Green columns cleared the goal.')}
-    ${card('Training volume', `${s.totalSets} sets`, insightBars(setsSeries, { unit: ' sets', color: 'var(--accent)' }), 'Sets logged per day.')}
+    ${card('Calories', goals.calories ? `goal ${goals.calories}` : '', insightLine(calSeries, { goal: goals.calories, id: 1, unit: '' }) + chartStats(calSeries, { goal: goals.calories }), 'Daily intake. Gaps are days with nothing logged, not zero-calorie days.')}
+    ${card('Protein', goals.protein ? `goal ${goals.protein}g` : '', insightBars(proSeries, { goal: goals.protein, unit: 'g', color: 'var(--green)' }) + chartStats(proSeries, { goal: goals.protein, unit: 'g' }), 'Green columns cleared the goal.')}
+    ${card('Training volume', `${s.totalSets} sets`, insightBars(setsSeries, { unit: ' sets', color: 'var(--accent)' }) + chartStats(setsSeries, { unit: ' sets', showTotal: true }), 'Sets logged per day.')}
     ${muscleBody ? card('Sets by muscle group', 'this range', muscleBody, 'Where the work actually went.') : ''}
-    ${card('Water', goals.water ? `goal ${goals.water} oz` : '', insightBars(waterSeries, { goal: goals.water, unit: ' oz', color: 'var(--blue)' }))}
-    ${card('Body weight', goals.weight ? `goal ${goals.weight} lbs` : '', insightLine(weightSeries, { goal: goals.weight, color: 'var(--green)', fill: 'rgba(52,211,153,0.22)', id: 2 }))}
-    ${card('Sleep', 'hours', insightBars(sleepSeries, { goal: goals.sleep || 8, unit: 'h', color: 'var(--purple)' }))}
+    ${card('Water', goals.water ? `goal ${goals.water} oz` : '', insightBars(waterSeries, { goal: goals.water, unit: ' oz', color: 'var(--blue)' }) + chartStats(waterSeries, { goal: goals.water, unit: ' oz', showTotal: true }))}
+    ${card('Body weight', goals.weight ? `goal ${goals.weight} lbs` : '', insightLine(weightSeries, { goal: goals.weight, color: 'var(--green)', fill: 'rgba(52,211,153,0.22)', id: 2, unit: '' }) + chartStats(weightSeries, { unit: ' lbs', decimals: true }))}
+    ${card('Sleep', 'hours', insightBars(sleepSeries, { goal: goals.sleep || 8, unit: 'h', color: 'var(--purple)' }) + chartStats(sleepSeries, { goal: goals.sleep || 8, unit: 'h', decimals: true }))}
     ${card('Tasks', `${rate}% done`, `
       <div class="ins-tiles ins-tiles-sm">
         ${tile(doneInRange, 'Completed')}
