@@ -351,10 +351,35 @@ function closeVoicePanel() {
   if (panel) panel.classList.remove('active');
 }
 
+// The FAB is fixed above the bottom nav and sits on top of whatever content
+// happens to be under it — on a phone it was covering a dashboard stat and the
+// gym date nav. Hide it while scrolling down and bring it back on scroll up,
+// which is the standard behaviour and keeps it out of the way exactly when the
+// user is reading rather than acting.
+function bindFabAutoHide(fab) {
+  let lastY = window.scrollY;
+  let ticking = false;
+  const THRESHOLD = 8; // ignore sub-pixel jitter and rubber-banding
+  const update = () => {
+    ticking = false;
+    const y = window.scrollY;
+    const dy = y - lastY;
+    if (Math.abs(dy) < THRESHOLD) return;
+    // Never hide at the very top, where there is nothing to scroll past.
+    if (dy > 0 && y > 120) fab.classList.add('fab-tucked');
+    else fab.classList.remove('fab-tucked');
+    lastY = y;
+  };
+  window.addEventListener('scroll', () => {
+    if (!ticking) { ticking = true; requestAnimationFrame(update); }
+  }, { passive: true });
+}
+
 function bindVoiceEvents() {
   const fab = $('#voiceFab');
   if (!fab) return;
   fab.addEventListener('click', openVoicePanel);
+  bindFabAutoHide(fab);
   $('#voicePanelClose').addEventListener('click', closeVoicePanel);
   $('#voicePanel').addEventListener('click', (e) => { if (e.target === $('#voicePanel')) closeVoicePanel(); });
 

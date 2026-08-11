@@ -5103,10 +5103,26 @@ button:not(:disabled):active {
   background: var(--accent); color: #fff; border: none; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 6px 20px rgba(109, 106, 248, 0.45);
-  transition: transform 0.15s, box-shadow 0.15s;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.18s ease, box-shadow 0.15s;
 }
 .voice-fab:hover { transform: scale(1.06); box-shadow: 0 8px 26px rgba(109, 106, 248, 0.55); }
 .voice-fab:active { transform: scale(0.96); }
+/* Tucked away while scrolling down so it stops covering content. Translated
+   rather than hidden, so it animates back in and stays keyboard-reachable. */
+.voice-fab.fab-tucked {
+  transform: translateY(96px) scale(0.85);
+  opacity: 0;
+  pointer-events: none;
+}
+.voice-fab.fab-tucked:focus-visible {
+  transform: none;
+  opacity: 1;
+  pointer-events: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .voice-fab { transition: opacity 0.18s ease; }
+  .voice-fab.fab-tucked { transform: none; }
+}
 @media (max-width: 900px) {
   .voice-fab { bottom: 82px; right: 16px; width: 52px; height: 52px; } /* clear the bottom nav */
 }
@@ -9069,4 +9085,113 @@ html.layout-editing .layout-item.is-dragging {
   margin-top: 3px;
   text-transform: uppercase;
   letter-spacing: .04em;
+}
+
+/* ==========================================================================
+   Touch targets — mobile only
+   Apple HIG asks for 44x44pt, Material for 48dp. An audit of every view found
+   36 distinct controls below that, the worst being .task-check at 20x20 — the
+   primary action in a to-do app rendered at under a fifth of the minimum area.
+
+   Two techniques, chosen per control:
+   - Small icon buttons keep their visual size and gain an invisible centred
+     hit area, so nothing about the design shifts.
+   - Pill and row buttons simply grow, since they have room.
+   Desktop is deliberately untouched: a mouse is precise and the tighter
+   spacing is the better look there.
+   ========================================================================== */
+@media (max-width: 600px) {
+  /* --- invisible hit-area expansion (visual size unchanged) --- */
+  .task-check,
+  .today-sched-check,
+  .sidebar-del-btn,
+  .tax-btn,
+  .mobile-menu-btn,
+  .header-search-btn,
+  .cal-nav,
+  .accent-dot {
+    position: relative;
+  }
+  .task-check::after,
+  .today-sched-check::after,
+  .sidebar-del-btn::after,
+  .tax-btn::after,
+  .mobile-menu-btn::after,
+  .header-search-btn::after,
+  .cal-nav::after,
+  .accent-dot::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+    height: 44px;
+    /* purely a hit area — never paints, never affects layout */
+    background: transparent;
+    border-radius: 50%;
+  }
+  /* The delete button sits inside a tappable sidebar row; a full 44px circle
+     would swallow taps meant for the row itself, so it gets a smaller bump. */
+  .sidebar-del-btn::after { width: 34px; height: 34px; }
+
+  /* --- controls with room to simply grow --- */
+  .nav-btn,
+  .sidebar-theme-btn,
+  .sidebar-manage-btn,
+  .add-category-btn,
+  .category-item,
+  .project-item,
+  .dash-project-tab,
+  .my-tasks-tab,
+  .today-triage-add,
+  .today-triage-more,
+  .goals-edit-btn,
+  .layout-edit-btn,
+  .training-weight-log,
+  .diet-usual-tile,
+  .str-curve-chip,
+  .str-insight-cta,
+  .ins-range,
+  .ins-export,
+  .segmented-btn,
+  .bms-btn,
+  .reminder-done-btn,
+  .archived-toggle,
+  .schedule-collapse-btn,
+  .today-sched-row,
+  .board-folder-header,
+  select {
+    min-height: 44px;
+  }
+
+  /* Keep grown pills looking like pills rather than stretched blocks. */
+  .my-tasks-tab,
+  .today-triage-add,
+  .today-triage-more,
+  .goals-edit-btn,
+  .layout-edit-btn,
+  .training-weight-log,
+  .str-curve-chip,
+  .str-insight-cta,
+  .ins-range,
+  .segmented-btn,
+  .dash-project-tab,
+  .diet-usual-tile,
+  .bms-btn,
+  .reminder-done-btn,
+  .sidebar-manage-btn,
+  .add-category-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Native checkboxes render tiny regardless of the box they sit in. */
+  input[type="checkbox"] {
+    min-width: 22px;
+    min-height: 22px;
+  }
+
+  details > summary { min-height: 44px; display: flex; align-items: center; }
 }
