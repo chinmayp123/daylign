@@ -9513,3 +9513,9 @@ html.layout-editing .layout-item.is-dragging {
   /* The last card must clear the floating action pill, which sits 84px up. */
   .view.active { padding-bottom: 56px; }
 }
+
+/* The Training centre column now carries the full readiness card, so the rail's
+   compact copy would be the same number twice on a wide screen. */
+@media (min-width: 1024px) {
+  #trainingRailReadiness { display: none; }
+}

@@ -210,30 +210,6 @@
             <div class="deadlines-list" id="deadlinesList"></div>
           </div>
 
-          <!-- Sleep + Readiness (rendered by js/sleep.js) -->
-          <div class="sleep-readiness-row">
-            <div id="sleepCard"></div>
-            <div id="readinessCard"></div>
-          </div>
-
-          <!-- Weight Trend — collapsed on mobile (reference) -->
-          <div class="card weight-trend-card collapsible" data-collapse="mobile" data-collapse-key="weighttrend">
-            <div class="weight-trend-head">
-              <h2>Weight Trend</h2>
-              <span class="weight-trend-meta" id="weightTrendMeta"></span>
-            </div>
-            <div id="weightTrendChart"></div>
-          </div>
-
-          <!-- Weekly Report — collapsed on mobile (reference) -->
-          <div class="card weekly-report-card collapsible" data-collapse="mobile" data-collapse-key="weeklyreport">
-            <div class="weight-trend-head">
-              <h2>Weekly Report</h2>
-              <span class="weight-trend-meta" id="weeklyReportMeta"></span>
-            </div>
-            <div id="weeklyReport"></div>
-          </div>
-
           <!-- Daily Schedule -->
           <div class="card schedule-card" id="scheduleCard">
             <div class="schedule-header">
@@ -533,6 +509,24 @@
         </div>
         </div><!-- /#trainingCardio -->
 
+          <!-- Moved off Today: these answer "how am I trending?",
+               which is a Training question, not a "what do I do now?" one.
+               The daily brief still states sleep and readiness in words. -->
+          <!-- Sleep + Readiness (rendered by js/sleep.js) -->
+          <div class="sleep-readiness-row">
+            <div id="sleepCard"></div>
+            <div id="readinessCard"></div>
+          </div>
+
+          <!-- Weight Trend — collapsed on mobile (reference) -->
+          <div class="card weight-trend-card collapsible" data-collapse="mobile" data-collapse-key="weighttrend">
+            <div class="weight-trend-head">
+              <h2>Weight Trend</h2>
+              <span class="weight-trend-meta" id="weightTrendMeta"></span>
+            </div>
+            <div id="weightTrendChart"></div>
+          </div>
+
         </div><!-- /.training-center -->
         <aside class="training-rail" id="trainingRail">
           <div id="trainingRailWeek"></div>
@@ -685,6 +679,14 @@
       </div>
 
       <div class="view" id="insightsView">
+          <!-- Weekly Report — collapsed on mobile (reference) -->
+          <div class="card weekly-report-card collapsible" data-collapse="mobile" data-collapse-key="weeklyreport">
+            <div class="weight-trend-head">
+              <h2>Weekly Report</h2>
+              <span class="weight-trend-meta" id="weeklyReportMeta"></span>
+            </div>
+            <div id="weeklyReport"></div>
+          </div>
         <div id="insightsBody"></div>
       </div>
 

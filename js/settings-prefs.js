@@ -18,6 +18,9 @@ const ACCENTS = [
 
 // Dashboard cards the user can hide. Each maps to a real element, so a toggle
 // can never point at something that no longer exists without showing up here.
+// Sleep, readiness, weight trend and the weekly report left this list when they
+// moved off Today — two of their selectors were #dashboardView-scoped and would
+// have quietly stopped matching anything.
 const DASH_WIDGETS = [
   { key: 'brief',     label: 'Daily brief',     sel: '#dailyBrief' },
   { key: 'plan',      label: 'Today plan',      sel: '#todayPlan' },
@@ -27,10 +30,6 @@ const DASH_WIDGETS = [
   { key: 'reminders', label: 'Reminders',       sel: '#remindersBar' },
   { key: 'mytasks',   label: 'My tasks',        sel: '#dashboardView .my-tasks-board-card' },
   { key: 'deadlines', label: 'Deadlines',       sel: '#dashboardView .deadlines-card' },
-  { key: 'sleep',     label: 'Sleep',           sel: '#sleepCard' },
-  { key: 'readiness', label: 'Readiness',       sel: '#readinessCard' },
-  { key: 'weight',    label: 'Weight trend',    sel: '#dashboardView .weight-trend-card' },
-  { key: 'weekly',    label: 'Weekly report',   sel: '#dashboardView .weekly-report-card' },
   { key: 'schedule',  label: 'Schedule',        sel: '#scheduleCard' },
 ];
 
