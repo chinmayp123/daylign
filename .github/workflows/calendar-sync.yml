@@ -1,0 +1,49 @@
+name: Calendar sync
+
+# Pulls the secret iCal feed(s) and writes the week into Firebase for Daylign.
+#
+# This exists because iOS skips time-of-day Shortcut automations when the phone
+# is locked — the health sync misses roughly one night in four for that reason.
+# Nothing here touches the phone, so it runs whether the device is locked, flat,
+# or in another country.
+
+on:
+  schedule:
+    # Hourly on the half hour. GitHub's cron can drift 5-15 minutes under load,
+    # which is irrelevant for a calendar and the reason this is not on :00 with
+    # everyone else's jobs.
+    - cron: '30 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Print the events without writing to Firebase'
+        type: boolean
+        default: false
+
+# Only one sync in flight; a queued run has nothing to add over the newer one.
+concurrency:
+  group: calendar-sync
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch calendars and write to Firebase
+        env:
+          ICS_URLS: ${{ secrets.ICS_URLS }}
+          FIREBASE_URL: https://lifestack-d5300-default-rtdb.firebaseio.com
+          DAYLIGN_TZ: ${{ vars.DAYLIGN_TZ || 'America/New_York' }}
+          DAYS_AHEAD: '7'
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: node tools/ics-to-daylign.mjs

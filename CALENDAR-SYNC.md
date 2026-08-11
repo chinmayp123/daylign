@@ -1,116 +1,125 @@
-# Calendar sync — iPhone Shortcut
+# Calendar sync
 
-Your meetings appear in **Today's Schedule**, in the right hour slot, alongside
-your tasks. Read-only: they belong to Google/iOS, so nothing in Daylign can
-edit or delete one.
+Your meetings show up in **Today's Schedule**, in the right hour slot, next to
+your tasks. All-day events get their own row above the grid. They are
+read-only — they belong to Google, so nothing in Daylign can edit or delete one.
 
-This uses the same trick as the health sync — a Shortcut on your phone pushes to
-Firebase, and the app reads it. No Google Cloud project, no OAuth, no sign-in.
-And because it reads your iPhone's calendars, it picks up **every** calendar
-synced there, Google included.
+This runs in **GitHub Actions**, not on your phone.
 
-**Path:** `external/calendar/all`
-**Full URL:** `https://lifestack-d5300-default-rtdb.firebaseio.com/external/calendar/all.json`
-
----
-
-## The shape it sends
-
-One flat list covering the whole week:
-
-```json
-[
-  { "date": "2026-08-11", "title": "Standup", "start": "09:00", "end": "09:15", "location": "Zoom" },
-  { "date": "2026-08-13", "title": "Board sync", "start": "15:00", "end": "16:00", "location": "Meet" }
-]
-```
-
-- `date` — `yyyy-MM-dd`
-- `start` / `end` — `HH:mm`, 24-hour. **Leave `start` empty for an all-day event**; it gets its own row above the hour grid.
-- `location` — optional
-
-A flat list rather than one node per day on purpose: nesting by date in
-Shortcuts means fighting *Set Dictionary Value* with a computed key. One
-Repeat and one PUT is much less to go wrong. Grouping happens in the app.
-
-Each run **replaces** the whole list, so cancelled and past meetings drop off
-by themselves.
+That is the whole point. iOS skips time-of-day Shortcut automations when the
+device is locked, which is why your health sync misses about one night in four.
+A cron runner does not care whether your phone is locked, flat, or in another
+country. It also means the sync runs **hourly**, so a meeting added at 10am
+appears by 11 — rather than waiting for tomorrow.
 
 ---
 
-## Building it
+## Setup — about five minutes, all in the browser
 
-New Shortcut, name it **Sync Calendar To Daylign**. Add these in order.
+### 1. Get the secret address from Google Calendar
 
-**1. Find Calendar Events**
-- Add *Find Calendar Events Where*
-- Filter: **Start Date** — **is in the next** — **7** — **days**
-- Tap *Sort by* → **Start Date**, Order **Oldest First**
-- Leave the calendar filter off so it takes all of them
+1. Google Calendar on desktop → **⚙ Settings**
+2. Left sidebar → under *Settings for my calendars*, pick the calendar you want
+3. Scroll to **Integrate calendar**
+4. Copy **Secret address in iCal format** (the one ending `/basic.ics`)
 
-**2. Make a list to collect into**
-- Add *Text*, leave it completely empty
-- Add *Set Variable* → name it **Events**
+Repeat for each calendar you want included.
 
-**3. Loop the events**
-- Add *Repeat with Each* (input: the events from step 1)
+> **Treat this like a password.** Anyone holding it can read that calendar,
+> with no login. Do not paste it into chat, a commit, or an issue — it goes
+> straight into GitHub Secrets below. If it ever leaks, the same page has a
+> **Reset** button that invalidates the old one.
 
-Inside the loop:
+### 2. Put it in GitHub Secrets
 
-**3a.** *Format Date* → Date: **Repeat Item**, Format: **Custom**, string `yyyy-MM-dd`
-  → *Set Variable* → **DayKey**
+1. Your repo → **Settings** → **Secrets and variables** → **Actions**
+2. **New repository secret**
+3. Name: `ICS_URLS`
+4. Value: the URL. For several calendars, **one per line**.
+5. **Add secret**
 
-**3b.** *Format Date* → Date: **Repeat Item**, Format: **Custom**, string `HH:mm`
-  → *Set Variable* → **StartTime`**
+### 3. Set your timezone (skip if you're US Eastern)
 
-**3c.** *Get Details of Calendar Event* → **End Date** (from Repeat Item)
-  → *Format Date* → Custom → `HH:mm` → *Set Variable* → **EndTime**
+Same page, **Variables** tab → **New repository variable**
 
-**3d.** *Get Details of Calendar Event* → **Is All Day** → *If* it is **true**
-  → *Set Variable* **StartTime** to an empty *Text*
-  (an all-day event has no meaningful clock time)
+- Name: `DAYLIGN_TZ`
+- Value: your IANA zone — `America/New_York`, `America/Chicago`,
+  `America/Los_Angeles`, `Europe/London`, `Asia/Kolkata`…
 
-**3e.** *Dictionary* with five rows:
+Defaults to `America/New_York`. Wrong zone means meetings land in the wrong
+hour slot, so it is worth a moment.
 
-| Key | Value |
-|---|---|
-| `date` | DayKey |
-| `title` | *Get Details of Calendar Event* → **Title** |
-| `start` | StartTime |
-| `end` | EndTime |
-| `location` | *Get Details of Calendar Event* → **Location** |
+### 4. Test it
 
-**3f.** *Add to Variable* → **Events**
+Repo → **Actions** → **Calendar sync** → **Run workflow**. Tick
+**dry run** the first time — it prints what it found and writes nothing.
 
-**4. Send it**
-- After the loop: *Get Contents of URL*
-- URL: `https://lifestack-d5300-default-rtdb.firebaseio.com/external/calendar/all.json`
-- Method: **PUT**
-- Request Body: **JSON**
-- Body: the **Events** variable
+The log should list your week. Then run it again with dry run **off**, open the
+app, pull down to refresh, and today's meetings appear in the schedule. Use the
+`<` `>` arrows on the Schedule card to page through the rest of the week.
 
-**5. Automate it**
-- Shortcuts → *Automation* → *Time of Day*
-- **7:00 or 8:00am**, Daily, **Run Immediately**, Notify When Run **off**
-
-Morning rather than 9pm: today's meetings should be there when you look at the
-app over breakfast. Note your health automation misses roughly one night in
-four because iOS skips these when the phone is locked — same caveat here, and
-the same reason an earlier slot tends to fire more reliably.
+After that it runs itself, hourly.
 
 ---
 
-## Checking it worked
+## What it handles
 
-Run it once by hand, then open this in any browser:
+Tested against a feed containing all of these:
 
+- **Recurring meetings** — `DAILY` / `WEEKLY` / `MONTHLY` / `YEARLY`, with
+  `INTERVAL`, `COUNT`, `UNTIL` and `BYDAY`. A Mon–Fri standup correctly expands
+  across weekdays and skips the weekend.
+- **Cancelled occurrences** — `EXDATE` removes a single instance from a series,
+  so a skipped 1:1 does not appear.
+- **Cancelled events** — anything with `STATUS:CANCELLED` is dropped.
+- **All-day events** — no clock time, pinned to their own row.
+- **Timezones** — `TZID` and UTC (`Z`) both convert to your wall clock. A
+  19:00 UTC meeting reads 15:00 in New York.
+- **Folded lines** — long titles that the exporter split across two physical
+  lines are rejoined.
+- **Duplicates** — the same meeting on two calendars appears once.
+- **Old events** — anything before today is ignored.
+
+Each run **replaces** the whole list, so cancelled and past meetings drop off by
+themselves.
+
+### What it does not handle
+
+- Exotic recurrence (`BYSETPOS`, `BYMONTHDAY` lists). These fall back to the
+  single base occurrence — the rule under-reports rather than inventing
+  meetings that do not exist.
+- `RECURRENCE-ID` overrides, where one instance of a series was moved to a
+  different time. It will show at the original time.
+
+Neither is common in a personal calendar. Both are fixable if you hit one.
+
+---
+
+## Troubleshooting
+
+**Workflow fails with "Feed responded 404"** — the secret address was reset or
+mistyped. Copy it again from Google Calendar.
+
+**Log shows 0 events** — the feed is reachable but empty in the next 7 days.
+Check you copied the right calendar; the default "Holidays" calendar is a
+common mix-up.
+
+**Meetings appear in the wrong hour** — `DAYLIGN_TZ` is wrong or unset.
+
+**Nothing in the app but the log looks right** — pull down to refresh. Failing
+that, check the data directly:
 `https://lifestack-d5300-default-rtdb.firebaseio.com/external/calendar/all.json`
 
-You should see your week. In the app, pull down to refresh, and today's
-meetings appear in the schedule. Use the `<` `>` arrows on the Schedule card to
-page through the rest of the week.
+---
 
-**If the schedule is empty but the URL shows data,** the likely cause is a date
-format mismatch — `date` must be exactly `yyyy-MM-dd` and `start` exactly
-`HH:mm`. Shortcuts defaults to a localised format, so both *Format Date* actions
-must be set to **Custom**.
+## Running it by hand
+
+```bash
+ICS_URLS="https://calendar.google.com/calendar/ical/.../basic.ics" \
+FIREBASE_URL="https://lifestack-d5300-default-rtdb.firebaseio.com" \
+DAYLIGN_TZ="America/New_York" \
+DRY_RUN=1 \
+node tools/ics-to-daylign.mjs
+```
+
+`DRY_RUN=1` prints and writes nothing. Drop it to write for real.
