@@ -116,7 +116,7 @@ const MET_WEIGHTED = 6.0;   // vigorous weight training
 // shoulder raises are spelled out rather than matching a bare 'raise').
 const MUSCLE_GROUPS = {
   pull: ['pull up', 'pullup', 'chin up', 'row', 'curl', 'pulldown', 'muscle up', 'lever', 'face pull',
-         'bicep', 'reverse fly', 'rear delt'],
+         'bicep', 'reverse fly', 'rear delt', 'shrug'],
   push: ['push up', 'pushup', 'push-up', 'dip', 'press', 'bench', 'handstand', 'tricep',
          'front raise', 'lateral raise', 'shoulder', 'chest fly'],
   legs: ['squat', 'lunge', 'deadlift', 'rdl', 'leg press', 'calf', 'glute', 'hip thrust', 'box jump'],
@@ -136,6 +136,41 @@ function muscleGroupFor(exercise) {
     if (keywords.some(k => name.includes(k))) return group;
   }
   return null;
+}
+
+// MUSCLE_LABEL lives in strength.js; gym.js must not hard-depend on it loading.
+function groupLabel(g) {
+  if (typeof MUSCLE_LABEL !== 'undefined' && MUSCLE_LABEL[g]) return MUSCLE_LABEL[g];
+  return g ? g.charAt(0).toUpperCase() + g.slice(1) : '';
+}
+
+// Names the day at a glance — "Push day" when one group carries most of the
+// work, otherwise the groups that were actually hit. Weighted by sets rather
+// than by exercise count, so four sets of squats outrank one set of crunches.
+function sessionFocusRow(entries) {
+  if (!entries || !entries.length) return '';
+  const ORDER = (typeof MUSCLE_ORDER !== 'undefined') ? MUSCLE_ORDER : ['push', 'pull', 'legs', 'core'];
+  const tally = { push: 0, pull: 0, legs: 0, core: 0 };
+  let classified = 0, unknown = 0;
+  entries.forEach(ex => {
+    const g = muscleGroupFor(ex.exercise);
+    const n = (ex.sets || []).length;
+    if (g) { tally[g] += n; classified += n; } else { unknown += n; }
+  });
+  if (!classified) return '';
+
+  const hit = ORDER.filter(g => tally[g] > 0).sort((a, b) => tally[b] - tally[a]);
+  const top = hit[0];
+  const label = tally[top] / classified >= 0.7 ? `${groupLabel(top)} day` : 'Mixed';
+
+  return `
+    <div class="gym-focus">
+      <span class="gym-focus-lbl">${esc(label)}</span>
+      <div class="gym-focus-chips">
+        ${hit.map(g => `<span class="gym-focus-chip" data-group="${g}">${groupLabel(g)}<b>${tally[g]}</b></span>`).join('')}
+        ${unknown ? `<span class="gym-focus-chip is-unknown" title="Not matched to a muscle group">Other<b>${unknown}</b></span>` : ''}
+      </div>
+    </div>`;
 }
 
 function latestBodyWeightLbs() {
@@ -569,19 +604,21 @@ function renderGym() {
   if (!dayExercises.length) {
     $('#gymTodayList').innerHTML = '<div class="gym-empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" opacity="0.4"><path d="M6.5 6.5h-3a1 1 0 00-1 1v9a1 1 0 001 1h3"/><path d="M17.5 6.5h3a1 1 0 011 1v9a1 1 0 01-1 1h-3"/><rect x="6.5" y="4" width="4" height="16" rx="1"/><rect x="13.5" y="4" width="4" height="16" rx="1"/><line x1="10.5" y1="12" x2="13.5" y2="12"/></svg><p>No exercises logged</p><p class="gym-empty-sub">Add an exercise below to start tracking</p></div>';
   } else {
-    $('#gymTodayList').innerHTML = dayExercises.map((ex, idx) => {
+    $('#gymTodayList').innerHTML = sessionFocusRow(dayExercises) + dayExercises.map((ex, idx) => {
       const isBW = ex.bodyweight || isBodyweightExercise(ex.exercise);
       const totalRepsEx = ex.sets.reduce((sum, s) => sum + Number(s.reps), 0);
       const vol = ex.sets.reduce((sum, s) => sum + (Number(s.reps) * Number(s.weight)), 0);
       // PR: best set today beats every earlier session of this exercise
       const hist = exerciseHistory(ex.exercise, ex.date);
       const isPR = hist.length > 0 && bestSetScore(ex) > hist.reduce((m, h) => Math.max(m, bestSetScore(h)), 0);
+      const grp = muscleGroupFor(ex.exercise);
       return `
       <div class="gym-entry">
         <div class="gym-entry-head">
           <div class="gym-entry-left">
             <span class="gym-entry-num">${idx + 1}</span>
             <span class="gym-entry-name">${esc(ex.exercise)}</span>
+            ${grp ? `<span class="gym-group-badge" data-group="${grp}">${groupLabel(grp)}</span>` : ''}
             ${isPR ? '<span class="gym-pr-badge">PR</span>' : ''}
             ${isBW ? '<span class="gym-bw-badge">Bodyweight</span>' : ''}
           </div>
