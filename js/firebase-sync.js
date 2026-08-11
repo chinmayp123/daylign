@@ -76,6 +76,53 @@ function normalizeWorkout(w) {
   };
 }
 
+// Calendar events for a day, posted by the iPhone Shortcut as
+// external/.../calendar/<date> = [{ title, start, end, location }, ...].
+// start/end are "HH:mm" — Shortcuts formats a date to that with one action,
+// and it avoids every timezone question an ISO string would raise.
+//
+// Same three shapes as workouts, for the same reason: a real array, a
+// numeric-keyed object (how Firebase hands arrays back), or a single bare
+// object so a Shortcut with one event needs no Repeat loop.
+function getExternalCalendar(dateStr) {
+  const cal = externalData && externalData.calendar ? externalData.calendar : null;
+  if (!cal) return [];
+
+  // Two accepted layouts, because Shortcuts is the constrained end of this.
+  //   calendar/<date>  = [ {...}, ... ]                  grouped per day
+  //   calendar/all     = [ { date, ... }, ... ]          one flat week
+  // The flat form exists because building nested per-date JSON on-device means
+  // fighting Set Dictionary Value with a computed key; a flat list is one
+  // Repeat and one PUT. Grouping is trivial here and miserable there.
+  let source = cal[dateStr];
+  if (!source && cal.all) {
+    const flat = Array.isArray(cal.all) ? cal.all : Object.values(cal.all);
+    source = flat.filter(e => e && String(e.date || '').trim() === dateStr);
+  }
+  if (!source) return [];
+
+  let arr;
+  if (Array.isArray(source)) arr = source;
+  else if (source.title || source.start) arr = [source];
+  else arr = Object.values(source);
+  return arr
+    .filter(e => e && typeof e === 'object' && e.title)
+    .map(e => {
+      const start = String(e.start || '').trim();
+      const m = start.match(/(\d{1,2}):(\d{2})/);
+      return {
+        title: String(e.title).trim(),
+        start: start,
+        end: String(e.end || '').trim(),
+        location: String(e.location || '').trim(),
+        // -1 means all-day (or unparseable), which the schedule pins to its own
+        // row rather than guessing an hour.
+        hour: m ? Math.max(0, Math.min(23, parseInt(m[1], 10))) : -1,
+      };
+    })
+    .sort((a, b) => a.hour - b.hour || a.start.localeCompare(b.start));
+}
+
 // Sleep arrives in whichever unit the Shortcut summed it in. Apple's sleep
 // samples are categories ("Asleep"), not numbers, so the Shortcut has to sum
 // their DURATIONS — and Shortcuts reports durations in seconds by default.

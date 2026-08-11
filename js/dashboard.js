@@ -507,6 +507,12 @@ function renderSchedule() {
   $('#scheduleDate').textContent = viewDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
   $('#scheduleToday').style.display = isToday ? 'none' : '';
 
+  // Meetings for the day being viewed, synced from the phone's calendars.
+  // Read-only: they belong to Google/iOS, so nothing here can edit or delete
+  // one — they are context for planning around, not tasks to tick off.
+  const meetings = (typeof getExternalCalendar === 'function') ? getExternalCalendar(viewStr) : [];
+  const allDayMeetings = meetings.filter(m => m.hour < 0);
+
   const todayTasks = state.tasks.filter(t => t.dueDate === viewStr && t.status !== 'done');
   const scheduled = todayTasks.filter(t => t.scheduledHour != null);
   const unscheduled = todayTasks.filter(t => t.scheduledHour == null);
@@ -534,6 +540,18 @@ function renderSchedule() {
   }
 
   let html = '';
+  if (allDayMeetings.length) {
+    html += `
+      <div class="schedule-allday">
+        <div class="schedule-hour-label">All day</div>
+        <div class="schedule-allday-items">
+          ${allDayMeetings.map(m => `<div class="schedule-meeting is-allday">
+            <span class="schedule-meeting-name">${esc(m.title)}</span>
+            ${m.location ? `<span class="schedule-meeting-loc">${esc(m.location)}</span>` : ''}
+          </div>`).join('')}
+        </div>
+      </div>`;
+  }
   for (let h = 6; h <= 21; h++) {
     const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
     const ampm = h >= 12 ? 'PM' : 'AM';
@@ -544,6 +562,12 @@ function renderSchedule() {
       <div class="schedule-hour${isCurrent ? ' current' : ''}" data-hour="${h}">
         <div class="schedule-hour-label">${hour12} ${ampm}</div>
         <div class="schedule-hour-slot" data-hour="${h}">
+          ${meetings.filter(m => m.hour === h).map(m => `
+            <div class="schedule-meeting" title="${esc(m.title)}">
+              <span class="schedule-meeting-time">${esc(m.start)}${m.end ? '&ndash;' + esc(m.end) : ''}</span>
+              <span class="schedule-meeting-name">${esc(m.title)}</span>
+              ${m.location ? `<span class="schedule-meeting-loc">${esc(m.location)}</span>` : ''}
+            </div>`).join('')}
           ${slotTasks.map(t => {
             const cat = state.categories.find(c => c.id === t.category);
             return `

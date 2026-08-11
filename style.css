@@ -9519,3 +9519,33 @@ html.layout-editing .layout-item.is-dragging {
 @media (min-width: 1024px) {
   #trainingRailReadiness { display: none; }
 }
+
+/* ---- Calendar meetings in the schedule ----
+   Visually distinct from tasks and deliberately inert: these belong to
+   Google/iOS, so there is nothing to tick, drag or delete here. Left border
+   and a muted fill mark them as context rather than to-dos. */
+.schedule-meeting {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  padding: 6px 10px;
+  margin-bottom: 4px;
+  border-radius: 8px;
+  border-left: 3px solid var(--blue);
+  background: rgba(90, 165, 249, 0.10);
+  font-size: 12.5px;
+  cursor: default;
+}
+.schedule-meeting-time {
+  font-variant-numeric: tabular-nums;
+  color: var(--blue);
+  font-weight: 650;
+  font-size: 11.5px;
+}
+.schedule-meeting-name { color: var(--text-primary); font-weight: 550; }
+.schedule-meeting-loc { color: var(--text-muted); font-size: 11px; }
+.schedule-meeting.is-allday { border-left-color: var(--purple); background: rgba(167, 139, 250, 0.10); }
+
+.schedule-allday { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 8px; }
+.schedule-allday-items { flex: 1; min-width: 0; }
