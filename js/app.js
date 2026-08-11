@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setHeaderDate();
   bindHeaderCondense();
   bindPullToRefresh();
+  bindSheetDrag();
   // The date format is breakpoint-dependent, so it has to be re-derived when
   // the viewport crosses 600px (rotation, or a resized desktop window).
   window.matchMedia('(max-width: 600px)').addEventListener('change', setHeaderDate);

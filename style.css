@@ -9385,3 +9385,63 @@ html.layout-editing .layout-item.is-dragging {
   .primary-fab { transition: opacity 0.18s ease; }
   .primary-fab.fab-tucked { transform: none; }
 }
+
+/* ==========================================================================
+   Bottom sheets — mobile only
+   Dialogs opened centred, which is a desktop convention: on a phone it puts
+   the content and its close button in the middle of the screen, away from the
+   thumb. iOS uses sheets that rise from the bottom edge and are dismissed by
+   dragging down, which needs no aiming at all.
+
+   Desktop keeps the centred dialog — there is nothing to reach for with a
+   cursor, and a full-width sheet on a 27" monitor would be absurd.
+   ========================================================================== */
+@media (max-width: 600px) {
+  .modal-overlay {
+    align-items: flex-end;
+    /* Sheets meet the bottom edge; the 95vw inset would leave a floating gap. */
+    justify-content: stretch;
+  }
+
+  .modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: 92vh;
+    border-radius: 20px 20px 0 0;
+    border-bottom: none;
+    /* Clear the home indicator so the last control is never under it. */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    animation: sheetUp 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    /* Set by the drag handler while a finger is down. */
+    transform: translateY(var(--sheet-drag, 0px));
+    overscroll-behavior: contain;
+  }
+  .modal.is-settling { transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1); }
+
+  /* Grab handle. Sticky so it survives scrolling the sheet's content. */
+  .modal::before {
+    content: '';
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    display: block;
+    width: 38px;
+    height: 4px;
+    margin: 9px auto 1px;
+    border-radius: 999px;
+    background: var(--text-muted);
+    opacity: 0.45;
+  }
+
+  .modal-header { padding-top: 8px; }
+}
+
+@keyframes sheetUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal { animation-duration: 0.01ms; }
+  .modal.is-settling { transition: none; }
+}

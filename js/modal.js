@@ -175,3 +175,88 @@ function handleAddCategory() {
   saveData(state);
   render();
 }
+
+// ========== Sheet drag-to-dismiss (mobile) ==========
+// Bottom sheets are only worth the change if they behave like sheets: a
+// downward drag should close them without aiming at a small x. Bound once on
+// the document and delegated, so every modal — present and future — gets it
+// without registering anything.
+const SHEET_DISMISS = 96;   // drag distance that commits to a close
+const SHEET_SLOP = 8;
+
+let sheetEl = null;
+let sheetStartY = 0;
+let sheetStartX = 0;
+let sheetDragging = false;
+let sheetDecided = false;
+
+function sheetIsMobile() {
+  return window.matchMedia('(max-width: 600px)').matches;
+}
+
+// Reuse each modal's own close button so its cleanup still runs — several of
+// them reset form state on close, which a bare classList.remove would skip.
+function dismissSheet(modal) {
+  const overlay = modal.closest('.modal-overlay');
+  if (!overlay) return;
+  const closeBtn = overlay.querySelector('.modal-close');
+  modal.style.removeProperty('--sheet-drag');
+  modal.classList.remove('is-settling');
+  if (closeBtn) closeBtn.click();
+  else overlay.classList.remove('active');
+}
+
+function bindSheetDrag() {
+  document.addEventListener('touchstart', (e) => {
+    sheetEl = null;
+    if (!sheetIsMobile() || e.touches.length !== 1) return;
+    const modal = e.target.closest ? e.target.closest('.modal') : null;
+    if (!modal) return;
+    // Only start a drag from the top of the sheet's own scroll, otherwise a
+    // downward swipe meant to scroll the content would close it instead.
+    if (modal.scrollTop > 0) return;
+    sheetEl = modal;
+    sheetStartY = e.touches[0].clientY;
+    sheetStartX = e.touches[0].clientX;
+    sheetDragging = false;
+    sheetDecided = false;
+    modal.classList.remove('is-settling');
+  }, { passive: true });
+
+  document.addEventListener('touchmove', (e) => {
+    if (!sheetEl || e.touches.length !== 1) return;
+    const dy = e.touches[0].clientY - sheetStartY;
+    const dx = e.touches[0].clientX - sheetStartX;
+
+    if (!sheetDecided) {
+      if (Math.abs(dy) < SHEET_SLOP && Math.abs(dx) < SHEET_SLOP) return;
+      // Horizontal, or upward — not a dismissal. Hand the gesture back.
+      if (Math.abs(dx) > Math.abs(dy) || dy < 0) { sheetEl = null; return; }
+      sheetDecided = true;
+      sheetDragging = true;
+    }
+    if (dy <= 0) { sheetEl.style.setProperty('--sheet-drag', '0px'); return; }
+    if (e.cancelable) e.preventDefault();
+    // Slight resistance past the commit point so it never feels weightless.
+    const moved = dy > SHEET_DISMISS ? SHEET_DISMISS + Math.pow(dy - SHEET_DISMISS, 0.8) : dy;
+    sheetEl.style.setProperty('--sheet-drag', moved + 'px');
+  }, { passive: false });
+
+  const release = () => {
+    if (!sheetEl || !sheetDragging) { sheetEl = null; return; }
+    const modal = sheetEl;
+    sheetEl = null;
+    sheetDragging = false;
+    const moved = parseFloat(getComputedStyle(modal).getPropertyValue('--sheet-drag')) || 0;
+    modal.classList.add('is-settling');
+    if (moved >= SHEET_DISMISS) {
+      if (typeof haptic === 'function') haptic('light');
+      dismissSheet(modal);
+    } else {
+      modal.style.setProperty('--sheet-drag', '0px');
+      setTimeout(() => modal.classList.remove('is-settling'), 280);
+    }
+  };
+  document.addEventListener('touchend', release, { passive: true });
+  document.addEventListener('touchcancel', release, { passive: true });
+}
