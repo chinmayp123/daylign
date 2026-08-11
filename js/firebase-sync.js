@@ -156,7 +156,7 @@ function loadExternalData() {
   try {
     // Reads only this profile's subtree, so the shape handed to
     // getExternalMetric is identical no matter whose it is.
-    db.ref(profileExternalPath()).once('value')
+    return db.ref(profileExternalPath()).once('value')
       .then(snap => {
         const v = snap.val();
         if (!v) return;
@@ -165,6 +165,27 @@ function loadExternalData() {
       })
       .catch(() => {}); // steps are a bonus — never let them break the app
   } catch (e) { /* firebase unavailable — fine */ }
+  return Promise.resolve();
+}
+
+// Everything that is fetched once rather than subscribed to. The app's own
+// data arrives through a live DATA_REF listener, but Apple Health and the
+// shared food bank are one-shot reads at startup — so after the 9pm health
+// shortcut runs, an app left open all day still shows yesterday. This is what
+// pull-to-refresh calls, and until now the only way to get it was a restart.
+function refreshFromCloud() {
+  const jobs = [];
+  try { jobs.push(Promise.resolve(loadExternalData())); } catch (e) { /* offline */ }
+  try { jobs.push(Promise.resolve(loadSharedFoods())); } catch (e) { /* offline */ }
+  if (DATA_REF) {
+    try {
+      jobs.push(DATA_REF.once('value').then(snap => {
+        const v = snap.val();
+        if (v && typeof applyFirebaseData === 'function') applyFirebaseData(v);
+      }).catch(() => {}));
+    } catch (e) { /* offline */ }
+  }
+  return Promise.all(jobs);
 }
 
 // Sync state
