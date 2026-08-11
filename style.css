@@ -9195,3 +9195,92 @@ html.layout-editing .layout-item.is-dragging {
 
   details > summary { min-height: 44px; display: flex; align-items: center; }
 }
+
+/* ==========================================================================
+   Mobile header — compact, sticky, collapsing
+   The header was three stacked rows and ~180px of a 844px screen (21%) before
+   any content, and it showed two magnifying glasses side by side: the global
+   command palette and the task-filter input. The palette searches tasks, foods
+   and exercises, so the inline filter was the redundant one.
+
+   One row now, with the date tucked under the title, and the title collapses
+   into a compact bar on scroll — the iOS convention since iOS 11. You get the
+   generous title at rest and a thin bar while reading.
+   ========================================================================== */
+@media (max-width: 600px) {
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    /* Bleed to the screen edges so the sticky background covers full width,
+       then re-pad — .main's own padding would otherwise leave gutters that
+       content scrolls through. */
+    margin: 0 -16px 14px;
+    padding: 8px 16px;
+    background: var(--bg);
+    transition: padding 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  }
+
+  .header-left {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: 11px;
+    row-gap: 0;
+    width: auto;
+    flex: 1;
+    min-width: 0;
+  }
+  .header-left .mobile-menu-btn { grid-row: 1 / span 2; align-self: center; }
+  .header h1 {
+    grid-column: 2;
+    font-size: 25px;
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: font-size 0.18s ease;
+  }
+  .header-date {
+    grid-column: 2;
+    margin-top: 1px;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    max-height: 20px;
+    opacity: 1;
+    transition: max-height 0.18s ease, opacity 0.14s ease, margin 0.18s ease;
+  }
+
+  .header-right { gap: 8px; width: auto; flex: 0 0 auto; }
+
+  /* The command palette is a superset of this filter — one search entry. */
+  .header .search-box { display: none; }
+
+  /* Silence is the normal state; the indicator earns its space only when
+     something is actually wrong or in flight. */
+  .sync-status.is-synced { display: none; }
+
+  /* ---- condensed state, set by JS past the scroll threshold ---- */
+  .header.is-condensed {
+    padding-top: 5px;
+    padding-bottom: 5px;
+    box-shadow: 0 1px 0 var(--border), 0 6px 18px rgba(0, 0, 0, 0.28);
+  }
+  .header.is-condensed h1 { font-size: 18px; }
+  .header.is-condensed .header-date {
+    max-height: 0;
+    opacity: 0;
+    margin-top: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header,
+  .header h1,
+  .header-date { transition: none; }
+}

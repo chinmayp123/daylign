@@ -5,6 +5,10 @@ document.addEventListener('DOMContentLoaded', () => {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
   setHeaderDate();
+  bindHeaderCondense();
+  // The date format is breakpoint-dependent, so it has to be re-derived when
+  // the viewport crosses 600px (rotation, or a resized desktop window).
+  window.matchMedia('(max-width: 600px)').addEventListener('change', setHeaderDate);
   bindEvents();
   if (currentView !== 'dashboard') {
     switchView(currentView);
@@ -25,9 +29,35 @@ document.addEventListener('DOMContentLoaded', () => {
   requireProfile(() => initFirebaseSync(applyFirebaseData));
 });
 
+// "Tuesday, August 11, 2026" is 24 characters competing with the title for a
+// 390px row. The short form carries everything you actually need — the year is
+// never in question, and the long weekday buys nothing.
 function setHeaderDate() {
   const d = new Date();
-  $('#headerDate').textContent = d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const narrow = window.matchMedia('(max-width: 600px)').matches;
+  $('#headerDate').textContent = d.toLocaleDateString('en-US', narrow
+    ? { weekday: 'short', month: 'short', day: 'numeric' }
+    : { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+// Collapse the large title into a compact bar once you start reading. Standard
+// iOS behaviour, and it pairs with the sticky header: generous at rest, thin
+// while scrolling, without costing a permanent chunk of the screen.
+function bindHeaderCondense() {
+  const header = document.querySelector('.header');
+  if (!header) return;
+  const ON = 34, OFF = 12; // hysteresis, so it cannot flicker at the boundary
+  let ticking = false;
+  const update = () => {
+    ticking = false;
+    const y = window.scrollY;
+    if (y > ON) header.classList.add('is-condensed');
+    else if (y < OFF) header.classList.remove('is-condensed');
+  };
+  window.addEventListener('scroll', () => {
+    if (!ticking) { ticking = true; requestAnimationFrame(update); }
+  }, { passive: true });
+  update();
 }
 
 // ========== Events ==========
