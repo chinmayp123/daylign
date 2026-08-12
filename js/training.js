@@ -214,40 +214,25 @@ function renderRailReadiness() {
     </div>`;
 }
 
-// Compact consistency heatmap for the rail — any lift or cardio day counts.
+// Consistency calendar for the desktop rail. It shares the exact renderer the
+// in-pane card uses (renderConsistencyCalendar in gym.js), so the muscle-group
+// colours, weekday/month labels and the 3-exercise "real session" bar are the
+// same wherever it shows. The in-pane copy is hidden at this width, so there is
+// no duplication.
 function renderRailConsistency() {
   const host = document.getElementById('trainingRailConsistency');
   if (!host) return;
-  // Shaded by size, not just presence — a two-set check-in and a sixteen-set
-  // session used to render as the same solid square, which made a light month
-  // look identical to a heavy one.
-  const daySets = {};
-  (state.gym || []).forEach(e => { daySets[e.date] = (daySets[e.date] || 0) + ((e.sets || []).length); });
-  const cardioDays = new Set((state.cardio || []).map(s => s.date));
-  const today = getTodayStr();
-  const WEEKS = 12;
-  const end = new Date(today + 'T00:00:00');
-  const endDow = (end.getDay() + 6) % 7; // Mon = 0
-  const start = new Date(end);
-  start.setDate(start.getDate() - endDow - (WEEKS - 1) * 7);
-  const cells = [];
-  for (let w = 0; w < WEEKS; w++) {
-    for (let d = 0; d < 7; d++) {
-      const cur = new Date(start);
-      cur.setDate(cur.getDate() + w * 7 + d);
-      const ds = toLocalDateStr(cur);
-      if (ds > today) { cells.push('<div class="streak-cell future"></div>'); continue; }
-      const sets = daySets[ds] || 0;
-      const lvl = cardioDays.has(ds) ? 3 : (sets === 0 ? 0 : sets < 4 ? 1 : sets < 12 ? 2 : 3);
-      const note = sets ? ` · ${sets} set${sets === 1 ? '' : 's'}` : (cardioDays.has(ds) ? ' · cardio' : ' · rest');
-      cells.push(`<div class="streak-cell lvl${lvl}" title="${formatDate(ds)}${note}"></div>`);
-    }
-  }
   host.innerHTML = `
     <div class="card training-rail-card">
       <div class="coach-head"><h2>Consistency</h2></div>
-      <div class="streak-heatmap-wrap"><div class="streak-heatmap rail-heatmap">${cells.join('')}</div></div>
+      <div class="gym-cal-wrap"><div class="gym-cal" id="railStreakHeatmap"></div></div>
     </div>`;
+  const grid = document.getElementById('railStreakHeatmap');
+  if (grid && typeof renderConsistencyCalendar === 'function') {
+    const daySets = {};
+    (state.gym || []).forEach(e => { daySets[e.date] = (daySets[e.date] || 0) + ((e.sets || []).length); });
+    renderConsistencyCalendar(grid, daySets, getTodayStr());
+  }
 }
 
 function renderTraining() {

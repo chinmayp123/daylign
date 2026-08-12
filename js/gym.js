@@ -378,7 +378,50 @@ function renderLastTimeChip() {
   </div>`;
 }
 
-// ---- Consistency: streak stats + 16-week heatmap ----
+// A day only "counts" for consistency — the streak, and a solid calendar cell —
+// when it is a real session, not a token check-in. The bar the user asked for is
+// about variety, not volume: two go-to moves (the classic push-ups + sit-ups) is
+// a check-in; a third distinct exercise makes it a session. Any cardio session
+// counts on its own, the same as isFullSession treats it.
+const CONSISTENCY_MIN_EXERCISES = 3;
+
+function distinctExercisesOn(dateStr) {
+  const names = new Set();
+  (state.gym || []).forEach(e => {
+    if (e.date !== dateStr) return;
+    const n = (e.exercise || '').trim().toLowerCase();
+    if (n) names.add(n);
+  });
+  return names.size;
+}
+
+function isConsistencyDay(dateStr) {
+  if ((state.cardio || []).some(s => s.date === dateStr)) return true;
+  return distinctExercisesOn(dateStr) >= CONSISTENCY_MIN_EXERCISES;
+}
+
+// Dominant muscle group for a day, weighted by sets: 'push' | 'pull' | 'legs' |
+// 'core' when one group carries 60%+ of the classified sets, otherwise 'mixed'.
+// A day with no classifiable lifting but a cardio session reads as 'cardio';
+// a day with nothing at all returns null.
+function dayFocusGroup(dateStr) {
+  const tally = { push: 0, pull: 0, legs: 0, core: 0 };
+  let classified = 0;
+  (state.gym || []).forEach(e => {
+    if (e.date !== dateStr) return;
+    const g = muscleGroupFor(e.exercise);
+    const n = (e.sets || []).length;
+    if (g) { tally[g] += n; classified += n; }
+  });
+  if (!classified) {
+    return (state.cardio || []).some(s => s.date === dateStr) ? 'cardio' : null;
+  }
+  const order = ['push', 'pull', 'legs', 'core'];
+  const hit = order.filter(g => tally[g] > 0).sort((a, b) => tally[b] - tally[a]);
+  return tally[hit[0]] / classified >= 0.6 ? hit[0] : 'mixed';
+}
+
+// ---- Consistency: streak stats + 16-week calendar ----
 function renderStreak() {
   const heatEl = $('#streakHeatmap');
   if (!heatEl) return;
@@ -386,61 +429,112 @@ function renderStreak() {
   for (const e of state.gym) daySets[e.date] = (daySets[e.date] || 0) + e.sets.length;
 
   const today = getTodayStr();
-  // Current streak: consecutive training days ending today (or yesterday, so
-  // a morning view before the workout doesn't read as a broken streak)
+  // Current streak: consecutive *real* sessions (3+ distinct exercises or cardio)
+  // ending today — or yesterday, so a morning view before the workout doesn't
+  // read as a broken streak. A push-ups + sit-ups check-in no longer holds it.
   let streak = 0;
   const d = new Date(today + 'T00:00:00');
-  if (!daySets[today]) d.setDate(d.getDate() - 1);
-  while (daySets[toLocalDateStr(d)]) { streak++; d.setDate(d.getDate() - 1); }
+  if (!isConsistencyDay(today)) d.setDate(d.getDate() - 1);
+  while (isConsistencyDay(toLocalDateStr(d))) { streak++; d.setDate(d.getDate() - 1); }
 
+  // Best streak, over the same real-session definition.
+  const realDays = Object.keys(daySets)
+    .concat((state.cardio || []).map(s => s.date))
+    .filter((v, i, a) => a.indexOf(v) === i)
+    .filter(isConsistencyDay)
+    .sort();
   let best = 0, run = 0, prevT = null;
-  for (const ds of Object.keys(daySets).sort()) {
+  for (const ds of realDays) {
     const t = new Date(ds + 'T00:00:00').getTime();
     run = (prevT !== null && t - prevT === 86400000) ? run + 1 : 1;
     if (run > best) best = run;
     prevT = t;
   }
 
-  // Active days and full sessions are different things. Counting a two-set
-  // check-in toward a "4+ sessions a week" target reports a week that did not
-  // happen, so the headline number is sessions and active days sit behind it.
-  let week = 0, fullWeek = 0;
+  // Active days and real sessions are different things. A day of just push-ups
+  // and sit-ups keeps the habit alive but is not a session, so it sits behind
+  // the headline number as a check-in rather than counting toward it.
+  let activeWeek = 0, realWeek = 0;
   for (let i = 0; i < 7; i++) {
     const dd = new Date(today + 'T00:00:00');
     dd.setDate(dd.getDate() - i);
     const ds = toLocalDateStr(dd);
-    if (daySets[ds]) week++;
-    if (isFullSession(ds)) fullWeek++;
+    if (daySets[ds] || (state.cardio || []).some(s => s.date === ds)) activeWeek++;
+    if (isConsistencyDay(ds)) realWeek++;
   }
 
-  const checkIns = week - fullWeek;
+  const checkIns = activeWeek - realWeek;
   $('#streakSummary').textContent = checkIns > 0
-    ? `${fullWeek} session${fullWeek === 1 ? '' : 's'} · ${checkIns} check-in${checkIns === 1 ? '' : 's'} this week`
-    : `${fullWeek}/7 sessions this week`;
+    ? `${realWeek} session${realWeek === 1 ? '' : 's'} · ${checkIns} check-in${checkIns === 1 ? '' : 's'} this week`
+    : `${realWeek}/7 sessions this week`;
   $('#streakStats').innerHTML = `
     <div class="gym-stat"><span class="gym-stat-val">${streak}</span><span class="gym-stat-lbl">Day Streak</span></div>
-    <div class="gym-stat"><span class="gym-stat-val">${fullWeek}<small class="streak-stat-target"> / 4+</small></span><span class="gym-stat-lbl">Sessions This Week</span></div>
+    <div class="gym-stat"><span class="gym-stat-val">${realWeek}<small class="streak-stat-target"> / 4+</small></span><span class="gym-stat-lbl">Sessions This Week</span></div>
     <div class="gym-stat"><span class="gym-stat-val">${best}</span><span class="gym-stat-lbl">Best Streak</span></div>
   `;
 
-  // 16 weeks, columns = weeks, rows = Mon..Sun, GitHub-style
+  renderConsistencyCalendar(heatEl, daySets, today);
+}
+
+// 16-week calendar: columns = weeks, rows = Mon..Sun (so it reads down a week
+// like a wall calendar), each day coloured by the muscle group it worked. A
+// solid cell is a real session; a faded one is a check-in that fell under the
+// 3-exercise bar. Weekday and month labels make the shape legible at a glance.
+const CAL_GROUP_LABEL = { push: 'Push', pull: 'Pull', legs: 'Legs', core: 'Core', mixed: 'Mixed', cardio: 'Cardio' };
+const CAL_DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+function renderConsistencyCalendar(host, daySets, today) {
   const WEEKS = 16;
   const end = new Date(today + 'T00:00:00');
   const endDow = (end.getDay() + 6) % 7; // Mon = 0
   const start = new Date(end);
-  start.setDate(start.getDate() - (WEEKS * 7 - 1) + (6 - endDow));
+  start.setDate(start.getDate() - (WEEKS * 7 - 1) + (6 - endDow)); // a Monday
+
+  // Month labels: one slot per week column, named only where the month turns over.
+  const months = [];
+  let prevMonth = -1;
+  for (let w = 0; w < WEEKS; w++) {
+    const col = new Date(start);
+    col.setDate(start.getDate() + w * 7);
+    const m = col.getMonth();
+    months.push(m !== prevMonth ? `<span class="gym-cal-mon">${col.toLocaleDateString('en-US', { month: 'short' })}</span>` : '<span class="gym-cal-mon"></span>');
+    prevMonth = m;
+  }
+
   const cells = [];
   for (let i = 0; i < WEEKS * 7; i++) {
     const dd = new Date(start);
     dd.setDate(start.getDate() + i);
     const ds = toLocalDateStr(dd);
-    if (ds > today) { cells.push('<div class="streak-cell future"></div>'); continue; }
+    const label = dd.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    if (ds > today) { cells.push(`<div class="gym-cal-cell is-future" title="${label}"></div>`); continue; }
+
+    const group = dayFocusGroup(ds);
+    if (!group) { cells.push(`<div class="gym-cal-cell is-empty" title="${label} · rest"></div>`); continue; }
+
+    const real = isConsistencyDay(ds);
     const sets = daySets[ds] || 0;
-    const lvl = sets === 0 ? 0 : sets < SESSION_MIN_SETS ? 1 : sets < 12 ? 2 : 3;
-    const label = new Date(ds + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    cells.push(`<div class="streak-cell lvl${lvl}" title="${label}${sets ? ` · ${sets} sets` : ' · rest'}"></div>`);
+    const distinct = distinctExercisesOn(ds);
+    let tip;
+    if (group === 'cardio') {
+      tip = `${label} · Cardio`;
+    } else {
+      tip = `${label} · ${CAL_GROUP_LABEL[group]} · ${distinct} exercise${distinct === 1 ? '' : 's'}, ${sets} set${sets === 1 ? '' : 's'}${real ? '' : ' · check-in'}`;
+    }
+    cells.push(`<div class="gym-cal-cell g-${group} ${real ? 'is-real' : 'is-check'}" title="${tip}"></div>`);
   }
-  heatEl.innerHTML = cells.join('');
+
+  const legendGroups = ['push', 'pull', 'legs', 'core', 'cardio'];
+  const legend = legendGroups.map(g => `<span class="gym-cal-key"><i class="gym-cal-cell g-${g} is-real"></i>${CAL_GROUP_LABEL[g]}</span>`).join('')
+    + '<span class="gym-cal-key gym-cal-key-note"><i class="gym-cal-cell g-mixed is-check"></i>Check-in</span>';
+
+  host.innerHTML = `
+    <div class="gym-cal-months">${months.join('')}</div>
+    <div class="gym-cal-body">
+      <div class="gym-cal-days">${CAL_DOW.map(d => `<span>${d}</span>`).join('')}</div>
+      <div class="gym-cal-grid">${cells.join('')}</div>
+    </div>
+    <div class="gym-cal-legend">${legend}</div>`;
 }
 
 // Exercise suggestions, ranked by what YOU actually do.
@@ -527,10 +621,15 @@ function openGymLogSheet(prefillName) {
   sheet.classList.add('is-open');
   document.body.classList.add('gym-sheet-lock');
   if (typeof haptic === 'function') haptic('light');
-  // Do not autofocus the field: on iOS that throws the keyboard up over the
-  // suggestions, which are the point of opening this.
   const title = document.getElementById('gymLogSheetTitle');
   if (title) title.textContent = gymEditingIdx === null ? 'Log exercise' : 'Edit exercise';
+  // On mobile, do NOT autofocus: iOS throws the keyboard up over the suggestions,
+  // which are the point of opening this. Desktop has no keyboard to fight, so a
+  // popup that lands with the cursor already in the field feels right.
+  if (!gymSheetIsMobile() && input) {
+    input.focus();
+    input.select();
+  }
 }
 
 function closeGymLogSheet() {
@@ -566,6 +665,10 @@ function bindGymSuggestions() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeGymLogSheet();
   });
+  // Desktop popup: clicking the dimmed backdrop (the sheet element itself, never
+  // the panel inside it) closes, matching how the New Task modal behaves.
+  const sheet = document.getElementById('gymLogSheet');
+  if (sheet) sheet.addEventListener('click', (e) => { if (e.target === sheet) closeGymLogSheet(); });
 }
 
 // ---- Rest timer ----
@@ -832,7 +935,7 @@ function renderGym() {
 
   // Exercise list
   if (!dayExercises.length) {
-    $('#gymTodayList').innerHTML = '<div class="gym-empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" opacity="0.4"><path d="M6.5 6.5h-3a1 1 0 00-1 1v9a1 1 0 001 1h3"/><path d="M17.5 6.5h3a1 1 0 011 1v9a1 1 0 01-1 1h-3"/><rect x="6.5" y="4" width="4" height="16" rx="1"/><rect x="13.5" y="4" width="4" height="16" rx="1"/><line x1="10.5" y1="12" x2="13.5" y2="12"/></svg><p>No exercises logged</p><p class="gym-empty-sub">Add an exercise below to start tracking</p></div>';
+    $('#gymTodayList').innerHTML = '<div class="gym-empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" opacity="0.4"><path d="M6.5 6.5h-3a1 1 0 00-1 1v9a1 1 0 001 1h3"/><path d="M17.5 6.5h3a1 1 0 011 1v9a1 1 0 01-1 1h-3"/><rect x="6.5" y="4" width="4" height="16" rx="1"/><rect x="13.5" y="4" width="4" height="16" rx="1"/><line x1="10.5" y1="12" x2="13.5" y2="12"/></svg><p>No exercises logged</p><p class="gym-empty-sub">Tap “+ Add Exercise” to start tracking</p></div>';
   } else {
     $('#gymTodayList').innerHTML = sessionFocusRow(dayExercises) + dayExercises.map((ex, idx) => {
       const isBW = ex.bodyweight || isBodyweightExercise(ex.exercise);
@@ -881,13 +984,14 @@ function renderGym() {
       gymEditingIdx = parseInt(btn.dataset.gymIdx);
       $('#gymExerciseName').value = ex.exercise;
       gymSets = ex.sets.map(s => ({ reps: String(s.reps), weight: String(s.weight) }));
-      if (typeof openGymLogSheet === 'function' && gymSheetIsMobile()) openGymLogSheet();
       // Update button text
       $('#gymSaveExerciseBtn').innerHTML = `
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
         Update Exercise`;
-      renderGym();
-      $('#gymExerciseName').focus();
+      // Editing opens the same popup as logging — on both mobile and desktop now.
+      // openGymLogSheet() calls renderGym() and handles focus per platform.
+      if (typeof openGymLogSheet === 'function') openGymLogSheet(ex.exercise);
+      else { renderGym(); $('#gymExerciseName').focus(); }
     });
   });
 

@@ -357,27 +357,30 @@
         </div>
 
         <!-- Logging sheet. On mobile this is a full-screen page opened from the
-             primary action; on desktop it stays inline exactly as it was, because
-             a cursor has no problem with a form sitting above a list. -->
+             primary action; on desktop it opens as a centered popup, like the
+             New Task modal. Either way the form itself is identical — only the
+             .gym-log-sheet-panel wrapper's presentation differs by breakpoint. -->
         <div class="gym-log-sheet" id="gymLogSheet">
+          <div class="gym-log-sheet-panel">
           <div class="gym-log-sheet-head">
             <h2 id="gymLogSheetTitle">Log exercise</h2>
             <button type="button" class="gym-log-close" id="gymLogClose" aria-label="Close">&times;</button>
           </div>
-        <!-- Add Exercise (primary action — kept at top so logging never needs a scroll) -->
-        <div class="gym-add-bar">
-          <input type="text" id="gymExerciseName" placeholder="Add exercise..." class="gym-exercise-input" list="exerciseSuggestions" autocomplete="off">
+        <!-- Add Exercise (primary action — kept at top so logging never needs a scroll) -->
+        <div class="gym-add-bar">
+          <input type="text" id="gymExerciseName" placeholder="Add exercise..." class="gym-exercise-input" list="exerciseSuggestions" autocomplete="off">
           <div class="gym-suggest" id="gymSuggest"></div>
-          <div id="gymLastTime"></div>
-          <datalist id="exerciseSuggestions"></datalist>
-          <div class="gym-sets-inline" id="gymSetsList"></div>
-          <div class="gym-add-actions">
-            <button type="button" class="gym-add-set-btn" id="gymAddSetBtn">+ Set</button>
-            <button type="button" class="gym-rest-btn" data-rest="60">Rest 60s</button>
-            <button type="button" class="gym-rest-btn" data-rest="90">Rest 90s</button>
-            <button type="button" class="btn-primary gym-save-btn" id="gymSaveExerciseBtn">Add Exercise</button>
-          </div>
-        </div>
+          <div id="gymLastTime"></div>
+          <datalist id="exerciseSuggestions"></datalist>
+          <div class="gym-sets-inline" id="gymSetsList"></div>
+          <div class="gym-add-actions">
+            <button type="button" class="gym-add-set-btn" id="gymAddSetBtn">+ Set</button>
+            <button type="button" class="gym-rest-btn" data-rest="60">Rest 60s</button>
+            <button type="button" class="gym-rest-btn" data-rest="90">Rest 90s</button>
+            <button type="button" class="btn-primary gym-save-btn" id="gymSaveExerciseBtn">Add Exercise</button>
+          </div>
+        </div>
+          </div>
         </div>
 
         <!-- Stats Row -->
@@ -385,7 +388,7 @@
 
         <!-- Workout Log -->
         <div class="gym-workout" id="gymTodayList">
-          <div class="empty-state"><svg aria-hidden="true" focusable="false" class="empty-state-icon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg><p class="empty-state-title">No exercises yet</p><p class="empty-state-hint">Add your first exercise above to start this session.</p></div>
+          <div class="empty-state"><svg aria-hidden="true" focusable="false" class="empty-state-icon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg><p class="empty-state-title">No exercises yet</p><p class="empty-state-hint">Tap “+ Add Exercise” to start this session.</p></div>
         </div>
 
         <!-- Body Weight now lives in the weight-trend sheet (opened from the
@@ -412,7 +415,7 @@
             <span class="weight-goal-chip" id="streakSummary"></span>
           </div>
           <div class="streak-stats" id="streakStats"></div>
-          <div class="streak-heatmap-wrap"><div class="streak-heatmap" id="streakHeatmap"></div></div>
+          <div class="gym-cal-wrap"><div class="gym-cal" id="streakHeatmap"></div></div>
         </div>
         </div><!-- /#trainingStrength -->
 
