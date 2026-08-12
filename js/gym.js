@@ -497,6 +497,98 @@ function nextTrainingDay() {
   return { day, label: SPLIT_LABEL[day], focus: SPLIT_FOCUS[day], reason, suggestion: GROUP_SUGGESTIONS[day] };
 }
 
+// ---- Goal progress ----
+// Connects the raw logging to WHY you train. Each goal reads from data you
+// already enter — no new inputs. Golf is intentionally absent (a later phase).
+// Waist/body-fat currently reads from the weight trend; a real waist measure
+// arrives with the body-composition tracker.
+function goalGroupDaysThisWeek(group) {
+  const today = getTodayStr();
+  let n = 0;
+  for (let i = 0; i < 7; i++) {
+    const ds = offsetDateStr(today, -i);
+    if ((state.gym || []).some(e => e.date === ds && muscleGroupFor(e.exercise) === group)) n++;
+  }
+  return n;
+}
+
+function goalProgress() {
+  const today = getTodayStr();
+  const goals = (typeof getGoals === 'function') ? getGoals() : { weight: 150 };
+  const rows = [];
+
+  // 1 — Fat loss (weight trend toward goal; waist comes with body-comp tracker)
+  const pace = (typeof weighInPace === 'function') ? weighInPace() : null;
+  const latestW = (typeof latestBodyWeightLbs === 'function') ? latestBodyWeightLbs() : null;
+  if (pace && latestW != null && Number.isFinite(pace.perWeek)) {
+    const cutting = latestW > goals.weight;
+    const pw = Math.round(pace.perWeek * 10) / 10;
+    const losing = pace.perWeek < -0.1;
+    const atGoal = Math.abs(latestW - goals.weight) < 0.5;
+    rows.push({
+      label: 'Fat loss', icon: atGoal ? '🎯' : (cutting && losing ? '📉' : (cutting ? '⏸️' : '➖')),
+      status: atGoal ? 'At goal' : (cutting && losing ? 'On track' : (cutting ? 'Stalled' : 'Maintaining')),
+      detail: `${latestW} → ${goals.weight} lbs${pw ? ` · ${pw > 0 ? '+' : ''}${pw}/wk` : ''}`,
+      tone: (atGoal || losing || !cutting) ? 'good' : 'warn',
+    });
+  } else {
+    rows.push({ label: 'Fat loss', icon: '⚖️', status: 'Log weight', detail: 'weigh in twice a week to track', tone: 'muted' });
+  }
+
+  // 2 — Strength (average gain across your tracked movements)
+  let strengthPct = null, improving = 0, stalledN = 0;
+  if (typeof strengthMovements === 'function' && typeof movementTrend === 'function') {
+    const trends = strengthMovements().map(movementTrend).filter(t => t.sessionCount >= 4);
+    if (trends.length) {
+      strengthPct = Math.round(trends.reduce((s, t) => s + t.gainPct, 0) / trends.length);
+      improving = trends.filter(t => t.improving).length;
+      stalledN = trends.filter(t => t.stalled).length;
+    }
+  }
+  const gaining = strengthPct != null && strengthPct > 0;
+  const strengthStatus = strengthPct == null ? 'Building'
+    : gaining ? `+${strengthPct}%`
+    : (stalledN > 0 && improving === 0) ? 'Stalled'
+    : 'Holding';
+  rows.push({
+    label: 'Strength', icon: gaining ? '📈' : (strengthStatus === 'Stalled' ? '⏸️' : '💪'),
+    status: strengthStatus,
+    detail: strengthPct == null ? 'log a few weighted sessions' : `${improving} improving${stalledN ? ` · ${stalledN} stalled` : ''}`,
+    tone: (gaining || improving > 0) ? 'good' : (stalledN > 0 ? 'warn' : 'good'),
+  });
+
+  // 3 — Core (days you hit core this week; target 3)
+  const coreDays = goalGroupDaysThisWeek('core');
+  rows.push({ label: 'Core', icon: coreDays >= 3 ? '🔥' : '🎯', status: `${coreDays}/wk`,
+    detail: `${coreDays >= 3 ? 'on target' : 'aim for 3'} core days`, tone: coreDays >= 3 ? 'good' : 'warn' });
+
+  // 4 — Cardio (sessions this week; target 2)
+  const cardioDays = (state.cardio || []).filter(s => s && typeof s.date === 'string' && s.date >= offsetDateStr(today, -6) && s.date <= today).length;
+  rows.push({ label: 'Cardio', icon: cardioDays >= 2 ? '🔥' : '🏃', status: `${cardioDays}/wk`,
+    detail: `${cardioDays >= 2 ? 'on target' : 'aim for 2'} sessions`, tone: cardioDays >= 2 ? 'good' : 'warn' });
+
+  // 5 — Consistency (real sessions this week vs 4)
+  let real = 0;
+  for (let i = 0; i < 7; i++) { if (isConsistencyDay(offsetDateStr(today, -i))) real++; }
+  rows.push({ label: 'Consistency', icon: real >= 4 ? '🔥' : '📊', status: `${real}/4`,
+    detail: 'real sessions this week', tone: real >= 4 ? 'good' : 'warn' });
+
+  return rows;
+}
+
+function renderGoalProgress() {
+  const host = document.getElementById('goalProgressBody');
+  if (!host) return;
+  const rows = goalProgress();
+  host.innerHTML = rows.map(r => `
+    <div class="goal-row">
+      <span class="goal-row-icon">${r.icon}</span>
+      <span class="goal-row-label">${esc(r.label)}</span>
+      <span class="goal-row-detail">${esc(r.detail)}</span>
+      <span class="goal-row-status goal-${r.tone}">${esc(r.status)}</span>
+    </div>`).join('');
+}
+
 // ---- Consistency: streak stats + 16-week calendar ----
 function renderStreak() {
   const heatEl = $('#streakHeatmap');
@@ -961,6 +1053,7 @@ function renderGym() {
 
   renderWeight();
   renderGymCoach();
+  renderGoalProgress();
   renderStreak();
   renderLastTimeChip();
 
