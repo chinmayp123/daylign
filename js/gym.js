@@ -110,18 +110,47 @@ const SET_MINUTES = 2;
 const MET_BODYWEIGHT = 5.0; // moderate-vigorous calisthenics
 const MET_WEIGHTED = 6.0;   // vigorous weight training
 
-// Keyword → muscle group. Matched in object order, so more specific phrases
-// must sit in the group that owns them ('reverse fly' is a rear-delt PULL and
-// is listed before push's chest 'fly'; 'leg raise' stays core, which is why
-// shoulder raises are spelled out rather than matching a bare 'raise').
+// Keyword → muscle group, by the movement's prime mover:
+//   push  chest, shoulders, triceps
+//   pull  back, biceps, rear delts, traps
+//   legs  quads, hamstrings, glutes, calves
+//   core  abs and trunk
+//
+// The LONGEST matching keyword wins, regardless of which group it sits in.
+// This used to take the first matching group in object order, which meant a
+// short generic keyword in an earlier group beat a longer specific one later,
+// and produced four wrong answers on real exercise names:
+//
+//   Leg Press       -> push   'press'    beat  'leg press'
+//   Leg Curl        -> pull   'curl'     with no leg-curl keyword to lose to
+//   Hamstring Curl  -> pull   same
+//   Tricep Pulldown -> pull   'pulldown' beat  'tricep'
+//
+// Ordering by specificity fixes the whole class rather than the four names,
+// and it makes bare keywords safe to add: 'fly' cannot swallow 'reverse fly',
+// and 'raise' is still avoided only because 'calf raise', 'leg raise' and
+// 'lateral raise' land in three different groups.
 const MUSCLE_GROUPS = {
-  pull: ['pull up', 'pullup', 'chin up', 'row', 'curl', 'pulldown', 'muscle up', 'lever', 'face pull',
-         'bicep', 'reverse fly', 'rear delt', 'shrug'],
-  push: ['push up', 'pushup', 'push-up', 'dip', 'press', 'bench', 'handstand', 'tricep',
-         'front raise', 'lateral raise', 'shoulder', 'chest fly'],
-  legs: ['squat', 'lunge', 'deadlift', 'rdl', 'leg press', 'calf', 'glute', 'hip thrust', 'box jump'],
-  core: ['sit up', 'situp', 'crunch', 'plank', 'leg raise', 'twist', 'flutter', 'l-sit', 'dragon flag', 'mountain climber', 'superman'],
+  push: ['push up', 'pushup', 'push-up', 'pushdown', 'dip', 'press', 'bench', 'handstand',
+         'tricep', 'triceps', 'skull crusher', 'skullcrusher', 'jm press', 'tricep pulldown',
+         'front raise', 'lateral raise', 'lat raise', 'shoulder', 'delt raise', 'arnold',
+         'chest', 'pec deck', 'pec fly', 'fly', 'flye', 'overhead extension',
+         'tricep extension', 'triceps extension', 'kickback'],
+  pull: ['pull up', 'pullup', 'chin up', 'chinup', 'row', 'curl', 'pulldown', 'pullover',
+         'muscle up', 'lever', 'face pull', 'bicep', 'biceps', 'reverse fly', 'reverse flye',
+         'rear delt', 'shrug', 'lat prayer', 'straight arm'],
+  legs: ['squat', 'lunge', 'deadlift', 'rdl', 'leg press', 'leg curl', 'leg extension',
+         'hamstring', 'hamstring curl', 'quad', 'calf', 'glute', 'hip thrust', 'box jump',
+         'step up', 'good morning', 'nordic', 'adductor', 'abductor', 'sled'],
+  core: ['sit up', 'situp', 'crunch', 'plank', 'leg raise', 'knee raise', 'twist', 'flutter',
+         'l-sit', 'dragon flag', 'mountain climber', 'superman', 'ab wheel', 'ab roller',
+         'hollow', 'dead bug', 'woodchop', 'oblique'],
 };
+
+// Flattened once at load: [keyword, group], longest keyword first.
+const MUSCLE_KEYWORDS = Object.keys(MUSCLE_GROUPS)
+  .reduce((out, g) => out.concat(MUSCLE_GROUPS[g].map(k => [k, g])), [])
+  .sort((a, b) => b[0].length - a[0].length);
 
 const GROUP_SUGGESTIONS = {
   push: 'push ups or dips',
@@ -132,8 +161,10 @@ const GROUP_SUGGESTIONS = {
 
 function muscleGroupFor(exercise) {
   const name = (exercise || '').toLowerCase();
-  for (const [group, keywords] of Object.entries(MUSCLE_GROUPS)) {
-    if (keywords.some(k => name.includes(k))) return group;
+  if (!name) return null;
+  // Most specific phrase wins — see the note on MUSCLE_GROUPS.
+  for (let i = 0; i < MUSCLE_KEYWORDS.length; i++) {
+    if (name.includes(MUSCLE_KEYWORDS[i][0])) return MUSCLE_KEYWORDS[i][1];
   }
   return null;
 }
