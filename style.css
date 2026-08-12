@@ -9549,3 +9549,107 @@ html.layout-editing .layout-item.is-dragging {
 
 .schedule-allday { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 8px; }
 .schedule-allday-items { flex: 1; min-width: 0; }
+
+/* ==========================================================================
+   Gym logging sheet + exercise suggestions
+   On a phone the gym page is a view of the day's work, and logging happens in
+   a sheet you open on purpose. A form wedged permanently above the list meant
+   scrolling past it constantly, and typing "Push Ups" for the twentieth time
+   one-handed mid-set. Desktop keeps the inline form — a cursor has neither
+   problem, and a full-screen takeover on a monitor would be obnoxious.
+   ========================================================================== */
+
+/* Suggestions: your most-logged lifts first, tappable, no typing required. */
+.gym-suggest {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 0 4px;
+  margin-bottom: 6px;
+}
+.gym-suggest::-webkit-scrollbar { display: none; }
+.gym-suggest:empty { display: none; }
+.gym-suggest-chip {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 550;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.gym-suggest-chip:active { transform: scale(0.97); }
+.gym-suggest-chip.is-new { color: var(--text-muted); border-style: dashed; }
+
+.gym-log-sheet-head { display: none; }
+
+@media (max-width: 900px) {
+  .gym-log-sheet {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-primary);
+    padding: 0 16px calc(20px + env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    /* Off-screen rather than display:none so it can animate, and so the inputs
+       inside keep their values while it is shut. */
+    transform: translateY(100%);
+    visibility: hidden;
+    transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.28s;
+  }
+  .gym-log-sheet.is-open { transform: translateY(0); visibility: visible; }
+
+  .gym-log-sheet-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    margin: 0 -16px 4px;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border);
+  }
+  .gym-log-sheet-head h2 { font-size: 17px; font-weight: 700; }
+  .gym-log-close {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  /* The page underneath must not scroll behind the sheet. */
+  body.gym-sheet-lock { overflow: hidden; }
+
+  /* Bigger targets, since this is used mid-set with one hand. */
+  .gym-log-sheet .gym-exercise-input { min-height: 48px; font-size: 16px; }
+  .gym-log-sheet .gym-reps-input,
+  .gym-log-sheet .gym-weight-input { min-height: 44px; font-size: 16px; }
+  .gym-log-sheet .gym-save-btn { min-height: 50px; font-size: 15px; }
+  .gym-log-sheet .gym-add-actions { position: sticky; bottom: 0; background: var(--bg-primary); padding: 10px 0 0; }
+
+  /* The floating pill would sit on top of the sheet's own save button. */
+  .gym-log-sheet.is-open ~ .primary-fab,
+  body.gym-sheet-lock .primary-fab,
+  body.gym-sheet-lock .voice-fab { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gym-log-sheet { transition: visibility 0.28s; }
+}

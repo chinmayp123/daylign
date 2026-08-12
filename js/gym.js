@@ -443,6 +443,131 @@ function renderStreak() {
   heatEl.innerHTML = cells.join('');
 }
 
+// Exercise suggestions, ranked by what YOU actually do.
+//
+// The datalist under this input was alphabetical across 50+ catalogue entries,
+// so "Push Ups" sat below "Pike Push Ups" and "Overhead Press" — and datalist
+// on iOS Safari is a thin bar that is easy to miss anyway. Mid-workout, with
+// one hand, typing the same lift for the twentieth time is the actual problem.
+//
+// Score is sessions logged, plus a recency bonus that decays over a month, so
+// what you are training THIS block floats up without a single heavy week
+// pinning something to the top forever. Unused catalogue entries come last,
+// only when you are typing.
+function rankedExerciseSuggestions(query) {
+  const q = (query || '').trim().toLowerCase();
+  const today = new Date(getTodayStr() + 'T00:00:00').getTime();
+  const stats = {};
+  (state.gym || []).forEach(e => {
+    const name = (e && e.exercise || '').trim();
+    if (!name) return;
+    const key = name.toLowerCase();
+    if (!stats[key]) stats[key] = { name: name, count: 0, last: 0 };
+    stats[key].count++;
+    const t = new Date(e.date + 'T00:00:00').getTime();
+    if (t > stats[key].last) stats[key].last = t;
+  });
+
+  const mine = Object.keys(stats).map(k => {
+    const s = stats[k];
+    const daysAgo = Math.max(0, Math.round((today - s.last) / 86400000));
+    return { name: s.name, score: s.count + Math.max(0, 30 - daysAgo) / 3, used: true };
+  });
+
+  const seen = {};
+  mine.forEach(m => { seen[m.name.toLowerCase()] = true; });
+  const rest = (typeof COMMON_EXERCISES !== 'undefined' ? COMMON_EXERCISES : [])
+    .filter(n => !seen[n.toLowerCase()])
+    .map(n => ({ name: n, score: -1, used: false }));
+
+  let all = mine.concat(rest);
+  if (q) {
+    // Prefix matches first — typing "pu" should reach Push Ups before Hip Thrust.
+    all = all.filter(x => x.name.toLowerCase().includes(q));
+    all.forEach(x => { if (x.name.toLowerCase().indexOf(q) === 0) x.score += 100; });
+  } else {
+    // Nothing typed: only offer things you have actually done, or the list is
+    // just the catalogue in disguise.
+    all = all.filter(x => x.used);
+  }
+  return all.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name)).slice(0, 12);
+}
+
+function renderExerciseSuggestions() {
+  const host = document.getElementById('gymSuggest');
+  if (!host) return;
+  const input = document.getElementById('gymExerciseName');
+  const q = input ? input.value : '';
+  const list = rankedExerciseSuggestions(q);
+  // An exact match means they already have what they need; the row would just
+  // be covering the set inputs at that point.
+  const exact = list.length === 1 && list[0].name.toLowerCase() === q.trim().toLowerCase();
+  if (!list.length || exact) { host.innerHTML = ''; return; }
+  host.innerHTML = list.map(x =>
+    `<button type="button" class="gym-suggest-chip${x.used ? '' : ' is-new'}" data-ex="${esc(x.name)}">${esc(x.name)}</button>`
+  ).join('');
+}
+
+// ---- Logging sheet (mobile) ----
+// On a phone the gym page is now a view of the day's work, and logging happens
+// in a sheet you open deliberately. Mid-set, one-handed, a full-screen form
+// with big targets beats a form wedged above a list you keep scrolling past.
+// Desktop ignores all of this and keeps the inline form.
+function gymSheetIsMobile() {
+  return window.matchMedia('(max-width: 900px)').matches;
+}
+
+function openGymLogSheet(prefillName) {
+  const sheet = document.getElementById('gymLogSheet');
+  if (!sheet) return;
+  if (gymEditingIdx === null) gymSets = (typeof defaultGymSets === 'function') ? defaultGymSets() : gymSets;
+  const input = document.getElementById('gymExerciseName');
+  if (input && typeof prefillName === 'string') input.value = prefillName;
+  renderGym();
+  sheet.classList.add('is-open');
+  document.body.classList.add('gym-sheet-lock');
+  if (typeof haptic === 'function') haptic('light');
+  // Do not autofocus the field: on iOS that throws the keyboard up over the
+  // suggestions, which are the point of opening this.
+  const title = document.getElementById('gymLogSheetTitle');
+  if (title) title.textContent = gymEditingIdx === null ? 'Log exercise' : 'Edit exercise';
+}
+
+function closeGymLogSheet() {
+  const sheet = document.getElementById('gymLogSheet');
+  if (!sheet) return;
+  sheet.classList.remove('is-open');
+  document.body.classList.remove('gym-sheet-lock');
+  const input = document.getElementById('gymExerciseName');
+  if (input) input.blur();
+}
+
+function bindGymSuggestions() {
+  const host = document.getElementById('gymSuggest');
+  const input = document.getElementById('gymExerciseName');
+  if (host) {
+    host.addEventListener('click', (e) => {
+      const chip = e.target.closest('[data-ex]');
+      if (!chip || !input) return;
+      input.value = chip.dataset.ex;
+      if (typeof haptic === 'function') haptic('light');
+      // 'change' is what switches bodyweight mode and refreshes the beat-last-time
+      // chip, so fire it rather than duplicating that logic here.
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      renderExerciseSuggestions();
+      const firstReps = document.querySelector('#gymSetsList .gym-reps-input');
+      if (firstReps) firstReps.focus();
+    });
+  }
+  if (input) input.addEventListener('input', renderExerciseSuggestions);
+
+  const close = document.getElementById('gymLogClose');
+  if (close) close.addEventListener('click', closeGymLogSheet);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeGymLogSheet();
+  });
+}
+
 // ---- Rest timer ----
 let restInterval = null;
 
@@ -661,6 +786,7 @@ function renderGym() {
   // Populate exercise suggestions
   const allExercises = [...new Set([...COMMON_EXERCISES, ...state.gym.map(e => e.exercise)])].sort();
   $('#exerciseSuggestions').innerHTML = allExercises.map(e => `<option value="${e}">`).join('');
+  renderExerciseSuggestions();
 
   // Detect bodyweight mode from exercise name
   const exerciseName = $('#gymExerciseName').value.trim();
@@ -755,6 +881,7 @@ function renderGym() {
       gymEditingIdx = parseInt(btn.dataset.gymIdx);
       $('#gymExerciseName').value = ex.exercise;
       gymSets = ex.sets.map(s => ({ reps: String(s.reps), weight: String(s.weight) }));
+      if (typeof openGymLogSheet === 'function' && gymSheetIsMobile()) openGymLogSheet();
       // Update button text
       $('#gymSaveExerciseBtn').innerHTML = `
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
@@ -823,6 +950,7 @@ function bindGymEvents() {
   $('#weightInput').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') $('#weightLogBtn').click();
   });
+  bindGymSuggestions();
   $('#gymSaveExerciseBtn').addEventListener('click', () => {
     const name = $('#gymExerciseName').value.trim();
     if (!name) return;
@@ -850,9 +978,13 @@ function bindGymEvents() {
     }
 
     saveData(state);
+    if (typeof haptic === 'function') haptic('success');
     $('#gymExerciseName').value = '';
     gymSets = (typeof defaultGymSets === 'function') ? defaultGymSets() : [{ reps: '', weight: '' }];
     gymBodyweight = false;
     renderGym();
+    // Logging one exercise is the whole job of the sheet, so it closes and the
+    // day's list is what you land back on.
+    if (typeof closeGymLogSheet === 'function') closeGymLogSheet();
   });
 }

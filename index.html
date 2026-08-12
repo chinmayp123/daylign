@@ -356,18 +356,28 @@
           <input type="date" id="gymDate" class="gym-date-input">
         </div>
 
-        <!-- Add Exercise (primary action — kept at top so logging never needs a scroll) -->
-        <div class="gym-add-bar">
-          <input type="text" id="gymExerciseName" placeholder="Add exercise..." class="gym-exercise-input" list="exerciseSuggestions" autocomplete="off">
-          <div id="gymLastTime"></div>
-          <datalist id="exerciseSuggestions"></datalist>
-          <div class="gym-sets-inline" id="gymSetsList"></div>
-          <div class="gym-add-actions">
-            <button type="button" class="gym-add-set-btn" id="gymAddSetBtn">+ Set</button>
-            <button type="button" class="gym-rest-btn" data-rest="60">Rest 60s</button>
-            <button type="button" class="gym-rest-btn" data-rest="90">Rest 90s</button>
-            <button type="button" class="btn-primary gym-save-btn" id="gymSaveExerciseBtn">Add Exercise</button>
+        <!-- Logging sheet. On mobile this is a full-screen page opened from the
+             primary action; on desktop it stays inline exactly as it was, because
+             a cursor has no problem with a form sitting above a list. -->
+        <div class="gym-log-sheet" id="gymLogSheet">
+          <div class="gym-log-sheet-head">
+            <h2 id="gymLogSheetTitle">Log exercise</h2>
+            <button type="button" class="gym-log-close" id="gymLogClose" aria-label="Close">&times;</button>
           </div>
+        <!-- Add Exercise (primary action — kept at top so logging never needs a scroll) -->
+        <div class="gym-add-bar">
+          <input type="text" id="gymExerciseName" placeholder="Add exercise..." class="gym-exercise-input" list="exerciseSuggestions" autocomplete="off">
+          <div class="gym-suggest" id="gymSuggest"></div>
+          <div id="gymLastTime"></div>
+          <datalist id="exerciseSuggestions"></datalist>
+          <div class="gym-sets-inline" id="gymSetsList"></div>
+          <div class="gym-add-actions">
+            <button type="button" class="gym-add-set-btn" id="gymAddSetBtn">+ Set</button>
+            <button type="button" class="gym-rest-btn" data-rest="60">Rest 60s</button>
+            <button type="button" class="gym-rest-btn" data-rest="90">Rest 90s</button>
+            <button type="button" class="btn-primary gym-save-btn" id="gymSaveExerciseBtn">Add Exercise</button>
+          </div>
+        </div>
         </div>
 
         <!-- Stats Row -->

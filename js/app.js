@@ -300,6 +300,12 @@ function headerPrimaryAction() {
     // twice a week, so handing the one prominent button to weight made the
     // daily action the harder one. Weight still has its own readout + Log
     // button in the Training shell, which is plenty for a twice-weekly task.
+    // On a phone this opens the logging sheet; on desktop the inline form is
+    // already on screen, so just put the cursor in it.
+    if (!cardio && typeof openGymLogSheet === 'function' && typeof gymSheetIsMobile === 'function' && gymSheetIsMobile()) {
+      openGymLogSheet();
+      return;
+    }
     const el = $(cardio ? '#cardioDistance' : '#gymExerciseName');
     if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
   } else if (currentView === 'diet') {
