@@ -23,14 +23,21 @@ function coachSnapshot() {
   const cardio = state.cardio || [];
 
   // Only real sessions inform the coach. Counting two-set check-ins here made
-  // it call a light week "5 sessions in 7 days" and prescribe a deload.
+  // it call a light week "5 sessions in 7 days" and prescribe a deload. A real
+  // session is the same bar the Consistency card uses — 3+ distinct exercises
+  // or any cardio (isConsistencyDay) — so the coach and the calendar never
+  // disagree about whether a day counted.
   const allDates = new Set(
     gym.map(e => e && e.date).concat(cardio.map(c => c && c.date)).filter(Boolean)
   );
-  const sessionDates = (typeof isFullSession === 'function')
-    ? new Set(Array.from(allDates).filter(isFullSession))
-    : allDates;
-  const trainedToday = allDates.has(today);
+  const isSession = (typeof isConsistencyDay === 'function') ? isConsistencyDay
+    : (typeof isFullSession === 'function') ? isFullSession : () => true;
+  const sessionDates = new Set(Array.from(allDates).filter(isSession));
+  // "Done for today" must mean a real session — not a push-ups-and-sit-ups
+  // check-in, which the calendar shows faded. checkedInToday keeps the lighter
+  // fact so the headline can nudge rather than either ignore it or over-credit it.
+  const trainedToday = sessionDates.has(today);
+  const checkedInToday = allDates.has(today) && !trainedToday;
 
   // Most recent training day, and how long ago that was.
   const sorted = Array.from(sessionDates).sort();
@@ -51,7 +58,7 @@ function coachSnapshot() {
   const stalled = movements.filter(m => m.stalled);
   const week = (typeof muscleWeeks === 'function') ? muscleWeeks(2)[0] : null;
 
-  return { today, trainedToday, lastDate, daysSinceLast, last7, prev7, readiness, movements, stalled, week };
+  return { today, trainedToday, checkedInToday, lastDate, daysSinceLast, last7, prev7, readiness, movements, stalled, week };
 }
 
 // Which muscle group has been neglected this week, and a concrete movement for
@@ -130,6 +137,14 @@ function coachDecision(s) {
     return {
       verdict: 'Rest today', tone: 'bad', icon: '◍',
       line: `Readiness is ${score}. ${r.shortSleep ? 'Sleep is the limiter — a hard session now costs more than it gives.' : 'Recent load is high. Let it settle.'}`,
+    };
+  }
+  // Logged something, but under the session bar — acknowledge it without calling
+  // the day done, which is exactly the confusion a light check-in used to cause.
+  if (s.checkedInToday) {
+    return {
+      verdict: 'One more to count', tone: 'warn', icon: '◐',
+      line: 'Today is a check-in so far — a couple more exercises makes it a real session.',
     };
   }
   if (score !== null && score < 60) {

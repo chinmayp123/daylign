@@ -476,19 +476,28 @@ function renderStreak() {
   renderConsistencyCalendar(heatEl, daySets, today);
 }
 
-// 16-week calendar: columns = weeks, rows = Mon..Sun (so it reads down a week
-// like a wall calendar), each day coloured by the muscle group it worked. A
-// solid cell is a real session; a faded one is a check-in that fell under the
+// Last-30-days calendar: columns = weeks, rows = Mon..Sun (so it reads down a
+// week like a wall calendar), each day coloured by the muscle group it worked.
+// A solid cell is a real session; a faded one is a check-in that fell under the
 // 3-exercise bar. Weekday and month labels make the shape legible at a glance.
+// The window is whole weeks so the weekday rows line up — enough columns to
+// cover the last WINDOW_DAYS ending today, with no empty months of history.
 const CAL_GROUP_LABEL = { push: 'Push', pull: 'Pull', legs: 'Legs', core: 'Core', mixed: 'Mixed', cardio: 'Cardio' };
 const CAL_DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const CAL_WINDOW_DAYS = 30;
 
-function renderConsistencyCalendar(host, daySets, today) {
-  const WEEKS = 16;
+function renderConsistencyCalendar(host, daySets, today, windowDays) {
+  const win = windowDays || CAL_WINDOW_DAYS;
   const end = new Date(today + 'T00:00:00');
   const endDow = (end.getDay() + 6) % 7; // Mon = 0
+  // Grid ends on the Sunday of the current week so the whole week shows.
+  const gridEnd = new Date(end);
+  gridEnd.setDate(gridEnd.getDate() + (6 - endDow));
+  // Window starts `win` days back from today, snapped back to that week's Monday.
   const start = new Date(end);
-  start.setDate(start.getDate() - (WEEKS * 7 - 1) + (6 - endDow)); // a Monday
+  start.setDate(start.getDate() - (win - 1));
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7)); // that week's Monday
+  const WEEKS = Math.round((gridEnd - start) / (7 * 86400000)) + 1;
 
   // Month labels: one slot per week column, named only where the month turns over.
   const months = [];
