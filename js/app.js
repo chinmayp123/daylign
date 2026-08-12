@@ -4,6 +4,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
+  // state.js could not read the preference at parse time (settings-prefs.js
+  // had not loaded), so honour it now that everything is present.
+  if (typeof defaultGymSets === 'function') gymSets = defaultGymSets();
   setHeaderDate();
   bindHeaderCondense();
   bindPullToRefresh();

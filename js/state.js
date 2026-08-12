@@ -217,14 +217,25 @@ let scheduleDate = new Date();
 let calViewMode = 'month';
 // Blank set rows for the gym form. Count comes from the device preference
 // (Settings -> Workout defaults) so it is honoured everywhere the form resets.
+const GYM_SETS_FALLBACK = 3; // almost every lift is three sets
+
 function defaultGymSets() {
-  let n = 1;
-  try { n = (typeof readPrefs === 'function') ? Math.max(1, Math.min(10, readPrefs().defaultSets || 1)) : 1; } catch (e) { n = 1; }
+  let n = GYM_SETS_FALLBACK;
+  try {
+    n = (typeof readPrefs === 'function')
+      ? Math.max(1, Math.min(10, readPrefs().defaultSets || GYM_SETS_FALLBACK))
+      : GYM_SETS_FALLBACK;
+  } catch (e) { n = GYM_SETS_FALLBACK; }
   const rows = [];
   for (let i = 0; i < n; i++) rows.push({ reps: '', weight: '' });
   return rows;
 }
-let gymSets = [{ reps: '', weight: '' }];
+
+// state.js is parsed before settings-prefs.js, so readPrefs does not exist yet
+// and defaultGymSets() would fall back no matter what the preference says. The
+// opening value is therefore the plain fallback, and app init re-reads it from
+// prefs once every script has loaded.
+let gymSets = defaultGymSets();
 let gymViewDate = getTodayStr();
 let dietViewDate = getTodayStr();
 let dietBaseMacros = null; // {calories, protein, carbs, fat} per 1 serving

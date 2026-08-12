@@ -37,7 +37,7 @@ const PREF_DEFAULTS = {
   accent: 'indigo',
   hidden: [],          // dashboard widget keys to hide
   restSeconds: 60,     // default rest timer
-  defaultSets: 1,      // set rows the gym form opens with
+  defaultSets: 3,      // set rows the gym form opens with — most lifts are 3
   reduceMotion: false, // force-off animation regardless of OS setting
   largeText: false,
   alwaysShowActions: false, // reveal hover-only delete buttons permanently
