@@ -769,8 +769,9 @@ function logUsualCardio(dateStr) {
   state.cardio.push({
     id: 'c' + Date.now(),
     // Today's dashboard button always logs today; the Cardio pane logs the day
-    // you're viewing.
-    date: dateStr || cardioDate,
+    // you're viewing. Guard the type so a stray Event argument can never be
+    // stored as the date again.
+    date: (typeof dateStr === 'string' && dateStr) ? dateStr : cardioDate,
     type: u.type,
     distance: u.distance || 0,
     duration: u.duration || 0,
@@ -823,7 +824,9 @@ function renderCardioQuick() {
     </div>`;
 
   const btn = document.getElementById('cardioQuickBtn');
-  if (btn) btn.addEventListener('click', logUsualCardio);
+  // Wrap it — passing the listener directly hands logUsualCardio the click
+  // Event as its dateStr, which then got stored as the session's date.
+  if (btn) btn.addEventListener('click', () => logUsualCardio(cardioDate));
 }
 
 // Compact one-tap version for the Today dashboard. A daily habit that lives

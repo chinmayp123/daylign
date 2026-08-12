@@ -28,7 +28,8 @@ function coachSnapshot() {
   // or any cardio (isConsistencyDay) — so the coach and the calendar never
   // disagree about whether a day counted.
   const allDates = new Set(
-    gym.map(e => e && e.date).concat(cardio.map(c => c && c.date)).filter(Boolean)
+    gym.map(e => e && e.date).concat(cardio.map(c => c && c.date))
+      .filter(d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d))
   );
   const isSession = (typeof isConsistencyDay === 'function') ? isConsistencyDay
     : (typeof isFullSession === 'function') ? isFullSession : () => true;
@@ -179,7 +180,7 @@ function coachRecovery(s) {
 function renderCoach() {
   const host = document.getElementById('coachPanel');
   if (!host) return;
-  if (!(state.gym || []).length) { host.innerHTML = ''; return; }
+  if (!(state.gym || []).length) { host.innerHTML = ''; host.className = ''; return; }
 
   const s = coachSnapshot();
   const d = coachDecision(s);
@@ -194,8 +195,10 @@ function renderCoach() {
   chips.push(`${s.last7} sessions / 7d`);
   if (s.stalled.length) chips.push(`${s.stalled.length} stalled`);
 
+  // #coachPanel is itself the panel now — it lives inside the merged coach card,
+  // so it no longer wraps its own .card (that would double-frame it).
+  host.className = `coach-panel coach-${d.tone}`;
   host.innerHTML = `
-    <div class="card coach-panel coach-${d.tone}">
       <div class="coach-verdict">
         <span class="coach-icon">${d.icon}</span>
         <div class="coach-verdict-body">
@@ -223,6 +226,5 @@ function renderCoach() {
       <div class="coach-row">
         <span class="coach-row-label">Recovery</span>
         <div class="coach-row-body">${esc(rec)}</div>
-      </div>
-    </div>`;
+      </div>`;
 }

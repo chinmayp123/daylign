@@ -2511,6 +2511,31 @@ body {
 .gym-empty p { margin-top: 12px; font-size: 14px; font-weight: 500; }
 .gym-empty-sub { margin-top: 4px !important; font-size: 12px !important; font-weight: 400 !important; opacity: 0.6; }
 
+/* Today's log as one card: the stats become a compact header strip above the
+   workout list, instead of a separate band of big tiles. */
+.gym-log-card { padding: 0; overflow: hidden; }
+.gym-log-card .gym-stats {
+  margin: 0;
+  gap: 0;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+.gym-log-card .gym-stat {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 6px 10px;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
+}
+.gym-log-card .gym-stat-val { font-size: 17px; }
+.gym-log-card .gym-stat-lbl { font-size: 10px; }
+.gym-log-card .gym-workout { margin: 0; padding: 12px 14px; }
+.gym-log-card .gym-workout:empty,
+.gym-log-card .gym-stats:empty { display: none; }
+
 .gym-entry {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -6965,6 +6990,23 @@ body.onboard-open { overflow: hidden; }
 @media (max-width: 900px) {
   .sleep-readiness-row { grid-template-columns: 1fr; }
 }
+
+/* Recovery card: Sleep and Readiness share one frame. Their inner .card chrome
+   is stripped so they read as two columns, split by the grid gap (a divider on
+   the wider layout). */
+.recovery-card .sleep-readiness-row { margin: 0; }
+.recovery-card #sleepCard > .card,
+.recovery-card #readinessCard > .card {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+@media (min-width: 561px) {
+  .recovery-card .sleep-readiness-row { gap: 0; }
+  .recovery-card #readinessCard { border-left: 1px solid var(--border); padding-left: 20px; }
+  .recovery-card #sleepCard { padding-right: 20px; }
+}
 #sleepCard[hidden], #readinessCard[hidden] { display: none; }
 /* The grid stretches the wrappers; the cards inside have to fill them or
    Readiness floats as a short card beside a tall one. */
@@ -7576,6 +7618,10 @@ body.logfood-sheet-lock { overflow: hidden; }
   /* Consistency lives in the rail on desktop — drop the in-pane copy so it
      isn't shown twice. */
   #trainingStrength .streak-card { display: none; }
+  /* Same for the week summary: the rail carries "This week's training" tiles,
+     so the shell's "This week" strip would just repeat it. Mobile keeps the
+     strip, since the rail is hidden there. */
+  .training-shell .training-week { display: none; }
 }
 
 .training-rail-card { margin-bottom: 0; }
@@ -8434,6 +8480,24 @@ body.app-loading #syncProgress { opacity: 1; }
 .coach-panel.coach-good { border-left-color: var(--green); }
 .coach-panel.coach-warn { border-left-color: var(--yellow); }
 .coach-panel.coach-bad  { border-left-color: var(--red); }
+
+/* Merged coach card: the decision panel sits at the top of the card, then a
+   divider, then the burn/pace targets and recommendations that used to be a
+   separate "Targets & Coach" card. #coachPanel no longer carries its own .card
+   frame, so it reads as the card's lead section. */
+.coach-merged .coach-panel {
+  margin: 0 0 16px;
+  padding: 0 0 16px 14px;
+  border-bottom: 1px solid var(--border);
+  animation: none;
+}
+.coach-merged .coach-panel:empty { display: none; }
+.coach-merged-head h2 {
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
 
 .coach-verdict { display: flex; align-items: flex-start; gap: 12px; }
 .coach-icon {

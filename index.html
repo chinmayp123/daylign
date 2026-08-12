@@ -343,9 +343,6 @@
         <div class="training-layout">
         <div class="training-center">
 
-        <!-- AI coach: one decision surface above both training modes (js/coach.js) -->
-        <div id="coachPanel"></div>
-
         <div class="training-pane" id="trainingStrength">
         <!-- Date Navigation -->
         <div class="gym-date-bar">
@@ -383,12 +380,27 @@
           </div>
         </div>
 
-        <!-- Stats Row -->
-        <div class="gym-stats" id="gymStats"></div>
+        <!-- Today's log. The stats fold into this card's header instead of a
+             standalone band, and the whole card sits at the top of the pane —
+             the log is the first thing you see, not the coach. -->
+        <div class="card gym-log-card">
+          <div class="gym-stats" id="gymStats"></div>
+          <div class="gym-workout" id="gymTodayList">
+            <div class="empty-state"><svg aria-hidden="true" focusable="false" class="empty-state-icon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg><p class="empty-state-title">No exercises yet</p><p class="empty-state-hint">Tap “+ Add Exercise” to start this session.</p></div>
+          </div>
+        </div>
 
-        <!-- Workout Log -->
-        <div class="gym-workout" id="gymTodayList">
-          <div class="empty-state"><svg aria-hidden="true" focusable="false" class="empty-state-icon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg><p class="empty-state-title">No exercises yet</p><p class="empty-state-hint">Tap “+ Add Exercise” to start this session.</p></div>
+        <!-- Coach: one card — the decision (js/coach.js → #coachPanel) plus the
+             burn/pace targets and recommendations (js/gym.js) that used to be a
+             separate "Targets & Coach" card. Sits under the log now. -->
+        <div class="card coach-card coach-merged">
+          <div id="coachPanel"></div>
+          <div class="coach-head coach-merged-head">
+            <h2>Targets</h2>
+            <span class="weight-goal-chip" id="burnGoalChip" title="Edit goals"></span>
+          </div>
+          <div class="coach-targets" id="coachTargets"></div>
+          <div class="coach-recs" id="coachRecs"></div>
         </div>
 
         <!-- Body Weight now lives in the weight-trend sheet (opened from the
@@ -397,16 +409,6 @@
         <!-- Strength analytics: 30-day summary + plateau insight, movement
              list, progression curve, PRs. Rendered by js/strength.js. -->
         <div id="strengthAnalytics"></div>
-
-        <!-- Targets & Coach -->
-        <div class="card coach-card collapsible" data-collapse="mobile" data-collapse-key="traincoach">
-          <div class="coach-head">
-            <h2>Targets &amp; Coach</h2>
-            <span class="weight-goal-chip" id="burnGoalChip" title="Edit goals"></span>
-          </div>
-          <div class="coach-targets" id="coachTargets"></div>
-          <div class="coach-recs" id="coachRecs"></div>
-        </div>
 
         <!-- Consistency -->
         <div class="card streak-card collapsible" data-collapse="mobile" data-collapse-key="trainstreak">
@@ -525,10 +527,15 @@
           <!-- Moved off Today: these answer "how am I trending?",
                which is a Training question, not a "what do I do now?" one.
                The daily brief still states sleep and readiness in words. -->
-          <!-- Sleep + Readiness (rendered by js/sleep.js) -->
-          <div class="sleep-readiness-row">
-            <div id="sleepCard"></div>
-            <div id="readinessCard"></div>
+          <!-- Recovery: Sleep + Readiness in one card (rendered by js/sleep.js).
+               The two inner cards drop their own frame so they read as columns
+               of a single Recovery card. -->
+          <div class="card recovery-card">
+            <div class="coach-head"><h2>Recovery</h2></div>
+            <div class="sleep-readiness-row">
+              <div id="sleepCard"></div>
+              <div id="readinessCard"></div>
+            </div>
           </div>
 
           <!-- Weight Trend — collapsed on mobile (reference) -->
