@@ -8550,6 +8550,43 @@ body.app-loading #syncProgress { opacity: 1; }
   padding: 2px 9px;
 }
 
+/* Activity breakdown — the watch total split into strength / cardio / walking. */
+.activity-card { padding: 18px 20px; }
+.act-total { font-family: var(--font-display); font-weight: 700; font-size: 20px; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.act-total small { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+.act-bar {
+  display: flex;
+  gap: 2px;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 4px 0 12px;
+}
+.act-seg { border-radius: 2px; min-width: 4px; }
+.act-row {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+}
+.act-ic { font-size: 15px; line-height: 1; }
+.act-label { font-size: 13px; color: var(--text-primary); }
+.act-label small { color: var(--text-muted); }
+.act-est, .act-actual {
+  font-size: 10px;
+  font-style: normal;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 7px;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.act-est { color: var(--text-muted); background: var(--bg-secondary); }
+.act-actual { color: var(--green); background: var(--green-bg); }
+.act-min { font-weight: 700; font-size: 14px; color: var(--text-primary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.act-min small { font-size: 11px; font-weight: 500; color: var(--text-muted); }
+
 /* Goal Progress card — one row per goal, status pinned right. */
 .goal-progress-card { padding: 18px 20px; }
 .goal-row {

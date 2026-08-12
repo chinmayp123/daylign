@@ -605,6 +605,102 @@ function renderGoalProgress() {
     </div>`).join('');
 }
 
+// ---- Activity breakdown ----
+// Apple Health records each workout separately with its real type and duration
+// (Outdoor Walk, Traditional Strength Training, Indoor Run…). When the watch has
+// posted those, they ARE the breakdown — real minutes, no estimation — and the
+// strength one gets relabelled with the split the watch can't know (Push/Pull/
+// Legs). Only when no watch workouts exist does it fall back to estimating
+// strength from sets and reading logged cardio.
+const WATCH_WK_ICON = { walk: '🚶', run: '🏃', ride: '🚴', swim: '🏊', strength: '💪', other: '⚡' };
+function classifyWatchWorkout(type) {
+  const t = (type || '').toLowerCase();
+  if (/strength|functional|core|traditional|weight|lifting/.test(t)) return 'strength';
+  if (/walk|hik/.test(t)) return 'walk';
+  if (/run|jog|tread/.test(t)) return 'run';
+  if (/cycl|bike|ride|spin/.test(t)) return 'ride';
+  if (/swim/.test(t)) return 'swim';
+  return 'other';
+}
+
+function activityBreakdown(dateStr) {
+  const items = [];
+  const watchWorkouts = (typeof getExternalWorkouts === 'function') ? getExternalWorkouts(dateStr) : [];
+
+  if (watchWorkouts.length) {
+    watchWorkouts.forEach(w => {
+      const min = Math.round(Number(w.minutes) || 0);
+      if (min <= 0) return;
+      const cls = classifyWatchWorkout(w.type);
+      let label = w.type || 'Workout';
+      if (cls === 'strength') {
+        const g = dayFocusGroup(dateStr);
+        label = ['push', 'pull', 'legs'].includes(g) ? `${groupLabel(g)} strength` : 'Strength training';
+      }
+      const kind = cls === 'strength' ? 'strength' : (cls === 'walk' || cls === 'other') ? 'other' : 'cardio';
+      items.push({ icon: WATCH_WK_ICON[cls] || '⚡', label, min, kind, badge: 'watch',
+        detail: w.distance ? `${w.distance} mi` : '' });
+    });
+    const total = items.reduce((n, i) => n + i.min, 0);
+    return { items, total, watch: total, source: 'watch' };
+  }
+
+  // Fallback: no watch workouts posted for the day — estimate from what's logged.
+  const sets = setsOnDate(dateStr);
+  if (sets > 0) {
+    const g = dayFocusGroup(dateStr);
+    const label = ['push', 'pull', 'legs'].includes(g) ? `${groupLabel(g)} strength` : (g === 'mixed' ? 'Strength (mixed)' : 'Strength');
+    items.push({ icon: '💪', label, min: sets * SET_MINUTES, kind: 'strength', badge: 'est' });
+  }
+  const CT = (typeof CARDIO_TYPES !== 'undefined') ? CARDIO_TYPES : {};
+  (state.cardio || []).forEach(s => {
+    if (!s || s.date !== dateStr) return;
+    const t = CT[s.type] || { label: s.type ? (s.type[0].toUpperCase() + s.type.slice(1)) : 'Cardio', icon: '🏃', unit: '' };
+    const min = Math.round(Number(s.duration) || 0);
+    if (min <= 0) return;
+    items.push({ icon: t.icon, label: t.label, min, kind: 'cardio', badge: 'logged',
+      detail: s.distance ? `${s.distance} ${t.unit || ''}`.trim() : '' });
+  });
+  const accounted = items.reduce((n, i) => n + i.min, 0);
+  const watch = (typeof getExternalExerciseMinutes === 'function') ? getExternalExerciseMinutes(dateStr) : null;
+  const watchMin = (watch != null && Number.isFinite(watch)) ? Math.round(watch) : null;
+  if (watchMin != null && watchMin - accounted >= 5) {
+    items.push({ icon: '🚶', label: 'Walking & other', min: watchMin - accounted, kind: 'other', badge: 'est' });
+  }
+  return { items, total: watchMin != null ? watchMin : accounted, watch: watchMin, source: 'estimated' };
+}
+
+function renderActivityBreakdown() {
+  const host = document.getElementById('activityBreakdown');
+  if (!host) return;
+  const b = activityBreakdown(gymViewDate);
+  if (!b.items.length) { host.innerHTML = ''; return; }
+
+  const colorFor = k => k === 'strength' ? 'var(--accent)' : k === 'cardio' ? 'var(--blue)' : 'var(--text-muted)';
+  const barTotal = Math.max(b.total, b.accounted, 1);
+  const bar = b.items.map(i =>
+    `<span class="act-seg" style="width:${Math.max(2, Math.round((i.min / barTotal) * 100))}%;background:${colorFor(i.kind)}"></span>`).join('');
+  const BADGE = { watch: { txt: '⌚ watch', cls: 'act-actual' }, logged: { txt: 'logged', cls: 'act-actual' }, est: { txt: 'est.', cls: 'act-est' } };
+  const rows = b.items.map(i => {
+    const bd = BADGE[i.badge] || BADGE.est;
+    return `
+    <div class="act-row">
+      <span class="act-ic">${i.icon}</span>
+      <span class="act-label">${esc(i.label)}${i.detail ? ` <small>${esc(i.detail)}</small>` : ''}<em class="${bd.cls}">${bd.txt}</em></span>
+      <span class="act-min">${i.min}<small> min</small></span>
+    </div>`;
+  }).join('');
+  host.innerHTML = `
+    <div class="card activity-card">
+      <div class="coach-head">
+        <h2>Activity</h2>
+        <span class="act-total">${b.total}<small> min${b.watch != null ? ' ⌚' : ''}</small></span>
+      </div>
+      <div class="act-bar">${bar}</div>
+      <div class="act-rows">${rows}</div>
+    </div>`;
+}
+
 // ---- Consistency: streak stats + 16-week calendar ----
 function renderStreak() {
   const heatEl = $('#streakHeatmap');
@@ -1070,6 +1166,7 @@ function renderGym() {
   renderWeight();
   renderGymCoach();
   renderGoalProgress();
+  renderActivityBreakdown();
   renderStreak();
   renderLastTimeChip();
 
