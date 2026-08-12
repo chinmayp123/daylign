@@ -25,6 +25,31 @@ function renderWeightSheetBody() {
   const good = delta !== null && (losing ? delta <= 0 : delta >= 0);
   const toGo = Math.round(Math.abs(latest - goal) * 10) / 10;
 
+  // 7-day average smooths daily water-weight noise — the number to actually
+  // watch. Only shown once there's more than one weigh-in in the window.
+  const weekAgo = (typeof offsetDateStr === 'function') ? offsetDateStr(getTodayStr(), -6) : null;
+  const last7 = weekAgo ? dates.filter(d => d >= weekAgo) : [];
+  const avg7 = last7.length >= 2 ? Math.round((last7.reduce((s, d) => s + log[d], 0) / last7.length) * 10) / 10 : null;
+
+  // Waist — logged weekly, trend is what matters. Down is fat loss.
+  const waistLog = state.waist || {};
+  const waistDates = Object.keys(waistLog).sort();
+  let waistBlock = '';
+  if (waistDates.length) {
+    const wLatest = waistLog[waistDates[waistDates.length - 1]];
+    const wFirst = waistLog[waistDates[0]];
+    const wPrev = waistDates.length > 1 ? waistLog[waistDates[waistDates.length - 2]] : null;
+    const wDelta = wPrev !== null ? Math.round((wLatest - wPrev) * 10) / 10 : null;
+    const wSince = Math.round((wLatest - wFirst) * 10) / 10;
+    waistBlock = `
+      <div class="weight-sheet-waist">
+        <span class="wsw-label">Waist</span>
+        <span class="wsw-num">${wLatest}<small>"</small></span>
+        ${wDelta !== null ? `<span class="weight-sheet-delta ${wDelta <= 0 ? 'good' : 'bad'}">${wDelta > 0 ? '▲' : wDelta < 0 ? '▼' : '—'} ${Math.abs(wDelta)}"</span>` : ''}
+        ${waistDates.length > 1 ? `<span class="weight-sheet-goal">${wSince > 0 ? '+' : ''}${wSince}" since ${formatDate(waistDates[0])}</span>` : ''}
+      </div>`;
+  }
+
   // Last 30 raw weigh-ins as bars.
   const recent = dates.slice(-30).map(d => ({ d, w: log[d] }));
   const ws = recent.map(r => r.w);
@@ -45,11 +70,13 @@ function renderWeightSheetBody() {
       <div class="weight-sheet-num">${latest}<small> lbs</small></div>
       ${delta !== null ? `<span class="weight-sheet-delta ${good ? 'good' : 'bad'}">${delta > 0 ? '▲' : delta < 0 ? '▼' : '—'} ${Math.abs(delta)}</span>` : ''}
       <span class="weight-sheet-goal">${toGo === 0 ? `at goal ${goal}` : `${toGo} to ${losing ? 'lose' : 'gain'} → ${goal}`}</span>
+      ${avg7 !== null ? `<span class="weight-sheet-avg">7-day avg ${avg7}</span>` : ''}
     </div>
     <div class="weight-sheet-chart">
       <div class="weight-goal-line" style="top:${Math.max(0, Math.min(100, goalY))}%"><span>goal ${goal}</span></div>
       <div class="weight-bars">${bars}</div>
-    </div>`;
+    </div>
+    ${waistBlock}`;
 }
 
 function openWeightSheet() {

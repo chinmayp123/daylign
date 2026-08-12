@@ -920,12 +920,15 @@
   <div class="weight-sheet-overlay" id="weightSheet" role="dialog" aria-modal="true" hidden>
     <div class="weight-sheet">
       <div class="weight-sheet-head">
-        <span class="weight-sheet-title">Body weight</span>
+        <span class="weight-sheet-title">Body progress</span>
         <button type="button" class="weight-sheet-close" id="weightSheetClose" aria-label="Close">&times;</button>
       </div>
       <div class="weight-sheet-body" id="weightSheetBody"></div>
+      <!-- Log weight and/or waist. Weekly is plenty — the trend matters, not the
+           single day. Either field alone is a valid entry. -->
       <div class="weight-sheet-log">
         <input type="number" id="weightInput" placeholder="lbs" step="0.1" min="50" max="500" inputmode="decimal">
+        <input type="number" id="waistInput" placeholder="waist in" step="0.1" min="15" max="80" inputmode="decimal">
         <button class="btn-primary" id="weightLogBtn">Log</button>
       </div>
     </div>

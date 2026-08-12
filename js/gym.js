@@ -517,22 +517,38 @@ function goalProgress() {
   const goals = (typeof getGoals === 'function') ? getGoals() : { weight: 150 };
   const rows = [];
 
-  // 1 — Fat loss (weight trend toward goal; waist comes with body-comp tracker)
-  const pace = (typeof weighInPace === 'function') ? weighInPace() : null;
-  const latestW = (typeof latestBodyWeightLbs === 'function') ? latestBodyWeightLbs() : null;
-  if (pace && latestW != null && Number.isFinite(pace.perWeek)) {
-    const cutting = latestW > goals.weight;
-    const pw = Math.round(pace.perWeek * 10) / 10;
-    const losing = pace.perWeek < -0.1;
-    const atGoal = Math.abs(latestW - goals.weight) < 0.5;
+  // 1 — Fat loss. Waist is the better belly-fat signal, so it leads when logged;
+  // otherwise fall back to the weight trend toward goal.
+  const waistLog = state.waist || {};
+  const waistDates = Object.keys(waistLog).sort();
+  if (waistDates.length >= 2) {
+    const wLatest = waistLog[waistDates[waistDates.length - 1]];
+    const wFirst = waistLog[waistDates[0]];
+    const change = Math.round((wLatest - wFirst) * 10) / 10;
+    const shrinking = change < 0;
     rows.push({
-      label: 'Fat loss', icon: atGoal ? '🎯' : (cutting && losing ? '📉' : (cutting ? '⏸️' : '➖')),
-      status: atGoal ? 'At goal' : (cutting && losing ? 'On track' : (cutting ? 'Stalled' : 'Maintaining')),
-      detail: `${latestW} → ${goals.weight} lbs${pw ? ` · ${pw > 0 ? '+' : ''}${pw}/wk` : ''}`,
-      tone: (atGoal || losing || !cutting) ? 'good' : 'warn',
+      label: 'Fat loss', icon: shrinking ? '📉' : (change === 0 ? '➖' : '⏸️'),
+      status: shrinking ? 'On track' : (change === 0 ? 'Holding' : 'Watch'),
+      detail: `waist ${wLatest}" · ${change > 0 ? '+' : ''}${change}" since ${formatDate(waistDates[0])}`,
+      tone: shrinking || change === 0 ? 'good' : 'warn',
     });
   } else {
-    rows.push({ label: 'Fat loss', icon: '⚖️', status: 'Log weight', detail: 'weigh in twice a week to track', tone: 'muted' });
+    const pace = (typeof weighInPace === 'function') ? weighInPace() : null;
+    const latestW = (typeof latestBodyWeightLbs === 'function') ? latestBodyWeightLbs() : null;
+    if (pace && latestW != null && Number.isFinite(pace.perWeek)) {
+      const cutting = latestW > goals.weight;
+      const pw = Math.round(pace.perWeek * 10) / 10;
+      const losing = pace.perWeek < -0.1;
+      const atGoal = Math.abs(latestW - goals.weight) < 0.5;
+      rows.push({
+        label: 'Fat loss', icon: atGoal ? '🎯' : (cutting && losing ? '📉' : (cutting ? '⏸️' : '➖')),
+        status: atGoal ? 'At goal' : (cutting && losing ? 'On track' : (cutting ? 'Stalled' : 'Maintaining')),
+        detail: `${latestW} → ${goals.weight} lbs${pw ? ` · ${pw > 0 ? '+' : ''}${pw}/wk` : ''}`,
+        tone: (atGoal || losing || !cutting) ? 'good' : 'warn',
+      });
+    } else {
+      rows.push({ label: 'Fat loss', icon: '⚖️', status: 'Log weight', detail: 'log weight + waist weekly to track', tone: 'muted' });
+    }
   }
 
   // 2 — Strength (average gain across your tracked movements)
@@ -1221,16 +1237,24 @@ function bindGymEvents() {
   $('#gymAddSetBtn').addEventListener('click', () => { gymSets.push({ reps: '', weight: '' }); renderGym(); });
   $('#weightLogBtn').addEventListener('click', () => {
     const v = Number($('#weightInput').value);
-    if (!v || v < 50 || v > 500) { showToast('Enter your weight in lbs'); return; }
-    state.weight = state.weight || {};
-    state.weight[gymViewDate] = Math.round(v * 10) / 10;
+    const waistEl = $('#waistInput');
+    const waist = waistEl ? Number(waistEl.value) : 0;
+    const hasW = v && v >= 50 && v <= 500;
+    const hasWaist = waist && waist >= 15 && waist <= 80;
+    if (!hasW && !hasWaist) { showToast('Enter your weight or waist'); return; }
+    if (hasW) { state.weight = state.weight || {}; state.weight[gymViewDate] = Math.round(v * 10) / 10; }
+    if (hasWaist) { state.waist = state.waist || {}; state.waist[gymViewDate] = Math.round(waist * 10) / 10; }
     saveData(state);
     $('#weightInput').value = '';
+    if (waistEl) waistEl.value = '';
     renderGym();
-    showToast(`Weight logged: ${v} lbs`);
+    if (typeof renderWeightSheetBody === 'function') renderWeightSheetBody();
+    const parts = [hasW ? `${Math.round(v * 10) / 10} lbs` : null, hasWaist ? `${Math.round(waist * 10) / 10}" waist` : null].filter(Boolean);
+    showToast(`Logged: ${parts.join(' · ')}`);
   });
-  $('#weightInput').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') $('#weightLogBtn').click();
+  ['#weightInput', '#waistInput'].forEach(sel => {
+    const el = $(sel);
+    if (el) el.addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#weightLogBtn').click(); });
   });
   bindGymSuggestions();
   $('#gymSaveExerciseBtn').addEventListener('click', () => {
