@@ -65,32 +65,34 @@ function coachSnapshot() {
 // Which muscle group has been neglected this week, and a concrete movement for
 // it — preferring something already in the log over a generic suggestion.
 function coachWorkoutPick(s) {
-  if (!s.week || typeof MUSCLE_ORDER === 'undefined') return null;
-  const counts = MUSCLE_ORDER.map(g => ({ group: g, sets: s.week[g] || 0 }));
-  counts.sort((a, b) => a.sets - b.sets);
-  const target = counts[0];
-  const label = MUSCLE_LABEL[target.group];
+  // The split engine decides the day now (Pull/Push/Legs/Recovery), inferred
+  // from what you logged — not the old "least sets this week" heuristic.
+  const rec = (typeof nextTrainingDay === 'function') ? nextTrainingDay() : null;
+  if (!rec) return null;
 
-  // Their own movement for that group, most-trained first.
+  if (rec.day === 'recovery') {
+    return { group: 'recovery', label: rec.label, focus: rec.focus, detail: rec.suggestion, reason: rec.reason, recovery: true };
+  }
+
+  // Their own movement for that group, most-trained first — kept, so the detail
+  // still names a real lift and a number to beat.
   let move = null;
   if (typeof muscleGroupFor === 'function') {
-    const own = s.movements.filter(m => muscleGroupFor(m.name) === target.group);
+    const own = s.movements.filter(m => muscleGroupFor(m.name) === rec.day);
     if (own.length) move = own[0];
   }
-  const fallback = (typeof GROUP_SUGGESTIONS !== 'undefined' && GROUP_SUGGESTIONS[target.group]) || null;
 
   let detail;
   if (move) {
-    // If it's plateaued, name the target that breaks the plateau.
     const bump = move.bodyweight ? move.typical + 2 : move.typical + 5;
     detail = move.stalled
       ? `${move.name} — go for ${bump}${move.bodyweight ? ' reps' : ' lbs'}, you've sat at ${move.typical} for a while`
       : `${move.name} — ${move.typical}${move.bodyweight ? ' reps' : ' lbs'} is your usual, beat it by a rep`;
   } else {
-    detail = fallback ? `Try ${fallback}` : 'Pick anything for this group';
+    detail = `Try ${rec.suggestion}`;
   }
 
-  return { group: target.group, label, sets: target.sets, detail, untrained: target.sets === 0 };
+  return { group: rec.day, label: rec.label, focus: rec.focus, detail, reason: rec.reason };
 }
 
 // Should volume go up, hold, or come down.
@@ -148,6 +150,15 @@ function coachDecision(s) {
       line: 'Today is a check-in so far — a couple more exercises makes it a real session.',
     };
   }
+  // The split engine names the day. It already folds in low readiness and a run
+  // of strength days, so a recovery call here is the honest headline.
+  const rec = (typeof nextTrainingDay === 'function') ? nextTrainingDay() : null;
+  if (rec && rec.day === 'recovery') {
+    return {
+      verdict: 'Recovery day', tone: 'good', icon: '◍',
+      line: `${rec.reason} Easy cardio, mobility, optional light core.`,
+    };
+  }
   if (score !== null && score < 60) {
     return {
       verdict: 'Train light', tone: 'warn', icon: '◐',
@@ -156,13 +167,13 @@ function coachDecision(s) {
   }
   if (s.daysSinceLast !== null && s.daysSinceLast >= COACH_STALE_DAYS) {
     return {
-      verdict: 'Train today', tone: 'warn', icon: '▲',
-      line: `${s.daysSinceLast} days since your last session. Getting back in matters more than what you do.`,
+      verdict: rec ? `${rec.label} today` : 'Train today', tone: 'warn', icon: '▲',
+      line: `${s.daysSinceLast} days since your last session — resume with ${rec ? rec.label : 'a session'}, no make-ups needed.`,
     };
   }
   return {
-    verdict: 'Train today', tone: 'good', icon: '▲',
-    line: score !== null ? `Readiness is ${score}. Good day to push a little.` : 'Nothing is holding you back today.',
+    verdict: rec ? `${rec.label} today` : 'Train today', tone: 'good', icon: '▲',
+    line: rec ? rec.reason : (score !== null ? `Readiness is ${score}. Good day to push a little.` : 'Nothing is holding you back today.'),
   };
 }
 
@@ -209,11 +220,11 @@ function renderCoach() {
 
       <div class="coach-chips">${chips.map(c => `<span class="coach-chip">${esc(c)}</span>`).join('')}</div>
 
-      ${pick && !s.trainedToday ? `
+      ${pick && !s.trainedToday && !pick.recovery ? `
         <div class="coach-row">
           <span class="coach-row-label">Do this</span>
           <div class="coach-row-body">
-            <strong>${esc(pick.label)}</strong>${pick.untrained ? ' <em>— untouched this week</em>' : ` <em>— only ${pick.sets} sets this week</em>`}
+            <strong>${esc(pick.label)}</strong>${pick.focus ? `<div class="coach-focus">${pick.focus.map(f => `<span>${esc(f)}</span>`).join('')}</div>` : ''}
             <div class="coach-row-detail">${esc(pick.detail)}</div>
           </div>
         </div>` : ''}

@@ -8499,6 +8499,17 @@ body.app-loading #syncProgress { opacity: 1; }
   letter-spacing: 0.5px;
 }
 
+/* Split focus muscles under the coach's "Do this" (e.g. Back · Biceps · Core). */
+.coach-focus { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 5px; }
+.coach-focus span {
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+
 .coach-verdict { display: flex; align-items: flex-start; gap: 12px; }
 .coach-icon {
   flex: 0 0 auto;

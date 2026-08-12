@@ -134,17 +134,18 @@ const MUSCLE_GROUPS = {
   push: ['push up', 'pushup', 'push-up', 'pushdown', 'dip', 'press', 'bench', 'handstand',
          'tricep', 'triceps', 'skull crusher', 'skullcrusher', 'jm press', 'tricep pulldown',
          'front raise', 'lateral raise', 'lat raise', 'shoulder', 'delt raise', 'arnold',
-         'chest', 'pec deck', 'pec fly', 'fly', 'flye', 'overhead extension',
+         'chest', 'pec deck', 'pec fly', 'fly', 'flye', 'overhead extension', 'crossover',
          'tricep extension', 'triceps extension', 'kickback'],
   pull: ['pull up', 'pullup', 'chin up', 'chinup', 'row', 'curl', 'pulldown', 'pullover',
          'muscle up', 'lever', 'face pull', 'bicep', 'biceps', 'reverse fly', 'reverse flye',
-         'rear delt', 'shrug', 'lat prayer', 'straight arm'],
+         'rear delt', 'reverse pec deck', 'shrug', 'lat prayer', 'straight arm'],
   legs: ['squat', 'lunge', 'deadlift', 'rdl', 'leg press', 'leg curl', 'leg extension',
-         'hamstring', 'hamstring curl', 'quad', 'calf', 'glute', 'hip thrust', 'box jump',
-         'step up', 'good morning', 'nordic', 'adductor', 'abductor', 'sled'],
+         'hamstring', 'hamstring curl', 'quad', 'calf', 'glute', 'glute kickback', 'hip thrust',
+         'box jump', 'step up', 'good morning', 'nordic', 'adductor', 'abductor',
+         'adduction', 'abduction', 'sled'],
   core: ['sit up', 'situp', 'crunch', 'plank', 'leg raise', 'knee raise', 'twist', 'flutter',
          'l-sit', 'dragon flag', 'mountain climber', 'superman', 'ab wheel', 'ab roller',
-         'hollow', 'dead bug', 'woodchop', 'oblique'],
+         'hollow', 'dead bug', 'woodchop', 'pallof', 'oblique'],
 };
 
 // Flattened once at load: [keyword, group], longest keyword first.
@@ -152,11 +153,14 @@ const MUSCLE_KEYWORDS = Object.keys(MUSCLE_GROUPS)
   .reduce((out, g) => out.concat(MUSCLE_GROUPS[g].map(k => [k, g])), [])
   .sort((a, b) => b[0].length - a[0].length);
 
+// Gym-first fallbacks — dumbbells, cables, machines and benches, not the old
+// home-bodyweight defaults. Only used when you have no logged movement for a
+// group yet; once you log your own, that ranks ahead of these.
 const GROUP_SUGGESTIONS = {
-  push: 'push ups or dips',
-  pull: 'pull ups or Australian rows',
-  legs: 'bodyweight squats and lunges',
-  core: 'planks and leg raises',
+  push: 'dumbbell bench press or cable fly',
+  pull: 'lat pulldown or cable row',
+  legs: 'leg press or Romanian deadlift',
+  core: 'cable crunch or hanging leg raise',
 };
 
 function muscleGroupFor(exercise) {
@@ -419,6 +423,78 @@ function dayFocusGroup(dateStr) {
   const order = ['push', 'pull', 'legs', 'core'];
   const hit = order.filter(g => tally[g] > 0).sort((a, b) => tally[b] - tally[a]);
   return tally[hit[0]] / classified >= 0.6 ? hit[0] : 'mixed';
+}
+
+// ---- Training split engine (Pull + Core → Push + Core → Legs + Core → Recovery)
+// Nothing is scheduled by hand: the next day is inferred from what you actually
+// logged. Missed days just resume at whatever is most due — there are no
+// make-ups. Recovery is a real day in the cycle but adds ~no fatigue.
+const SPLIT_ORDER = ['pull', 'push', 'legs']; // strength days; recovery interleaves
+const SPLIT_LABEL = { pull: 'Pull + Core', push: 'Push + Core', legs: 'Legs + Core', recovery: 'Recovery' };
+const SPLIT_FOCUS = {
+  pull: ['Back', 'Biceps', 'Rear delts', 'Core'],
+  push: ['Chest', 'Shoulders', 'Triceps', 'Core'],
+  legs: ['Quads', 'Hamstrings', 'Glutes', 'Calves', 'Core'],
+  recovery: ['Easy cardio', 'Mobility', 'Optional light core'],
+};
+
+// What a logged day represents in the cycle, read from its dominant work:
+// a strength day (pull/push/legs), a recovery day (cardio/mobility only),
+// a core-only day, a mixed day, or nothing.
+function trainingDayType(dateStr) {
+  const g = dayFocusGroup(dateStr);
+  if (!g) return null;
+  if (g === 'cardio') return 'recovery';
+  if (g === 'push' || g === 'pull' || g === 'legs') return g;
+  return g; // 'core' or 'mixed'
+}
+
+const RECOVERY_AFTER_STREAK = 3; // strength days in a row before recovery is due
+
+// The next day the app recommends, inferred from recent logs. Never asks you to
+// pick — it reads the last few weeks and returns the most-rested strength day,
+// or Recovery when you've strung together enough strength days or readiness is low.
+function nextTrainingDay() {
+  const today = getTodayStr();
+  const last = { pull: null, push: null, legs: null };
+  for (let i = 0; i <= 21; i++) {
+    const ds = offsetDateStr(today, -i);
+    const t = trainingDayType(ds);
+    if ((t === 'pull' || t === 'push' || t === 'legs') && !last[t]) last[t] = ds;
+  }
+  const daysSince = g => last[g]
+    ? Math.round((new Date(today + 'T00:00:00') - new Date(last[g] + 'T00:00:00')) / 86400000)
+    : 999;
+
+  // Consecutive strength days ending at the most recent training day — the
+  // fatigue signal that makes Recovery the right call.
+  let streak = 0;
+  for (let i = 0; i <= 14; i++) {
+    const t = trainingDayType(offsetDateStr(today, -i));
+    if (i === 0 && !t) continue; // today may not be logged yet
+    if (t === 'pull' || t === 'push' || t === 'legs') streak++;
+    else break; // recovery, rest, or a gap ends the run
+  }
+
+  const readiness = (typeof readinessBreakdown === 'function') ? readinessBreakdown() : null;
+  const lowReadiness = readiness && typeof readiness.score === 'number' && readiness.score < 45;
+  if (streak >= RECOVERY_AFTER_STREAK || lowReadiness) {
+    return {
+      day: 'recovery', label: SPLIT_LABEL.recovery, focus: SPLIT_FOCUS.recovery,
+      reason: lowReadiness
+        ? `Readiness is ${readiness.score} — take it easy today.`
+        : `${streak} strength days straight — recover before the next block.`,
+      suggestion: 'Easy cardio + mobility, optional light core',
+    };
+  }
+
+  // Most-rested strength day wins; ties fall back to the cycle order (Pull first).
+  const day = SPLIT_ORDER.slice().sort((a, b) =>
+    daysSince(b) - daysSince(a) || SPLIT_ORDER.indexOf(a) - SPLIT_ORDER.indexOf(b))[0];
+  const ds = daysSince(day);
+  const cap = day.charAt(0).toUpperCase() + day.slice(1);
+  const reason = ds >= 999 ? 'Kicking off your cycle.' : `${cap} was ${ds === 0 ? 'today' : ds + 'd ago'} — it's the most rested.`;
+  return { day, label: SPLIT_LABEL[day], focus: SPLIT_FOCUS[day], reason, suggestion: GROUP_SUGGESTIONS[day] };
 }
 
 // ---- Consistency: streak stats + 16-week calendar ----
