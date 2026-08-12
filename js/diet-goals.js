@@ -30,16 +30,19 @@ function renderDietGoals(totals) {
     : (typeof estimateBurnForDate === 'function') ? { cal: estimateBurnForDate(dietViewDate), watch: false }
     : { cal: 0, watch: false };
   const burn = Number.isFinite(burnInfo.cal) ? Math.max(0, Math.round(burnInfo.cal)) : 0;
-  const src = burnInfo.watch ? 'activity' : 'training';
-  let netLine;
-  if (calLeft >= 0) {
-    netLine = burn > 0 ? `${calLeft} left · +${burn} from ${src} → ${calLeft + burn} net` : `${calLeft} left`;
-  } else {
-    const overBy = -calLeft;
-    netLine = burn > 0
-      ? (overBy - burn <= 0 ? `Over by ${overBy} — ${src} covered it, net under` : `Over by ${overBy} · net ${overBy - burn} over after ${src}`)
-      : `Over by ${overBy}`;
-  }
+  // No "net calories" number. Exercise-burn estimates are noisy, and folding them
+  // into one net figure reads like you ate less than you did — which nudges you
+  // toward under-eating. Consumed-vs-target is the headline; activity is a
+  // separate, clearly-estimated caption; the status line stays non-judgmental.
+  const overBy = cal - goals.calories; // + = over target
+  const statusLine = overBy > 0
+    ? `${overBy} cal over your ${goals.calories} target${overBy <= 250 ? " — that's okay" : ''}`
+    : overBy < 0
+      ? `${-overBy} cal under your ${goals.calories} target`
+      : `Right on your ${goals.calories} target`;
+  const activityLine = burn > 0
+    ? `${burn} cal ${burnInfo.watch ? 'burned (Apple Watch)' : 'estimated burned'}`
+    : '';
 
   // README run/domain palette: protein green, carbs blue, fat amber.
   const macros = [
@@ -72,7 +75,8 @@ function renderDietGoals(totals) {
         </div>
       </div>
     </div>
-    <div class="dg-net">${netLine}</div>
+    ${activityLine ? `<div class="dg-activity"><span class="dg-activity-label">Activity</span>${activityLine}</div>` : ''}
+    <div class="dg-status ${overBy > 0 ? 'over' : ''}">${statusLine}</div>
     <div class="dg-macros">${macroHTML}</div>`;
 }
 

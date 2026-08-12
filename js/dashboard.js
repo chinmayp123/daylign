@@ -50,7 +50,6 @@ function renderHealthStrip(today) {
   const steps = (typeof getExternalSteps === 'function') ? getExternalSteps(today) : null;
   const walkBurn = steps ? Math.round(steps * (latestW || 160) * 0.00025) : 0;
   const totalBurn = watchBurn !== null ? Math.round(watchBurn) : workoutBurn + walkBurn;
-  const net = cal - totalBurn;
   const exMin = (typeof getExternalExerciseMinutes === 'function') ? getExternalExerciseMinutes(today) : null;
   // sleepHoursFor prefers a hand-logged night, falling back to the watch.
   const sleepH = (typeof sleepHoursFor === 'function')
@@ -58,8 +57,11 @@ function renderHealthStrip(today) {
     : ((typeof getExternalSleep === 'function') ? getExternalSleep(today) : null);
 
   const tiles = [
-    { view: 'diet', label: 'Calories', value: cal, sub: `/ ${g.calories}`, pct: Math.min(100, (cal / g.calories) * 100), color: calOver ? 'var(--red)' : 'var(--accent)' },
-    { view: 'gym', label: 'Net Cals', value: net, sub: `− ${totalBurn} burned${watchBurn !== null ? ' ⌚' : ''}`, pct: Math.min(100, Math.max(0, (net / g.calories) * 100)), color: net > g.calories ? 'var(--red)' : 'var(--green)' },
+    { view: 'diet', label: 'Calories', value: cal, sub: `/ ${g.calories}`, pct: Math.min(100, (cal / g.calories) * 100), color: calOver ? 'var(--yellow)' : 'var(--accent)' },
+    // Activity, not "net calories": exercise-burn estimates are noisy, and a net
+    // number reads like you ate less than you did. Shown as its own estimate.
+    { view: 'gym', label: 'Activity', value: totalBurn, sub: 'cal', pct: null,
+      note: watchBurn !== null ? '⌚ measured active energy' : 'estimated from workouts & steps', color: 'var(--green)' },
     { view: 'diet', label: 'Protein', value: `${protein}g`, sub: `/ ${g.protein}g`, pct: Math.min(100, (protein / g.protein) * 100), color: '#6366f1' },
     { view: 'diet', label: 'Water', value: `${water} oz`, sub: `/ ${g.water} oz`, pct: Math.min(100, (water / g.water) * 100), color: '#38bdf8' },
     ...(steps !== null ? [{ view: 'gym', label: 'Steps', value: steps.toLocaleString(), sub: `/ ${(g.steps || 8000).toLocaleString()}`, pct: Math.min(100, (steps / (g.steps || 8000)) * 100), color: '#22c55e' }] : []),
