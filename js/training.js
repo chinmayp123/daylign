@@ -160,6 +160,7 @@ const TRAINING_TAB_KEY = 'daylign_training_tab';
 
 const TRAINING_SECTIONS = [
   // --- Log: the daily job ---
+  { tab: 'log', sel: '#watchSync' },
   { tab: 'log', sel: '#trainingStrength .gym-date-bar' },
   { tab: 'log', sel: '.gym-log-card' },
   { tab: 'log', sel: '#activityBreakdown' },
@@ -246,6 +247,7 @@ function trainingTabAudit() {
 function renderTrainingShell() {
   renderTrainingWeight();
   renderTrainingWeek();
+  renderWatchSync();
   applyTrainingTab();
 }
 
@@ -361,4 +363,78 @@ function bindTrainingEvents() {
       if (typeof openWeightSheet === 'function') openWeightSheet();
     });
   }
+}
+
+// ---- Apple Watch sync freshness ----
+// "Did last night's shortcut actually run?" was previously only answerable by
+// opening the Firebase URL in a browser. It is a daily question, so it belongs
+// in the Log tab.
+//
+// The Shortcut records WHAT DATE each metric is for, never when it ran, so
+// freshness is derived from the newest date any metric carries. If an explicit
+// external/lastSync timestamp ever appears it is preferred — that only needs a
+// single extra action in the Shortcut, and this will pick it up with no further
+// change here.
+const WATCH_METRICS = [
+  { key: 'steps',           label: 'Steps' },
+  { key: 'exerciseMinutes', label: 'Exercise' },
+  { key: 'activeEnergy',    label: 'Active kcal' },
+  { key: 'sleep',           label: 'Sleep' },
+  { key: 'restingHR',       label: 'Resting HR' },
+  { key: 'runDistance',     label: 'Distance' },
+];
+
+function watchSyncStatus() {
+  if (typeof externalData === 'undefined' || !externalData) return null;
+  const today = getTodayStr();
+  const perMetric = WATCH_METRICS.map(m => {
+    const node = externalData[m.key];
+    const dates = node && typeof node === 'object' ? Object.keys(node).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort() : [];
+    return { key: m.key, label: m.label, latest: dates.length ? dates[dates.length - 1] : null };
+  });
+  const withData = perMetric.filter(m => m.latest);
+  if (!withData.length) return { none: true };
+
+  const newest = withData.map(m => m.latest).sort().pop();
+  const daysOld = Math.round((new Date(today + 'T00:00:00') - new Date(newest + 'T00:00:00')) / 86400000);
+  // Only count a metric as current if it reaches the newest date any metric
+  // reached — a partial run is the common failure and should be visible.
+  const current = withData.filter(m => m.latest === newest).length;
+  const explicit = externalData.lastSync ? Number(externalData.lastSync) : null;
+  return { newest, daysOld, current, total: WATCH_METRICS.length, perMetric, explicit };
+}
+
+function renderWatchSync() {
+  const host = document.getElementById('watchSync');
+  if (!host) return;
+  const s = watchSyncStatus();
+  if (!s) { host.innerHTML = ''; return; }
+  if (s.none) {
+    host.innerHTML = `<div class="watch-sync is-stale"><span class="watch-sync-dot"></span>
+      <span class="watch-sync-text">No Apple Watch data yet — see Settings &rsaquo; Connect Apple Watch</span></div>`;
+    return;
+  }
+
+  const tone = s.daysOld <= 0 ? 'ok' : s.daysOld === 1 ? 'warn' : 'stale';
+  const when = s.daysOld <= 0 ? 'today' : s.daysOld === 1 ? 'yesterday' : `${s.daysOld} days ago`;
+  // A partial run matters: sleep alone landing is not a successful sync.
+  const partial = s.current < s.total;
+  const missing = s.perMetric.filter(m => m.latest !== s.newest).map(m => m.label);
+
+  host.innerHTML = `
+    <details class="watch-sync is-${tone}">
+      <summary>
+        <span class="watch-sync-dot"></span>
+        <span class="watch-sync-text">Watch synced <strong>${when}</strong>${partial ? ` &middot; ${s.current}/${s.total} metrics` : ''}</span>
+        <span class="watch-sync-more">details</span>
+      </summary>
+      <div class="watch-sync-grid">
+        ${s.perMetric.map(m => `
+          <div class="watch-sync-row${m.latest === s.newest ? '' : ' is-behind'}">
+            <span>${esc(m.label)}</span>
+            <span>${m.latest ? formatDate(m.latest) : 'never'}</span>
+          </div>`).join('')}
+      </div>
+      ${partial ? `<p class="watch-sync-note">${esc(missing.join(', '))} did not land in the last run. iOS skips the automation when the phone is locked — a charger-connect trigger fires more reliably than a fixed time.</p>` : ''}
+    </details>`;
 }

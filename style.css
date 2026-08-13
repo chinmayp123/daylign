@@ -10095,3 +10095,35 @@ html.layout-editing .layout-item.is-dragging {
 /* A toast carrying an undo has to look tappable and stay long enough to reach. */
 .toast-action { cursor: pointer; border: 1px solid var(--accent); }
 .toast-action:hover { border-color: var(--accent-hover); }
+
+/* ---- Apple Watch sync freshness (Training > Log) ---- */
+.watch-sync {
+  margin-bottom: 12px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  font-size: 12.5px;
+}
+.watch-sync > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 26px;
+  cursor: pointer;
+  list-style: none;
+}
+.watch-sync > summary::-webkit-details-marker { display: none; }
+.watch-sync-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; background: var(--text-muted); }
+.watch-sync.is-ok    .watch-sync-dot { background: var(--green); }
+.watch-sync.is-warn  .watch-sync-dot { background: var(--yellow); }
+.watch-sync.is-stale .watch-sync-dot { background: var(--red); }
+.watch-sync-text { flex: 1; color: var(--text-secondary); }
+.watch-sync-text strong { color: var(--text-primary); font-weight: 650; }
+.watch-sync-more { font-size: 11px; color: var(--text-muted); }
+.watch-sync[open] .watch-sync-more { color: var(--accent); }
+.watch-sync-grid { margin-top: 10px; display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; }
+.watch-sync-row { display: contents; }
+.watch-sync-row > span { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.watch-sync-row.is-behind > span { color: var(--yellow); }
+.watch-sync-note { margin-top: 10px; font-size: 11.5px; color: var(--text-muted); line-height: 1.45; }
