@@ -213,7 +213,7 @@ async function analyzeMealPhoto(file) {
 
 function defaultMealForNow() {
   const h = new Date().getHours();
-  return h < 11 ? 'breakfast' : h < 15 ? 'lunch' : h < 20 ? 'dinner' : 'snack';
+  return mealForHour(h);
 }
 
 function renderPhotoConfirm() {

@@ -140,12 +140,7 @@ function renderDietRecs(totals) {
   // Time-of-day awareness (only when viewing today — a past day has no "now")
   const isToday = dietViewDate === getTodayStr();
   const MEAL_ORDER = ['breakfast', 'lunch', 'dinner', 'snack'];
-  const mealForHour = h => {
-    if (h >= 4 && h < 11) return 'breakfast';
-    if (h >= 11 && h < 16) return 'lunch';
-    if (h >= 16 && h < 21) return 'dinner';
-    return 'snack';
-  };
+  // mealForHour is shared — see diet-core.js.
   const nowMeal = isToday ? mealForHour(new Date().getHours()) : null;
 
   // Starting from the current time window, find the first meal still worth

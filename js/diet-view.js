@@ -289,7 +289,7 @@ function renderDiet() {
   // First render: open the meal that matches the time of day, collapse the rest
   if (!recentFoodsOpen) {
     const hour = new Date().getHours();
-    const nowMeal = hour < 11 ? 'breakfast' : hour < 16 ? 'lunch' : hour < 22 ? 'dinner' : 'snack';
+    const nowMeal = mealForHour(hour);
     recentFoodsOpen = { breakfast: false, lunch: false, dinner: false, snack: false, [nowMeal]: true };
   }
 

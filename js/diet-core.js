@@ -1,3 +1,35 @@
+// ========== Which meal is it right now ==========
+// There were three of these, and they disagreed:
+//   diet-goals   lunch 11-16, dinner 16-21
+//   diet-view    lunch <16,   dinner <22
+//   food-photo   lunch <15,   dinner <20
+// So the plan card could say "Up next: Dinner" at 4pm while the camera
+// defaulted a photo to lunch. One rule now, used by all three.
+//
+// Dinner starts at 19:00 because that is when dinner actually happens here —
+// the old windows called 4pm dinner, which made the next-meal suggestion
+// nonsense for most of the afternoon. Late afternoon is a snack, which is what
+// actually gets eaten then.
+const MEAL_WINDOWS = [
+  { meal: 'breakfast', from: 4,  to: 11 },
+  { meal: 'lunch',     from: 11, to: 16 },
+  { meal: 'dinner',    from: 19, to: 23 },
+];
+
+function mealForHour(h) {
+  const hour = Number(h);
+  for (let i = 0; i < MEAL_WINDOWS.length; i++) {
+    const w = MEAL_WINDOWS[i];
+    if (hour >= w.from && hour < w.to) return w.meal;
+  }
+  // 16:00-19:00 and 23:00-04:00 — genuinely snack territory.
+  return 'snack';
+}
+
+function mealForNow() {
+  return mealForHour(new Date().getHours());
+}
+
 let dietBackfillNotified = false;
 let recentFoodsOpen = null; // per-meal open/collapsed state, survives re-renders
 let dietInlineOpenMeal = null; // which meal's inline quick-add is open, survives re-renders
