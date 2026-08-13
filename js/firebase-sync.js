@@ -313,7 +313,7 @@ function setSyncStatus(state, message) {
 const SYNC_KEYS = {
   tasks: [], categories: [], projects: [], gym: [], cardio: [], modules: {},
   diet: [], customFoods: {}, water: {}, events: [], removedFoods: {},
-  weight: {}, goals: {}, sleep: {}, aiUsage: {},
+  weight: {}, goals: {}, sleep: {}, aiUsage: {}, combos: [],
 };
 
 // What we last successfully sent, serialized per key. Anything unchanged is

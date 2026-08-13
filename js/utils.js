@@ -160,7 +160,10 @@ function animateNumber(el, target) {
 }
 
 // Lightweight toast notification (bottom-right, auto-dismisses)
-function showToast(message) {
+// onTap makes the toast the undo affordance. Added for combos, where one tap
+// writes five rows and "that wasn't what I meant" needs to be cheap — but any
+// caller can use it. Without a handler the toast behaves exactly as before.
+function showToast(message, onTap) {
   let host = document.getElementById('toastHost');
   if (!host) {
     host = document.createElement('div');
@@ -171,13 +174,26 @@ function showToast(message) {
     document.body.appendChild(host);
   }
   const toast = document.createElement('div');
-  toast.className = 'toast';
+  toast.className = 'toast' + (typeof onTap === 'function' ? ' toast-action' : '');
   toast.textContent = message;
-  host.appendChild(toast);
-  setTimeout(() => {
+  let done = false;
+  const dismiss = () => {
+    if (done) return;
+    done = true;
     toast.classList.add('toast-out');
     setTimeout(() => toast.remove(), 300);
-  }, 2600);
+  };
+  if (typeof onTap === 'function') {
+    toast.setAttribute('role', 'button');
+    toast.tabIndex = 0;
+    const fire = (e) => { e.preventDefault(); dismiss(); try { onTap(); } catch (err) { console.warn(err); } };
+    toast.addEventListener('click', fire);
+    toast.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') fire(e); });
+  }
+  host.appendChild(toast);
+  // An undoable toast lingers: 2.6s is not long enough to notice five new rows,
+  // realise they are wrong, and reach the toast.
+  setTimeout(dismiss, typeof onTap === 'function' ? 6000 : 2600);
 }
 
 // ========== US Holidays ==========

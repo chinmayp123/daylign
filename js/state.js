@@ -43,6 +43,9 @@ function loadData() {
     water: safeParse('tf_water', {}),
     events: safeParse('tf_events', []),
     removedFoods: safeParse('tf_removed_foods', []),
+    // Named multi-item meals ("Protein shake"), each item with its own
+    // servings. See saveCombo in diet-food.js.
+    combos: safeParse('tf_combos', []),
     weight: safeParse('tf_weight', {}),
     goals: safeParse('tf_goals', {}),
     sleep: safeParse('tf_sleep', {}),
@@ -70,6 +73,7 @@ function writeStateToLocal(d) {
   localStorage.setItem('tf_projects', JSON.stringify(d.projects));
   localStorage.setItem('tf_events', JSON.stringify(d.events));
   localStorage.setItem('tf_removed_foods', JSON.stringify(d.removedFoods || []));
+  localStorage.setItem('tf_combos', JSON.stringify(d.combos || []));
   localStorage.setItem('tf_weight', JSON.stringify(d.weight || {}));
   localStorage.setItem('tf_goals', JSON.stringify(d.goals || {}));
   localStorage.setItem('tf_sleep', JSON.stringify(d.sleep || {}));
@@ -122,6 +126,7 @@ function applyFirebaseData(data) {
   state.water = data.water || {};
   state.events = data.events || [];
   state.removedFoods = data.removedFoods || [];
+  state.combos = data.combos || [];
   state.weight = data.weight || {};
   state.goals = data.goals || {};
   state.sleep = data.sleep || {};
@@ -177,6 +182,7 @@ function starterState() {
     water: {},
     events: [],
     removedFoods: [],
+    combos: [],
     weight: {},
     goals: {},
   };

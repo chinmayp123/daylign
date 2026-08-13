@@ -69,8 +69,20 @@ function renderDiet() {
       // Your Usuals: your most-logged foods for THIS meal — one tap to log.
       const usuals = mealUsuals(g.meal, 4);
       usualsByMeal[g.meal] = usuals;
-      const usualsHtml = usuals.length ? `
+      // Saved combos sit with the usuals — same gesture, one tap to log — but
+      // styled apart, because a chip that writes five rows should not look
+      // identical to one that writes a single food.
+      const combos = (typeof comboList === 'function') ? comboList() : [];
+      const comboChips = combos.map(c => {
+        const t = comboTotals(c);
+        return `<button type="button" class="diet-combo-tile" data-combo-id="${esc(c.id)}" data-combo-meal="${g.meal}" title="${esc(c.items.map(i => i.food).join(', '))}">
+          <span class="diet-combo-name">${esc(c.name)}</span>
+          <span class="diet-combo-meta">${c.items.length} items &middot; ${Math.round(t.calories)} cal</span>
+        </button>`;
+      }).join('');
+      const usualsHtml = (usuals.length || comboChips) ? `
           <div class="diet-usuals">
+            ${comboChips}
             ${usuals.map((u, i) => `<button type="button" class="diet-usual-tile" data-usual-meal="${g.meal}" data-usual-idx="${i}">${esc(u.name)}</button>`).join('')}
           </div>` : '';
       // With usuals present, search is the fallback ("Something else"), not the default.
@@ -115,6 +127,7 @@ function renderDiet() {
           <div class="diet-meal-addwrap" data-meal="${g.meal}">
             <div class="diet-meal-addrow">
               <button type="button" class="diet-meal-add" data-add-meal="${g.meal}">${addLabel}</button>
+              ${g.entries.length >= 2 ? `<button type="button" class="diet-meal-savecombo" data-savecombo-meal="${g.meal}" title="Save these items as a named combo">Save combo</button>` : ''}
               <button type="button" class="diet-meal-snap" data-snap-meal="${g.meal}" title="Snap a photo of this meal" aria-label="Snap a photo for ${g.label}">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
               </button>
@@ -137,6 +150,22 @@ function renderDiet() {
       const u = (usualsByMeal[meal] || [])[Number(btn.dataset.usualIdx)];
       if (!u) return;
       quickAddToMeal(meal, { name: u.name, data: u.per }, false);
+    });
+  });
+
+  // One tap logs the whole combo, with undo on the toast.
+  $$('.diet-combo-tile').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (typeof addComboToMeal === 'function') addComboToMeal(btn.dataset.comboId, btn.dataset.comboMeal);
+    });
+  });
+
+  // Save the items of this meal as a named combo. Everything is preselected,
+  // but each row can be unticked — the protein shake was logged alongside two
+  // eggs, and baking those into the shake would be wrong.
+  $$('.diet-meal-savecombo').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (typeof openComboSaver === 'function') openComboSaver(btn.dataset.savecomboMeal);
     });
   });
 

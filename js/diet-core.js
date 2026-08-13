@@ -148,3 +148,175 @@ function bindFoodLibrary() {
   if (close) close.addEventListener('click', closeFoodLibrary);
 }
 
+
+// ========== Meal combos ==========
+// A named set of foods you eat together, each remembering its own servings.
+//
+// Grounded in the log rather than guessed at. Two things it found that changed
+// the design:
+//   - A combo is a SUBSET of a meal, not the meal. The protein shake was logged
+//     under breakfast alongside 2 eggs; saving "the meal" would have baked the
+//     eggs into the shake. Hence per-item selection when saving.
+//   - Servings must be stored per item. Peanut butter is 0.5x every time it has
+//     ever been logged; without that the shake comes back with double the
+//     peanut butter.
+//
+// Adding is immediate rather than previewed: 80% of meals here are 2+ items and
+// almost every repeat differs slightly (the banana got dropped on the shake's
+// second outing), so the fix-afterwards path is the common one and it already
+// exists — every added row has its own x and servings stepper.
+function comboList() {
+  if (!Array.isArray(state.combos)) state.combos = [];
+  return state.combos;
+}
+
+function saveCombo(name, items) {
+  const clean = (items || [])
+    .filter(it => it && it.food)
+    .map(it => ({
+      food: String(it.food).trim().slice(0, 80),
+      servings: Number(it.servings) > 0 ? Number(it.servings) : 1,
+      calories: Math.max(0, Number(it.calories) || 0),
+      protein: Math.max(0, Number(it.protein) || 0),
+      carbs: Math.max(0, Number(it.carbs) || 0),
+      fat: Math.max(0, Number(it.fat) || 0),
+    }));
+  if (!clean.length) return null;
+  const label = String(name || '').trim().slice(0, 60) || clean[0].food;
+  const list = comboList();
+  // Re-saving under an existing name replaces it, so correcting a combo does
+  // not leave two chips with the same label.
+  const existing = list.findIndex(c => (c.name || '').toLowerCase() === label.toLowerCase());
+  const combo = { id: 'c' + Date.now(), name: label, items: clean };
+  if (existing !== -1) list[existing] = combo; else list.push(combo);
+  saveData(state);
+  return combo;
+}
+
+function deleteCombo(id) {
+  const list = comboList();
+  const i = list.findIndex(c => c.id === id);
+  if (i === -1) return;
+  list.splice(i, 1);
+  saveData(state);
+  renderDiet();
+}
+
+function comboTotals(combo) {
+  return (combo.items || []).reduce((a, it) => ({
+    calories: a.calories + (it.calories || 0),
+    protein: a.protein + (it.protein || 0),
+    carbs: a.carbs + (it.carbs || 0),
+    fat: a.fat + (it.fat || 0),
+  }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+}
+
+// One tap logs every item. The macros stored on each item are already for its
+// servings, so they are copied straight across rather than re-multiplied.
+function addComboToMeal(comboId, meal) {
+  const combo = comboList().find(c => c.id === comboId);
+  if (!combo) return;
+  const added = [];
+  combo.items.forEach(it => {
+    const entry = {
+      date: dietViewDate, meal: meal, food: it.food, servings: it.servings,
+      calories: it.calories, protein: it.protein, carbs: it.carbs, fat: it.fat,
+    };
+    state.diet.push(entry);
+    added.push(entry);
+  });
+  saveData(state);
+  if (typeof haptic === 'function') haptic('success');
+  // Undo matters more here than for a single food: one tap just wrote five rows.
+  lastComboAdd = { meal: meal, count: added.length, at: Date.now() };
+  if (typeof showToast === 'function') {
+    showToast(`✓ ${combo.name} — ${added.length} items → ${meal}. Tap to undo.`, undoLastCombo);
+  }
+  renderDiet();
+}
+
+let lastComboAdd = null;
+
+function undoLastCombo() {
+  if (!lastComboAdd || Date.now() - lastComboAdd.at > 60000) return;
+  // Remove exactly the rows just appended — they are the last N of this meal.
+  let toRemove = lastComboAdd.count;
+  for (let i = state.diet.length - 1; i >= 0 && toRemove > 0; i--) {
+    if (state.diet[i] && state.diet[i].meal === lastComboAdd.meal && state.diet[i].date === dietViewDate) {
+      state.diet.splice(i, 1);
+      toRemove--;
+    }
+  }
+  lastComboAdd = null;
+  saveData(state);
+  renderDiet();
+}
+
+// The save picker. Deliberately a sheet rather than a prompt(): the whole point
+// is choosing WHICH items belong to the combo, and prompt() cannot show a list.
+function openComboSaver(meal) {
+  const entries = state.diet
+    .map((e, i) => ({ e: e, i: i }))
+    .filter(x => x.e && x.e.date === dietViewDate && x.e.meal === meal);
+  if (entries.length < 2) return;
+
+  const existing = document.getElementById('comboSaver');
+  if (existing) existing.remove();
+
+  const suggested = entries.length
+    ? entries[0].e.food + (entries.length > 1 ? ' + ' + (entries.length - 1) + ' more' : '')
+    : meal;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'modal-overlay active';
+  wrap.id = 'comboSaver';
+  wrap.innerHTML = `
+    <div class="modal combo-saver">
+      <div class="modal-header">
+        <div class="modal-header-left">
+          <h2>Save combo</h2>
+          <p class="modal-subtitle">Tick what belongs together. Servings are remembered.</p>
+        </div>
+        <button type="button" class="modal-close" id="comboCancel" aria-label="Cancel">&times;</button>
+      </div>
+      <div class="combo-saver-body">
+        <label class="form-group">
+          <span class="form-label">Name</span>
+          <input type="text" id="comboName" class="combo-name-input" value="${esc(suggested)}" maxlength="60" autocomplete="off">
+        </label>
+        <div class="combo-pick-list">
+          ${entries.map(x => `
+            <label class="combo-pick">
+              <input type="checkbox" checked data-idx="${x.i}">
+              <span class="combo-pick-name">${esc(x.e.food)}</span>
+              <span class="combo-pick-serv">${(Number(x.e.servings) || 1)}&times;</span>
+              <span class="combo-pick-cal">${Math.round(x.e.calories || 0)} cal</span>
+            </label>`).join('')}
+        </div>
+        <div class="combo-saver-actions">
+          <button type="button" class="btn-secondary" id="comboCancel2">Cancel</button>
+          <button type="button" class="btn-primary" id="comboSave">Save combo</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+
+  const close = () => wrap.remove();
+  wrap.addEventListener('click', (e) => { if (e.target === wrap) close(); });
+  wrap.querySelector('#comboCancel').addEventListener('click', close);
+  wrap.querySelector('#comboCancel2').addEventListener('click', close);
+  wrap.querySelector('#comboSave').addEventListener('click', () => {
+    const picked = [...wrap.querySelectorAll('.combo-pick input:checked')]
+      .map(cb => state.diet[Number(cb.dataset.idx)])
+      .filter(Boolean);
+    if (!picked.length) { showToast('Pick at least one item'); return; }
+    const name = wrap.querySelector('#comboName').value;
+    const combo = saveCombo(name, picked);
+    close();
+    if (combo) {
+      if (typeof haptic === 'function') haptic('success');
+      showToast(`✓ Saved "${combo.name}" — ${combo.items.length} items`);
+      renderDiet();
+    }
+  });
+}
