@@ -402,5 +402,11 @@ function renderDiet() {
       });
     });
   }
+
+  // The meal rows were just rebuilt, which destroys the inline photo confirm
+  // box. Put a pending analysis back rather than letting it vanish — this is
+  // the render that used to eat an in-flight photo every time a Firebase
+  // snapshot echoed a save back to us.
+  if (typeof restorePendingPhoto === 'function') restorePendingPhoto();
 }
 

@@ -5,7 +5,60 @@
 const FOOD_PHOTO_MODEL = 'claude-opus-4-8'; // cheaper: 'claude-sonnet-5' or 'claude-haiku-4-5'
 const FOOD_PHOTO_KEY = 'tf_anthropic_key';
 
+// Items awaiting confirmation. Mirrored to localStorage on every change,
+// because this used to be the ONLY copy and it lived in a DOM node that any
+// renderDiet() destroyed — including the one fired 50ms after every Firebase
+// snapshot. Logging breakfast echoed back from the cloud and wiped a lunch
+// photo that was still waiting to be confirmed. An analysis costs an API call
+// and ten seconds of standing over your food; it must survive a re-render, a
+// tab switch, and a reload.
+const PHOTO_PENDING_KEY = 'tf_photo_pending';
+
 let photoItems = null; // items awaiting confirmation
+
+function savePendingPhoto() {
+  try {
+    if (photoItems && photoItems.length) {
+      localStorage.setItem(PHOTO_PENDING_KEY, JSON.stringify({
+        items: photoItems,
+        meal: photoTargetMeal,
+        sel: photoResultSel,
+        thumb: lastPhotoDataUrl,
+        date: (typeof dietViewDate !== 'undefined' && dietViewDate) || getTodayStr(),
+        at: Date.now(),
+      }));
+    } else {
+      localStorage.removeItem(PHOTO_PENDING_KEY);
+    }
+  } catch (e) { /* quota — the in-memory copy still works for this session */ }
+}
+
+function loadPendingPhoto() {
+  try {
+    const raw = localStorage.getItem(PHOTO_PENDING_KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw);
+    if (!p || !p.items || !p.items.length) return null;
+    // A confirmation left overnight is stale — the meal is long eaten and
+    // silently logging it the next day would be worse than dropping it.
+    if (Date.now() - (p.at || 0) > 12 * 3600 * 1000) { localStorage.removeItem(PHOTO_PENDING_KEY); return null; }
+    return p;
+  } catch (e) { return null; }
+}
+
+// Called from renderDiet AFTER it rebuilds the meal rows, so a pending
+// confirmation is put back instead of disappearing.
+function restorePendingPhoto() {
+  const p = loadPendingPhoto();
+  if (!p) return;
+  const viewing = (typeof dietViewDate !== 'undefined' && dietViewDate) || getTodayStr();
+  if (p.date && p.date !== viewing) return; // belongs to another day being viewed
+  photoItems = p.items;
+  photoTargetMeal = p.meal;
+  photoResultSel = p.sel;
+  if (p.thumb) lastPhotoDataUrl = p.thumb;
+  if (photoResultBox()) renderPhotoConfirm();
+}
 let lastPhotoDataUrl = null; // thumbnail of the most recent analyzed photo
 // When Snap is launched from a specific meal row, log to that meal and render
 // the confirm UI inline there instead of the Log Food card's #photoResult.
@@ -152,6 +205,9 @@ async function analyzeMealPhoto(file) {
     fat: Math.max(0, Math.round((Number(it.fat) || 0) * 10) / 10),
     confidence: ['high', 'medium', 'low'].includes(it.confidence) ? it.confidence : 'medium',
   }));
+  // Persist before painting. If anything re-renders in the next tick the
+  // analysis is already safe on disk.
+  savePendingPhoto();
   renderPhotoConfirm();
 }
 
@@ -213,12 +269,12 @@ function renderPhotoConfirm() {
     inp.addEventListener('input', () => { photoItems[inp.dataset.idx][inp.dataset.macro] = Number(inp.value) || 0; });
   });
   resultEl.querySelectorAll('.photo-item-del').forEach(btn => {
-    btn.addEventListener('click', () => { photoItems.splice(Number(btn.dataset.idx), 1); renderPhotoConfirm(); });
+    btn.addEventListener('click', () => { photoItems.splice(Number(btn.dataset.idx), 1); savePendingPhoto(); renderPhotoConfirm(); });
   });
   const addBtn = resultEl.querySelector('#photoAddAllBtn');
   if (addBtn) addBtn.addEventListener('click', savePhotoItems);
   const discardBtn = resultEl.querySelector('#photoDiscardBtn');
-  if (discardBtn) discardBtn.addEventListener('click', () => { photoItems = null; photoResultBox().innerHTML = ''; photoTargetMeal = null; photoResultSel = null; });
+  if (discardBtn) discardBtn.addEventListener('click', () => { photoItems = null; savePendingPhoto(); photoResultBox().innerHTML = ''; photoTargetMeal = null; photoResultSel = null; });
 }
 
 function savePhotoItems() {
@@ -238,6 +294,7 @@ function savePhotoItems() {
   }
   const n = photoItems.length;
   photoItems = null;
+  savePendingPhoto(); // items are in state.diet now — drop the pending copy
   photoResultBox().innerHTML = '';
   photoTargetMeal = null;
   photoResultSel = null;

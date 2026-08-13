@@ -279,6 +279,13 @@ function saveToFirebase(data) {
   if (!firebaseReady) return;
   if (!DATA_REF) return; // no profile chosen yet — nothing may reach the cloud
   setSyncStatus('saving');
+  // On a weak connection Firebase's promise can sit unresolved indefinitely, so
+  // the indicator reads "Saving…" forever and looks like the app has hung. Say
+  // plainly that it is stalled instead. The write is NOT cancelled — Firebase
+  // keeps retrying and will flip this to Synced if it lands.
+  const stallTimer = setTimeout(() => {
+    setSyncStatus('error', 'Still trying to reach the cloud — your data is saved on this device and will sync when the connection recovers.');
+  }, 12000);
   DATA_REF.set({
     tasks: data.tasks || [],
     categories: data.categories || [],
@@ -297,8 +304,9 @@ function saveToFirebase(data) {
     aiUsage: data.aiUsage || {},
     lastUpdated: Date.now(),
   })
-    .then(() => setSyncStatus('synced'))
+    .then(() => { clearTimeout(stallTimer); setSyncStatus('synced'); })
     .catch(err => {
+      clearTimeout(stallTimer);
       console.warn('Firebase write failed:', err);
       setSyncStatus('error', 'Cloud sync failed: ' + (err && err.message ? err.message : 'unknown error') + '. Use Backup to save a copy.');
     });
