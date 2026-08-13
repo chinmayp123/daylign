@@ -10022,3 +10022,9 @@ html.layout-editing .layout-item.is-dragging {
 
 /* On desktop the rail already carries readiness and consistency; the tabs
    still apply, so the centre column stays one screen rather than eight. */
+@media (min-width: 1024px) {
+  /* Stretched across a monitor the three buttons read as a banner rather
+     than a control. */
+  .training-tabs { max-width: 420px; }
+}
+
