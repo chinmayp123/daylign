@@ -228,11 +228,44 @@ function refreshFromCloud() {
     try {
       jobs.push(DATA_REF.once('value').then(snap => {
         const v = snap.val();
-        if (v && typeof applyFirebaseData === 'function') applyFirebaseData(v);
+        // Same guard as the live listener. Pull-to-refresh must never be a way
+        // to overwrite work that has not reached the cloud yet.
+        if (v && shouldApplyCloudData(v) && typeof applyFirebaseData === 'function') {
+          suppressFirebaseWrite = true;
+          seedSyncBaseline(v);
+          applyFirebaseData(v);
+          suppressFirebaseWrite = false;
+        }
       }).catch(() => {}));
     } catch (e) { /* offline */ }
   }
   return Promise.all(jobs);
+}
+
+// ---- Deciding whether cloud data may replace local state ----
+// applyFirebaseData REPLACES all fifteen keys, so getting this wrong loses
+// whatever you just typed. There were two paths into it and only one checked
+// anything: the live listener compared timestamps, pull-to-refresh did not.
+//
+// That cost a real lunch. The entries were added locally, the write stalled on
+// a weak connection, and pulling to refresh — the obvious thing to do when the
+// indicator is stuck on "Saving…" — pulled down the pre-lunch copy and wiped
+// them. They reappeared minutes later only because the stalled write carried
+// its original payload and eventually landed.
+//
+// Both paths now go through shouldApplyCloudData, so they cannot drift again.
+let pendingWrites = 0;      // writes started but not yet settled
+let lastWriteStamp = 0;     // lastUpdated of the newest write we have sent
+
+function shouldApplyCloudData(data) {
+  if (!data || !data.lastUpdated) return false;
+  // A write of ours is still in flight. Anything the cloud can return right now
+  // was written before it, so applying it would undo changes already on screen.
+  if (pendingWrites > 0 && data.lastUpdated <= lastWriteStamp) return false;
+  const localTimestamp = parseInt(localStorage.getItem('tf_last_updated') || '0', 10) || 0;
+  // The 1s margin absorbs clock skew between this device and the write it just
+  // made; without it a device can keep re-applying its own echo.
+  return data.lastUpdated > localTimestamp + 1000;
 }
 
 // Sync state
@@ -274,11 +307,63 @@ function setSyncStatus(state, message) {
 }
 
 // Save all state to Firebase
+// Keys written to the cloud, with the empty value each falls back to. One
+// list so a new key cannot be added to the payload and forgotten by the
+// change tracker.
+const SYNC_KEYS = {
+  tasks: [], categories: [], projects: [], gym: [], cardio: [], modules: {},
+  diet: [], customFoods: {}, water: {}, events: [], removedFoods: {},
+  weight: {}, goals: {}, sleep: {}, aiUsage: {},
+};
+
+// What we last successfully sent, serialized per key. Anything unchanged is
+// left out of the next write.
+let lastSentByKey = null;
+
+// After a cloud load the remote copy IS what is up there, so seed the tracker
+// rather than treating every key as dirty and re-uploading 68 KB for nothing.
+function seedSyncBaseline(data) {
+  lastSentByKey = {};
+  Object.keys(SYNC_KEYS).forEach(k => {
+    try { lastSentByKey[k] = JSON.stringify(data && data[k] !== undefined ? data[k] : SYNC_KEYS[k]); }
+    catch (e) { lastSentByKey[k] = null; }
+  });
+}
+
 function saveToFirebase(data) {
   if (suppressFirebaseWrite) return;
   if (!firebaseReady) return;
   if (!DATA_REF) return; // no profile chosen yet — nothing may reach the cloud
-  setSyncStatus('saving');
+
+  // Every save used to PUT the whole document: 68 KB, of which 44 KB was 376
+  // diet entries, just to add one food. On a weak connection that is ten-plus
+  // seconds of "Saving…" for a single tap, and it grows with every day logged.
+  // Send only the keys that actually changed.
+  const payload = {};
+  const changed = [];
+  const serialized = {};
+  Object.keys(SYNC_KEYS).forEach(k => {
+    const v = data[k] !== undefined && data[k] !== null ? data[k] : SYNC_KEYS[k];
+    let ser;
+    try { ser = JSON.stringify(v); } catch (e) { ser = null; }
+    serialized[k] = ser;
+    if (!lastSentByKey || ser === null || lastSentByKey[k] !== ser) {
+      payload[k] = v;
+      changed.push(k);
+    }
+  });
+
+  // Nothing but the clock moved — writing would only cost bandwidth and make
+  // every other device re-render for no reason.
+  if (!changed.length) { setSyncStatus('synced'); return; }
+
+  // Stamp once and reuse: the payload's lastUpdated and the value we guard
+  // incoming snapshots against must be the same number.
+  const stamp = Date.now();
+  payload.lastUpdated = stamp;
+  pendingWrites++;
+  if (stamp > lastWriteStamp) lastWriteStamp = stamp;
+
   // On a weak connection Firebase's promise can sit unresolved indefinitely, so
   // the indicator reads "Saving…" forever and looks like the app has hung. Say
   // plainly that it is stalled instead. The write is NOT cancelled — Firebase
@@ -286,27 +371,23 @@ function saveToFirebase(data) {
   const stallTimer = setTimeout(() => {
     setSyncStatus('error', 'Still trying to reach the cloud — your data is saved on this device and will sync when the connection recovers.');
   }, 12000);
-  DATA_REF.set({
-    tasks: data.tasks || [],
-    categories: data.categories || [],
-    projects: data.projects || [],
-    gym: data.gym || [],
-    cardio: data.cardio || [],
-    modules: data.modules || {},
-    diet: data.diet || [],
-    customFoods: data.customFoods || {},
-    water: data.water || {},
-    events: data.events || [],
-    removedFoods: data.removedFoods || [],
-    weight: data.weight || {},
-    goals: data.goals || {},
-    sleep: data.sleep || {},
-    aiUsage: data.aiUsage || {},
-    lastUpdated: Date.now(),
-  })
-    .then(() => { clearTimeout(stallTimer); setSyncStatus('synced'); })
+
+  setSyncStatus('saving');
+  // update() rather than set(): set() would delete any key left out of the
+  // payload, which is now most of them.
+  DATA_REF.update(payload)
+    .then(() => {
+      clearTimeout(stallTimer);
+      pendingWrites--;
+      // Only now is this what the cloud holds. Updating the baseline earlier
+      // would mean a failed write silently never retried.
+      if (!lastSentByKey) lastSentByKey = {};
+      changed.forEach(k => { lastSentByKey[k] = serialized[k]; });
+      setSyncStatus('synced');
+    })
     .catch(err => {
       clearTimeout(stallTimer);
+      pendingWrites--;
       console.warn('Firebase write failed:', err);
       setSyncStatus('error', 'Cloud sync failed: ' + (err && err.message ? err.message : 'unknown error') + '. Use Backup to save a copy.');
     });
@@ -361,6 +442,7 @@ function startFirebaseSync(onDataReceived) {
       if (data && data.lastUpdated && data.lastUpdated > localTimestamp) {
         // Cloud is genuinely newer — adopt it (this is the path that pulls back
         // data another device saved while this one was closed).
+        seedSyncBaseline(data);
         onDataReceived(data);
         console.log('Loaded data from Firebase (newer than local)');
       } else {
@@ -401,10 +483,9 @@ function startFirebaseSync(onDataReceived) {
     const data = snapshot.val();
     if (!data || !data.lastUpdated) return;
 
-    const localTimestamp = parseInt(localStorage.getItem('tf_last_updated') || '0');
-    // Only apply if the remote change is newer than our last save
-    if (data.lastUpdated > localTimestamp + 1000) {
+    if (shouldApplyCloudData(data)) {
       suppressFirebaseWrite = true;
+      seedSyncBaseline(data);
       onDataReceived(data);
       suppressFirebaseWrite = false;
       console.log('Received real-time update from Firebase');
