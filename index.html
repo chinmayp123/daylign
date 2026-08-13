@@ -335,7 +335,15 @@
             </div>
             <div class="training-weight" id="trainingWeight"></div>
           </div>
-          <div class="training-week" id="trainingWeek"></div>
+          <div class="training-week" id="trainingWeek"></div>
+          <!-- Section tabs. The Strength pane stacked eight cards in one
+               scroll, so anything past the log needed a long thumb journey and
+               the page felt endless. Each tab is roughly one screen. -->
+          <div class="training-tabs" id="trainingTabs" role="tablist" aria-label="Training section">
+            <button type="button" class="training-tab active" role="tab" data-train-tab="log" aria-selected="true">Log</button>
+            <button type="button" class="training-tab" role="tab" data-train-tab="progress" aria-selected="false">Progress</button>
+            <button type="button" class="training-tab" role="tab" data-train-tab="coach" aria-selected="false">Coach</button>
+          </div>
         </div>
 
         <!-- Desktop: center logs the active mode, right rail carries the shared

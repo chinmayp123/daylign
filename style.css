@@ -9982,3 +9982,43 @@ html.layout-editing .layout-item.is-dragging {
   .gym-log-sheet { transition: visibility 0.28s; }
   .gym-log-sheet-panel { animation: none; }
 }
+
+/* ---- Training section tabs ----
+   Eight stacked cards became three destinations. train-tab-off rather than
+   [hidden] so the Strength/Cardio pane switching stays independent of this. */
+.train-tab-off { display: none !important; }
+
+.training-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  margin: 10px 0 14px;
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+}
+.training-tab {
+  flex: 1;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+.training-tab.active {
+  background: var(--accent);
+  color: #fff;
+}
+.training-tab:not(.active):hover { color: var(--text-primary); }
+
+@media (max-width: 600px) {
+  .training-tab { font-size: 13px; min-height: 44px; }
+}
+
+/* On desktop the rail already carries readiness and consistency; the tabs
+   still apply, so the centre column stays one screen rather than eight. */

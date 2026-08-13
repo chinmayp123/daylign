@@ -143,9 +143,110 @@ function renderTrainingWeek() {
 
 // Just the numbers in the shell. Split out so gym.js/cardio.js can refresh it
 // after a save without re-running the mode/visibility logic.
+// ---- Section tabs ----
+// The Strength pane stacked eight top-level cards in a single scroll: log,
+// activity, coach, goals, analytics, consistency, recovery, weight. Everything
+// past the log needed a long thumb journey to reach, and the page read as
+// endless — you never felt like you had arrived anywhere.
+//
+// Same cards, three destinations. Nothing was deleted or rewritten; each card
+// is simply assigned to a tab and hidden when another is showing.
+//
+// Declarative on purpose, and every selector is checked at runtime by
+// trainingTabAudit() — a tab silently pointing at an element that no longer
+// exists is exactly the bug that bit the dashboard widget toggles.
+const TRAINING_TABS = ['log', 'progress', 'coach'];
+const TRAINING_TAB_KEY = 'daylign_training_tab';
+
+const TRAINING_SECTIONS = [
+  // --- Log: the daily job ---
+  { tab: 'log', sel: '#trainingStrength .gym-date-bar' },
+  { tab: 'log', sel: '.gym-log-card' },
+  { tab: 'log', sel: '#activityBreakdown' },
+  { tab: 'log', sel: '#trainingCardio .gym-date-bar' },
+  { tab: 'log', sel: '#cardioQuick' },
+  { tab: 'log', sel: '.cardio-add-card' },
+  { tab: 'log', sel: '#cardioWatchWorkouts' },
+  { tab: 'log', sel: '#cardioDayList' },
+
+  // --- Progress: am I actually getting better ---
+  { tab: 'progress', sel: '#strengthAnalytics' },
+  { tab: 'progress', sel: '.goal-progress-card' },
+  { tab: 'progress', sel: '.streak-card' },
+  { tab: 'progress', sel: '.weight-trend-card' },
+  { tab: 'progress', sel: '#trainingCardio .cardio-card:not(.cardio-race):not([data-collapse-key="cardiocoach"]):not([data-collapse-key="cardioracetarget"])' },
+  { tab: 'progress', sel: '#cardioRace' },
+  { tab: 'progress', sel: '[data-collapse-key="cardioracetarget"]' },
+
+  // --- Coach: what should I do about it ---
+  { tab: 'coach', sel: '.coach-merged' },
+  { tab: 'coach', sel: '.recovery-card' },
+  { tab: 'coach', sel: '[data-collapse-key="cardiocoach"]' },
+];
+
+function trainingTab() {
+  const saved = localStorage.getItem(TRAINING_TAB_KEY);
+  return TRAINING_TABS.indexOf(saved) !== -1 ? saved : 'log';
+}
+
+function setTrainingTab(tab) {
+  if (TRAINING_TABS.indexOf(tab) === -1) tab = 'log';
+  localStorage.setItem(TRAINING_TAB_KEY, tab);
+  applyTrainingTab();
+  if (typeof haptic === 'function') haptic('light');
+  // Landing mid-page after switching tabs feels broken; the new section should
+  // start at its top.
+  const shell = document.querySelector('.training-shell');
+  if (shell) {
+    const y = shell.getBoundingClientRect().top + window.scrollY - 8;
+    window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+  }
+}
+
+function applyTrainingTab() {
+  const active = trainingTab();
+  TRAINING_SECTIONS.forEach(sec => {
+    document.querySelectorAll(sec.sel).forEach(el => {
+      // dataset rather than [hidden] so the panes' own show/hide for
+      // Strength vs Cardio keeps working independently of this.
+      el.classList.toggle('train-tab-off', sec.tab !== active);
+    });
+  });
+  document.querySelectorAll('#trainingTabs .training-tab').forEach(btn => {
+    const on = btn.dataset.trainTab === active;
+    btn.classList.toggle('active', on);
+    btn.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  // The logging sheet is only reachable from the Log tab, so the primary
+  // action should not offer it from Progress or Coach.
+  const fabLabel = document.getElementById('primaryFabLabel');
+  if (fabLabel && typeof currentView !== 'undefined' && currentView === 'training') {
+    const fab = document.getElementById('primaryFab');
+    if (fab) fab.hidden = active !== 'log';
+  }
+}
+
+function bindTrainingTabs() {
+  const host = document.getElementById('trainingTabs');
+  if (!host) return;
+  host.addEventListener('click', e => {
+    const btn = e.target.closest('[data-train-tab]');
+    if (btn) setTrainingTab(btn.dataset.trainTab);
+  });
+}
+
+// Every selector must resolve to something. Returns the ones that do not, so a
+// test can assert on it rather than a card quietly vanishing from all three tabs.
+function trainingTabAudit() {
+  return TRAINING_SECTIONS
+    .filter(sec => !document.querySelector(sec.sel))
+    .map(sec => sec.tab + ' -> ' + sec.sel);
+}
+
 function renderTrainingShell() {
   renderTrainingWeight();
   renderTrainingWeek();
+  applyTrainingTab();
 }
 
 // Desktop right rail (ref 11c): the cross-mode cards that belong beside either
@@ -243,6 +344,7 @@ function renderTraining() {
 }
 
 function bindTrainingEvents() {
+  bindTrainingTabs();
   const toggle = document.getElementById('trainingToggle');
   if (toggle) {
     toggle.addEventListener('click', e => {
