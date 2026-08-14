@@ -45,6 +45,28 @@ function sleepSourceFor(dateStr) {
   return null;
 }
 
+// How fresh is the number on the card, said plainly. The stepper falls back to
+// 7.5 when there is nothing for the date — and 7:30 sitting under the words
+// "Last night" reads as a measurement, not as a blank waiting to be filled.
+// The watch posts a day in arrears (its newest data is yesterday's), so on any
+// given morning last night genuinely has not arrived yet, and the card should
+// say that rather than quietly show a default.
+function sleepFreshness(dateStr, source, sourceHours) {
+  if (source === 'logged') return 'Last night &middot; you logged it';
+  if (source === 'watch') return 'Last night &middot; ⌚ from your watch';
+
+  // Nothing for last night. Name the most recent night the watch DID send, so
+  // the gap is visible instead of being papered over with a placeholder.
+  let newest = null;
+  if (typeof externalData !== 'undefined' && externalData && externalData.sleep) {
+    const dates = Object.keys(externalData.sleep)
+      .filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d) && d < dateStr).sort();
+    newest = dates.length ? dates[dates.length - 1] : null;
+  }
+  if (newest) return `Last night &middot; not synced yet (watch has ${formatDate(newest)})`;
+  return 'Last night &middot; nothing synced yet';
+}
+
 function formatSleepHours(h) {
   const whole = Math.floor(h);
   const mins = Math.round((h - whole) * 60);
@@ -321,7 +343,7 @@ function renderSleepCard() {
       </div>
 
       <div class="sleep-log">
-        <span class="sleep-log-label">Last night${source === 'watch' ? ' · ⌚ from your watch' : ''}</span>
+        <span class="sleep-log-label">${sleepFreshness(today, source, sourceHours)}</span>
         <div class="sleep-stepper">
           <button type="button" class="sleep-step-btn" data-sleep-step="-0.25" aria-label="Less sleep">−</button>
           <span class="sleep-hours" id="sleepHoursVal">${formatSleepHours(sleepDraftHours)}</span>
