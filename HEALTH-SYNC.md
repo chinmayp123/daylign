@@ -46,6 +46,34 @@ This produces the `Formatted Date` variable every block reuses.
 
 URL words are **case-sensitive** — `restingHr` will not be read; it must be `restingHR`.
 
+### Recording *when* the sync ran (optional, one action)
+
+Nothing in the blocks above records the time the shortcut ran — only the date
+each reading belongs to. Those are different facts, and the app refuses to
+claim one from the other: without this step the card reads *"Watch data through
+Aug 13"*, not *"synced at 9:14 PM"*. A successful 9 PM run produces data dated
+that same day, so "the newest data is from yesterday" would look identical
+whether the shortcut ran perfectly or has not run since.
+
+Add **one** action as the very **last** step of the shortcut:
+
+**Get Contents of URL**
+- URL: `https://lifestack-d5300-default-rtdb.firebaseio.com/external/lastSync.json`
+- Method: **PUT**
+- Request Body: **File**  ← a bare value, same as the metric blocks
+- File: **Current Date**
+
+**Put it last, not first.** A metric that finds no samples errors and skips
+every action below it (see the warning below), so a stamp at the END only lands
+when the whole run actually finished. A stamp at the top would say "synced"
+about runs that fell over immediately.
+
+**Any date format works.** The app accepts Shortcuts' default
+(`August 13, 2026 at 9:14 PM`), an ISO string, epoch milliseconds, or epoch
+seconds. You do not need a Format Date action — pass *Current Date* straight in.
+Anything unparseable is ignored and the card quietly falls back to describing
+the data instead of inventing a time.
+
 ### Sleep needs one extra action
 
 Apple's sleep samples are **categories** ("Asleep", "InBed", "Core", "Deep", "REM"), not numbers. Summing them fails with *"Calculate Statistics failed because Shortcuts couldn't convert from Text to Number."* You must sum their **durations** instead:

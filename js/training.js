@@ -384,6 +384,30 @@ const WATCH_METRICS = [
   { key: 'runDistance',     label: 'Distance' },
 ];
 
+// Whatever the Shortcut managed to write, turned into a timestamp.
+//
+// iOS Shortcuts has no epoch format — Format Date cannot emit one without real
+// contortions — but it writes an ISO string trivially. Insisting on a number
+// would have pushed that awkwardness onto the phone for no reason, so this
+// takes epoch milliseconds, epoch SECONDS (which is what most tools hand you,
+// and is 1000x too small if taken at face value), or any parseable date string.
+// Anything it cannot read comes back null and the card falls back to talking
+// about the data instead of inventing a sync time.
+function parseLastSync(raw) {
+  if (raw === null || raw === undefined || raw === '') return null;
+  if (typeof raw === 'number' || /^\d+$/.test(String(raw).trim())) {
+    let n = Number(raw);
+    if (!isFinite(n) || n <= 0) return null;
+    if (n < 1e11) n *= 1000;          // seconds, not milliseconds
+    return n;
+  }
+  // Shortcuts' DEFAULT date format is "August 13, 2026 at 9:14 PM", and that
+  // " at " is the one thing Date.parse chokes on. Absorbing it here means the
+  // stock format works and there is one less way to set this up wrong.
+  const t = Date.parse(String(raw).trim().replace(/\s+at\s+/i, ' '));
+  return isFinite(t) ? t : null;
+}
+
 function watchSyncStatus() {
   if (typeof externalData === 'undefined' || !externalData) return null;
   const today = getTodayStr();
@@ -400,7 +424,7 @@ function watchSyncStatus() {
   // Only count a metric as current if it reaches the newest date any metric
   // reached — a partial run is the common failure and should be visible.
   const current = withData.filter(m => m.latest === newest).length;
-  const explicit = externalData.lastSync ? Number(externalData.lastSync) : null;
+  const explicit = parseLastSync(externalData.lastSync);
   return { newest, daysOld, current, total: WATCH_METRICS.length, perMetric, explicit };
 }
 
@@ -454,7 +478,7 @@ function renderWatchSync() {
             <span>${m.latest ? formatDate(m.latest) : 'never'}</span>
           </div>`).join('')}
       </div>
-      ${!s.explicit ? `<p class="watch-sync-note">That is the date the data covers, not when the Shortcut ran — it never records that. Add one <em>Get Contents of URL</em> step PUTting <code>{"lastSync": &lt;current timestamp&gt;}</code> to <code>external.json</code> and this shows the real time.</p>` : ''}
+      ${!s.explicit ? `<p class="watch-sync-note">That is the date the data covers, not when the Shortcut ran — it never records that. Add one last <em>Get Contents of URL</em> step at the END of the shortcut &mdash; PUT to <code>external/lastSync.json</code> with a Formatted Date as the body &mdash; and this shows the real time. Putting it last means the stamp only lands when the whole run finished.</p>` : ''}
       ${partial ? `<p class="watch-sync-note">${esc(missing.join(', '))} did not land in the last run. iOS skips the automation when the phone is locked — a charger-connect trigger fires more reliably than a fixed time.</p>` : ''}
     </details>`;
 }
