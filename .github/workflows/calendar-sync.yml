@@ -32,12 +32,16 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # Until the ICS_URLS secret exists there is nothing to sync. Skipping is
+    # the honest state — the job used to run and fail, which sent a failure
+    # email every hour for a feature that simply had not been set up yet.
+    if: ${{ secrets.ICS_URLS != '' }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Fetch calendars and write to Firebase
         env:

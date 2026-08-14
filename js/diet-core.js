@@ -177,6 +177,9 @@ function closeFoodLibrary() {
   window.scrollTo(0, 0);
 }
 function bindFoodLibrary() {
+  // The in-page entry point is gone — the header/FAB primary action on Diet
+  // already IS "Food Library", so this was a second button to the same place,
+  // stranded alone in a 300px column. Kept tolerant in case it returns.
   const open = document.getElementById('openFoodLibraryBtn');
   const close = document.getElementById('closeFoodLibraryBtn');
   if (open) open.addEventListener('click', openFoodLibrary);

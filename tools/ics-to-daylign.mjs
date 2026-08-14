@@ -247,7 +247,13 @@ function localDateStrUTC(ms) {
 }
 
 async function main() {
-  if (!ICS_URLS.length) throw new Error('ICS_URLS is empty — add the secret iCal address(es) to repo secrets.');
+  // Not configured is not a failure. Exiting 0 keeps the run green so nobody
+  // gets an hourly "all jobs failed" email for a feature they have not set up.
+  if (!ICS_URLS.length) {
+    console.log('ICS_URLS is not set — skipping. Add your secret iCal address in');
+    console.log('Settings > Secrets and variables > Actions to switch this on.');
+    return;
+  }
   if (!FIREBASE_URL) throw new Error('FIREBASE_URL is not set.');
 
   const now = Date.now();
