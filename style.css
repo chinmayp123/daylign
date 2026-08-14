@@ -10050,19 +10050,27 @@ html.layout-editing .layout-item.is-dragging {
 .diet-combo-name { font-size: 13px; font-weight: 650; }
 .diet-combo-meta { font-size: 10.5px; color: var(--text-muted); }
 
+/* Was muted grey on a dashed border, which read as disabled chrome next to
+   "+ Something else" — the whole feature went unnoticed. Solid accent outline,
+   an icon, and a label that says what it saves. */
 .diet-meal-savecombo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   min-height: 40px;
-  padding: 6px 12px;
+  padding: 6px 13px;
   border-radius: 999px;
-  border: 1px dashed var(--border);
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 600;
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  font-size: 12.5px;
+  font-weight: 650;
   cursor: pointer;
   white-space: nowrap;
 }
-.diet-meal-savecombo:hover { border-color: var(--accent); color: var(--accent); }
+.diet-meal-savecombo:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.diet-meal-savecombo:active { transform: scale(0.97); }
+.diet-meal-savecombo svg { flex: 0 0 auto; }
 
 .combo-saver-body { padding: 0 20px 20px; }
 .combo-name-input {
