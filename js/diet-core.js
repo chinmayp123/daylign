@@ -50,10 +50,14 @@ function renderInlineResults(wrap, query) {
       <div class="diet-inline-custom">
         <div class="diet-inline-custom-title">Add “${esc(q)}” as a new food</div>
         <div class="diet-inline-custom-macros">
-          <input type="number" class="dic-in dic-cal" placeholder="cal" min="0" inputmode="numeric">
-          <input type="number" class="dic-in dic-p" placeholder="P" min="0" step="0.1" inputmode="decimal">
-          <input type="number" class="dic-in dic-c" placeholder="C" min="0" step="0.1" inputmode="decimal">
-          <input type="number" class="dic-in dic-f" placeholder="F" min="0" step="0.1" inputmode="decimal">
+          <label class="dic-field"><span>Calories</span>
+            <input type="number" class="dic-in dic-cal" placeholder="0" min="0" inputmode="numeric" aria-label="Calories"></label>
+          <label class="dic-field"><span>Protein <i>g</i></span>
+            <input type="number" class="dic-in dic-p" placeholder="0" min="0" step="0.1" inputmode="decimal" aria-label="Protein in grams"></label>
+          <label class="dic-field"><span>Carbs <i>g</i></span>
+            <input type="number" class="dic-in dic-c" placeholder="0" min="0" step="0.1" inputmode="decimal" aria-label="Carbs in grams"></label>
+          <label class="dic-field"><span>Fat <i>g</i></span>
+            <input type="number" class="dic-in dic-f" placeholder="0" min="0" step="0.1" inputmode="decimal" aria-label="Fat in grams"></label>
         </div>
         <button type="button" class="btn-primary dic-add">Add to ${label}</button>
       </div>`;
