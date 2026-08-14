@@ -202,7 +202,7 @@ function comboList() {
   return state.combos;
 }
 
-function saveCombo(name, items) {
+function saveCombo(name, items, id) {
   const clean = (items || [])
     .filter(it => it && it.food)
     .map(it => ({
@@ -216,6 +216,16 @@ function saveCombo(name, items) {
   if (!clean.length) return null;
   const label = String(name || '').trim().slice(0, 60) || clean[0].food;
   const list = comboList();
+  // Editing an existing combo updates it in place — renaming must not orphan
+  // the old one or leave two chips behind.
+  if (id) {
+    const at = list.findIndex(c => c.id === id);
+    if (at !== -1) {
+      list[at] = { id: id, name: label, items: clean };
+      saveData(state);
+      return list[at];
+    }
+  }
   // Re-saving under an existing name replaces it, so correcting a combo does
   // not leave two chips with the same label.
   const existing = list.findIndex(c => (c.name || '').toLowerCase() === label.toLowerCase());
@@ -248,11 +258,16 @@ function comboTotals(combo) {
 function addComboToMeal(comboId, meal) {
   const combo = comboList().find(c => c.id === comboId);
   if (!combo) return;
+  const gid = 'g' + Date.now() + Math.random().toString(36).slice(2, 6);
   const added = [];
   combo.items.forEach(it => {
     const entry = {
       date: dietViewDate, meal: meal, food: it.food, servings: it.servings,
       calories: it.calories, protein: it.protein, carbs: it.carbs, fat: it.fat,
+      // Ingredients stay separate entries so every total, chart and analytic
+      // keeps working untouched — the grouping is purely how the log DRAWS
+      // them. One row that expands, rather than five loose ones.
+      group: gid, groupName: combo.name,
     };
     state.diet.push(entry);
     added.push(entry);
@@ -351,4 +366,139 @@ function openComboSaver(meal) {
       renderDiet();
     }
   });
+}
+
+// Edit a saved meal: rename it, drop items, or change how much of each.
+// Reuses the same picker as saving, sourced from the combo instead of a logged
+// meal — without this a mis-saved combo was permanent, since deleteCombo
+// existed but was wired to nothing.
+function openComboEditor(id) {
+  const combo = comboList().find(c => c.id === id);
+  if (!combo) return;
+
+  const existing = document.getElementById('comboSaver');
+  if (existing) existing.remove();
+
+  const wrap = document.createElement('div');
+  wrap.className = 'modal-overlay active';
+  wrap.id = 'comboSaver';
+  wrap.innerHTML = `
+    <div class="modal combo-saver">
+      <div class="modal-header">
+        <div class="modal-header-left">
+          <h2>Edit saved meal</h2>
+          <p class="modal-subtitle">Untick to remove. Servings are what gets logged.</p>
+        </div>
+        <button type="button" class="modal-close" id="comboCancel" aria-label="Cancel">&times;</button>
+      </div>
+      <div class="combo-saver-body">
+        <label class="form-group">
+          <span class="form-label">Name</span>
+          <input type="text" id="comboName" class="combo-name-input" value="${esc(combo.name)}" maxlength="60" autocomplete="off">
+        </label>
+        <div class="combo-pick-list">
+          ${combo.items.map((it, i) => `
+            <label class="combo-pick">
+              <input type="checkbox" checked data-i="${i}">
+              <span class="combo-pick-name">${esc(it.food)}</span>
+              <span class="combo-serv-edit">
+                <button type="button" class="combo-serv-step" data-i="${i}" data-step="-0.5" aria-label="Fewer">&minus;</button>
+                <span class="combo-serv-val" data-i="${i}">${it.servings}</span>
+                <button type="button" class="combo-serv-step" data-i="${i}" data-step="0.5" aria-label="More">+</button>
+              </span>
+              <span class="combo-pick-cal" data-cal="${i}">${Math.round(it.calories)} cal</span>
+            </label>`).join('')}
+        </div>
+        <div class="combo-saver-actions">
+          <button type="button" class="btn-secondary" id="comboCancel2">Cancel</button>
+          <button type="button" class="btn-primary" id="comboSave">Save changes</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+
+  // Work on a copy so Cancel really cancels.
+  const draft = combo.items.map(it => Object.assign({}, it));
+
+  wrap.querySelectorAll('.combo-serv-step').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const i = Number(btn.dataset.i);
+      const it = draft[i];
+      const was = it.servings || 1;
+      const next = Math.max(0.5, Math.round((was + Number(btn.dataset.step)) * 2) / 2);
+      // Macros are stored for the servings, so rescale them by the same ratio
+      // rather than leaving 3 scoops carrying 1 scoop's protein.
+      const k = next / was;
+      ['calories', 'protein', 'carbs', 'fat'].forEach(m => { it[m] = Math.round((it[m] || 0) * k * 10) / 10; });
+      it.servings = next;
+      wrap.querySelector(`.combo-serv-val[data-i="${i}"]`).textContent = next;
+      wrap.querySelector(`[data-cal="${i}"]`).textContent = Math.round(it.calories) + ' cal';
+    });
+  });
+
+  const close = () => wrap.remove();
+  wrap.addEventListener('click', (e) => { if (e.target === wrap) close(); });
+  wrap.querySelector('#comboCancel').addEventListener('click', close);
+  wrap.querySelector('#comboCancel2').addEventListener('click', close);
+  wrap.querySelector('#comboSave').addEventListener('click', () => {
+    const picked = [...wrap.querySelectorAll('.combo-pick input:checked')].map(cb => draft[Number(cb.dataset.i)]).filter(Boolean);
+    if (!picked.length) { showToast('A saved meal needs at least one item'); return; }
+    const saved = saveCombo(wrap.querySelector('#comboName').value, picked, combo.id);
+    close();
+    if (saved) {
+      if (typeof haptic === 'function') haptic('success');
+      showToast(`✓ Updated "${saved.name}"`);
+      renderDiet();
+    }
+  });
+}
+
+// Which combo groups are expanded in the log. Collapsed by default — the point
+// of grouping is that breakfast reads as "Bread omelette", not five lines.
+let dietGroupOpen = {};
+
+function toggleDietGroup(gid) {
+  dietGroupOpen[gid] = !dietGroupOpen[gid];
+  renderDiet();
+}
+
+// Split a meal's entries into ordered blocks: either a single loose food, or a
+// combo group with its ingredients. Order follows first appearance, so adding
+// a combo does not reshuffle what is already logged.
+function groupMealEntries(entries) {
+  const blocks = [];
+  const byGid = {};
+  entries.forEach(e => {
+    const gid = e && e.group;
+    if (!gid) { blocks.push({ type: 'single', entry: e }); return; }
+    if (!byGid[gid]) {
+      byGid[gid] = { type: 'group', gid: gid, name: e.groupName || 'Meal', items: [] };
+      blocks.push(byGid[gid]);
+    }
+    byGid[gid].items.push(e);
+  });
+  blocks.forEach(b => {
+    if (b.type !== 'group') return;
+    b.totals = b.items.reduce((a, e) => ({
+      calories: a.calories + (e.calories || 0), protein: a.protein + (e.protein || 0),
+      carbs: a.carbs + (e.carbs || 0), fat: a.fat + (e.fat || 0),
+    }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+  });
+  return blocks;
+}
+
+// Add an ingredient to an already-logged combo — recipes change with whatever
+// is in the fridge, so a logged group must not be frozen.
+function addIngredientToGroup(gid, meal, name, per) {
+  state.diet.push({
+    date: dietViewDate, meal: meal, food: name, servings: 1,
+    calories: Number(per.calories) || 0, protein: Number(per.protein) || 0,
+    carbs: Number(per.carbs) || 0, fat: Number(per.fat) || 0,
+    group: gid, groupName: (state.diet.find(e => e.group === gid) || {}).groupName || 'Meal',
+  });
+  saveData(state);
+  dietGroupOpen[gid] = true;
+  if (typeof rememberFood === 'function') rememberFood(name, per, 1);
+  renderDiet();
 }

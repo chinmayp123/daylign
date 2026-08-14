@@ -352,6 +352,20 @@ function renderDietReview(totals, dayEntries) {
   // Nothing logged yet → nothing to review
   if (!dayEntries.length) { el.innerHTML = ''; el.classList.remove('has-content'); return; }
 
+  // This is an after-the-fact summary, not a running scoreboard. Showing it at
+  // 11am means being told you are "over" on a day you have barely started —
+  // which reads as failure rather than information. It appears once the day is
+  // actually done: dinner logged, late enough that it will be, or a past day
+  // being reviewed.
+  const isToday = dietViewDate === getTodayStr();
+  const dinnerLogged = dayEntries.some(e => e.meal === 'dinner');
+  const lateEnough = new Date().getHours() >= 20;
+  if (isToday && !dinnerLogged && !lateEnough) {
+    el.innerHTML = '';
+    el.classList.remove('has-content');
+    return;
+  }
+
   const goals = getGoals();
   const LIMITING = [
     { key: 'calories', label: 'Calories', unit: '', color: 'var(--accent)' },
@@ -372,9 +386,9 @@ function renderDietReview(totals, dayEntries) {
     el.innerHTML = `
       <div class="diet-review-header ok">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-        <span class="diet-review-title">Day review</span>
+        <span class="diet-review-title">How today landed</span>
       </div>
-      <div class="diet-review-clean">Nice — you finished within your calorie, carb, and fat goals.</div>`;
+      <div class="diet-review-clean">Landed inside your calorie, carb and fat targets.</div>`;
     return;
   }
 
@@ -418,7 +432,7 @@ function renderDietReview(totals, dayEntries) {
         <div class="diet-review-macro-head">
           <span class="diet-review-dot" style="background:${m.color}"></span>
           <span class="diet-review-macro-label">${m.label}</span>
-          <span class="diet-review-over">over by ${m.amount}${m.unit}</span>
+          <span class="diet-review-over">+${m.amount}${m.unit}</span>
         </div>
         <div class="diet-review-culprits">
           ${culprits.map(c => {
@@ -437,9 +451,9 @@ function renderDietReview(totals, dayEntries) {
 
   el.innerHTML = `
     <div class="diet-review-header">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
-      <span class="diet-review-title">Where you went over</span>
-      <span class="diet-review-sub">${over.length} macro${over.length === 1 ? '' : 's'} above goal</span>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+      <span class="diet-review-title">How today landed</span>
+      <span class="diet-review-sub">${over.map(m => m.label.toLowerCase() + ' +' + m.amount + m.unit).join(' &middot; ')}</span>
     </div>
     ${sections}`;
 }

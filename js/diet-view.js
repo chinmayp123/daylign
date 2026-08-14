@@ -99,27 +99,50 @@ function renderDiet() {
               <span class="diet-meal-macro">${Math.round(mealMacros.fat)}g F</span>`}
             </span>
           </div>
-          ${g.entries.map(e => {
-            const idx = state.diet.indexOf(e);
-            const servVal = Number(e.servings) > 0 ? Number(e.servings) : 1;
+          ${groupMealEntries(g.entries).map(block => {
+            const renderEntry = (e, isIngredient) => {
+              const idx = state.diet.indexOf(e);
+              const servVal = Number(e.servings) > 0 ? Number(e.servings) : 1;
+              return `
+              <div class="diet-food-entry${isIngredient ? ' is-ingredient' : ''}" data-entry-idx="${idx}">
+                <div class="diet-food-entry-main">
+                  <span class="diet-food-name">${esc(e.food)}</span>
+                  <button type="button" class="diet-serv-pill" data-idx="${idx}" title="Tap to change servings">${servVal}×</button>
+                  <button class="diet-delete-food" data-diet-idx="${idx}">&times;</button>
+                </div>
+                <div class="diet-food-macros">
+                  <span>${Math.round(e.calories || 0)} cal</span>
+                  <span>${Math.round(e.protein || 0)}g P</span>
+                  <span>${Math.round(e.carbs || 0)}g C</span>
+                  <span>${Math.round(e.fat || 0)}g F</span>
+                </div>
+                <div class="diet-entry-edit"${dietEditOpenIdx === idx ? '' : ' hidden'}>
+                  <button type="button" class="diet-serv-step" data-step="-0.5" data-idx="${idx}" aria-label="Fewer servings">−</button>
+                  <span class="diet-serv-val">${servVal}</span>
+                  <button type="button" class="diet-serv-step" data-step="0.5" data-idx="${idx}" aria-label="More servings">+</button>
+                  <span class="diet-serv-caption">servings</span>
+                </div>
+              </div>`;
+            };
+            if (block.type === 'single') return renderEntry(block.entry, false);
+            const open = !!dietGroupOpen[block.gid];
+            const t = block.totals;
             return `
-              <div class="diet-food-entry" data-entry-idx="${idx}">
-                <div class="diet-food-entry-main">
-                  <span class="diet-food-name">${esc(e.food)}</span>
-                  <button type="button" class="diet-serv-pill" data-idx="${idx}" title="Tap to change servings">${servVal}×</button>
-                  <button class="diet-delete-food" data-diet-idx="${idx}">&times;</button>
+              <div class="diet-combo-group${open ? ' open' : ''}" data-group-id="${esc(block.gid)}">
+                <div class="diet-combo-group-head" data-toggle-group="${esc(block.gid)}">
+                  <span class="diet-combo-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,6 15,12 9,18"/></svg></span>
+                  <span class="diet-combo-group-name">${esc(block.name)}</span>
+                  <span class="diet-combo-group-count">${block.items.length}</span>
+                  <span class="diet-combo-group-cal">${Math.round(t.calories)} cal</span>
                 </div>
-                <div class="diet-food-macros">
-                  <span>${Math.round(e.calories || 0)} cal</span>
-                  <span>${Math.round(e.protein || 0)}g P</span>
-                  <span>${Math.round(e.carbs || 0)}g C</span>
-                  <span>${Math.round(e.fat || 0)}g F</span>
+                <div class="diet-combo-group-macros">
+                  <span>${Math.round(t.protein)}g P</span>
+                  <span>${Math.round(t.carbs)}g C</span>
+                  <span>${Math.round(t.fat)}g F</span>
                 </div>
-                <div class="diet-entry-edit"${dietEditOpenIdx === idx ? '' : ' hidden'}>
-                  <button type="button" class="diet-serv-step" data-step="-0.5" data-idx="${idx}" aria-label="Fewer servings">−</button>
-                  <span class="diet-serv-val">${servVal}</span>
-                  <button type="button" class="diet-serv-step" data-step="0.5" data-idx="${idx}" aria-label="More servings">+</button>
-                  <span class="diet-serv-caption">servings</span>
+                <div class="diet-combo-group-body"${open ? '' : ' hidden'}>
+                  ${block.items.map(e => renderEntry(e, true)).join('')}
+                  <button type="button" class="diet-combo-add-ing" data-add-ing="${esc(block.gid)}" data-add-ing-meal="${g.meal}">+ Add ingredient</button>
                 </div>
               </div>`;
           }).join('')}
@@ -150,6 +173,29 @@ function renderDiet() {
       const u = (usualsByMeal[meal] || [])[Number(btn.dataset.usualIdx)];
       if (!u) return;
       quickAddToMeal(meal, { name: u.name, data: u.per }, false);
+    });
+  });
+
+  // Expand/collapse a logged combo.
+  $$('[data-toggle-group]').forEach(head => {
+    head.addEventListener('click', () => toggleDietGroup(head.dataset.toggleGroup));
+  });
+
+  // Add an ingredient into an existing logged combo — recipes change with what
+  // is actually in the fridge, so a logged group must not be frozen.
+  $$('[data-add-ing]').forEach(btn => {
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const gid = btn.dataset.addIng;
+      const meal = btn.dataset.addIngMeal;
+      const name = prompt('Ingredient to add:');
+      if (!name || !name.trim()) return;
+      const per = (typeof perServingMacros === 'function') ? perServingMacros(name.trim(), null) : null;
+      if (!per) {
+        showToast(`"${name.trim()}" isn't in your food bank yet — add it from + Something else first`);
+        return;
+      }
+      addIngredientToGroup(gid, meal, name.trim(), per);
     });
   });
 
@@ -296,7 +342,38 @@ function renderDiet() {
   // Full food bank — every banked dish (your South Indian pool + saved brands), A→Z
   const bankEntries = Object.entries(state.customFoods).sort((a, b) => a[0].localeCompare(b[0]));
 
-  if (!recentFoods.length && !bankEntries.length) {
+  // Saved meals sit at the top of the Food Library, because this is where you
+  // come looking to change or remove something you saved.
+  const savedCombos = (typeof comboList === 'function') ? comboList() : [];
+  const combosHtml = savedCombos.length ? `
+      <div class="recent-meal recent-combos open" data-recent-meal="combos">
+        <div class="recent-meal-header">
+          <span class="recent-meal-chevron">${'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,6 15,12 9,18"/></svg>'}</span>
+          <span class="recent-meal-label">Saved meals</span>
+          <span class="recent-meal-count">${savedCombos.length}</span>
+        </div>
+        <div class="recent-meal-body">
+          ${savedCombos.map(c => {
+            const t = comboTotals(c);
+            return `
+            <div class="diet-custom-item">
+              <div class="diet-custom-item-main">
+                <span class="diet-custom-item-name">${esc(c.name)}</span>
+                <button class="diet-custom-edit" data-edit-combo="${esc(c.id)}" title="Rename or change what is in this meal"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>
+                <button class="diet-custom-del" data-del-combo="${esc(c.id)}" title="Delete this saved meal">&times;</button>
+              </div>
+              <div class="diet-custom-item-macros">
+                <span>${Math.round(t.calories)} cal</span>
+                <span>${Math.round(t.protein)}g P</span>
+                <span>${c.items.length} items</span>
+              </div>
+              <div class="combo-ingredients">${c.items.map(i => esc(i.food) + (i.servings !== 1 ? ` ${i.servings}&times;` : '')).join(' &middot; ')}</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>` : '';
+
+  if (!recentFoods.length && !bankEntries.length && !savedCombos.length) {
     $('#dietCustomList').innerHTML = emptyState({ icon: 'bookmark', title: 'No saved foods yet', hint: 'Anything you log is remembered here for one-tap re-adding.' });
   } else {
     const chevron = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,6 15,12 9,18"/></svg>';
@@ -340,7 +417,23 @@ function renderDiet() {
         </div>
       </div>` : '';
 
-    $('#dietCustomList').innerHTML = groupsHtml + bankHtml;
+    $('#dietCustomList').innerHTML = combosHtml + groupsHtml + bankHtml;
+
+    $$('[data-edit-combo]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (typeof openComboEditor === 'function') openComboEditor(btn.dataset.editCombo);
+      });
+    });
+    $$('[data-del-combo]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const c = comboList().find(x => x.id === btn.dataset.delCombo);
+        if (!c) return;
+        if (!confirm(`Delete the saved meal "${c.name}"? Food you already logged from it stays.`)) return;
+        deleteCombo(c.id);
+      });
+    });
 
     // Toggle sections without a full re-render (keeps it snappy)
     $$('.recent-meal-header').forEach(header => {

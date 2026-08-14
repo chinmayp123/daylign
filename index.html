@@ -702,9 +702,10 @@
               </div>
               <div class="water-log" id="waterLog"></div>
             </div>
-            <div class="diet-meals-list" id="dietMealsList"></div>
-            <!-- End-of-day Review -->
+            <!-- End-of-day summary. Only rendered once the day is effectively
+                 over, so sitting above the log costs nothing during the day. -->
             <div class="diet-review" id="dietReview"></div>
+            <div class="diet-meals-list" id="dietMealsList"></div>
           </div>
 
           <button type="button" class="diet-library-open" id="openFoodLibraryBtn">Recent foods, history &amp; manual entry &rarr;</button>
