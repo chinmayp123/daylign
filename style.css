@@ -591,6 +591,12 @@ body {
   grid-column: 1 / -1;
 }
 
+/* Set by hideEmptyDashboardCards when its partner card is hidden: the one left
+   takes the full row instead of sitting beside an empty half. */
+.dashboard-grid .is-solo {
+  grid-column: 1 / -1;
+}
+
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -7270,6 +7276,44 @@ body.onboard-open { overflow: hidden; }
 }
 @media (max-width: 900px) {
   .today-lanes { grid-template-columns: 1fr; }
+}
+
+/* One lane on its own should not sit in a half-width column with dead space
+   beside it — the empty half reads as something failing to load. */
+.today-lanes.is-single { grid-template-columns: 1fr; }
+
+/* Reveals the hours the timeline collapsed away. Full width so it reads as the
+   end of the list rather than another row in it. */
+.schedule-day-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;              /* thumb-sized, same as every other tap target */
+  margin-top: 6px;
+  padding: 10px 12px;
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+.schedule-day-toggle:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+.schedule-day-toggle-count {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .today-lane {

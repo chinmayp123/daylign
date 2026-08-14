@@ -350,6 +350,12 @@ function renderDashboard() {
   animateNumber($('#completedTasks'), completed);
   animateNumber($('#overdueTasks'), overdue);
 
+  // Four zeros in a row reads as failure, not information — and first thing
+  // in the morning that is exactly what it is. Read from the computed values,
+  // not the DOM: animateNumber counts up from 0, so the text is mid-flight here.
+  const statsGrid = document.querySelector('#dashboardView .stats-grid');
+  if (statsGrid) statsGrid.hidden = (total + inProgress + completed + overdue) === 0;
+
   renderHealthStrip(today);
   renderWeightTrend();
   renderWeeklyReport();
@@ -374,6 +380,8 @@ function renderDashboard() {
         <span class="deadline-name">${esc(t.name)}</span>
       </div>`;
   }).join('') : emptyState({ icon: 'calendar', title: 'Nothing due', hint: 'Tasks with a due date show up here as the day approaches.' });
+
+  hideEmptyDashboardCards();
 }
 
 // ========== My Tasks Board (Dashboard) ==========
@@ -493,6 +501,15 @@ function renderMiniCalendar() {
 }
 
 // ========== Daily Schedule ==========
+// The waking window the timeline can draw. Kept as constants because the
+// collapse maths below has to agree with the loop bounds exactly.
+const DAY_START = 6;
+const DAY_END = 21;
+
+// Session-scoped, deliberately not persisted: asking for the full day is about
+// what you are doing right now, and tomorrow morning should open compact again.
+let scheduleShowFullDay = false;
+
 function renderSchedule() {
   const now = new Date();
   const nowStr = toLocalDateStr(now);
@@ -554,7 +571,33 @@ function renderSchedule() {
         </div>
       </div>`;
   }
-  for (let h = 6; h <= 21; h++) {
+  // The day used to draw all sixteen hours from 6 AM to 9 PM every time. On a
+  // day with nothing scheduled that is 320px of ruled empty rows — measured, it
+  // was almost half the height of the whole Today page, and it is the version
+  // you see every morning before anything is planned. Sixteen empty slots do not
+  // tell you more than one line does.
+  //
+  // So the timeline now spans only the part of the day that has something in it,
+  // always including the current hour so "now" has somewhere to sit, with a
+  // little room after it to drop things into. The full day is one tap away and
+  // stays open for the rest of the session once asked for.
+  const occupied = [
+    ...scheduled.map(t => t.scheduledHour),
+    ...meetings.map(m => m.hour),
+  ].filter(h => typeof h === 'number' && h >= DAY_START && h <= DAY_END);
+
+  let fromHour = DAY_START;
+  let toHour = DAY_END;
+  const nowHour = Math.min(DAY_END, Math.max(DAY_START, currentHour));
+  if (!scheduleShowFullDay) {
+    fromHour = Math.max(DAY_START, Math.min(nowHour, ...occupied) - 1);
+    // Two spare hours past the last thing: somewhere to drop the next task
+    // without needing the full day first.
+    toHour = Math.min(DAY_END, Math.max(nowHour, ...occupied) + 2);
+  }
+  const hiddenHours = (DAY_END - DAY_START + 1) - (toHour - fromHour + 1);
+
+  for (let h = fromHour; h <= toHour; h++) {
     const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
     const ampm = h >= 12 ? 'PM' : 'AM';
     const isCurrent = h === currentHour;
@@ -590,7 +633,25 @@ function renderSchedule() {
       </div>`;
   }
 
+  if (hiddenHours > 0 || scheduleShowFullDay) {
+    html += `
+      <button type="button" class="schedule-day-toggle" id="scheduleDayToggle">
+        ${scheduleShowFullDay
+          ? 'Show less'
+          : `Show full day <span class="schedule-day-toggle-count">+${hiddenHours}h</span>`}
+      </button>`;
+  }
+
   $('#scheduleTimeline').innerHTML = html;
+
+  const dayToggle = $('#scheduleDayToggle');
+  if (dayToggle) {
+    dayToggle.addEventListener('click', () => {
+      scheduleShowFullDay = !scheduleShowFullDay;
+      if (typeof haptic === 'function') haptic('light');
+      renderSchedule();
+    });
+  }
 
   $$('.schedule-event').forEach(el => {
     el.addEventListener('click', (e) => {
@@ -873,4 +934,44 @@ function renderReminders(today) {
       renderReminders(today);
     });
   });
+}
+
+// ---- Hide absence rather than announce it ----
+// Today opened with a run of cards each explaining that it had nothing in it:
+// "Nothing pinned to a time yet", "Nothing committed to today yet", "Nothing
+// due", four zeroed task counters. Measured, 49% of the page's height was empty
+// states — and the morning, when you actually open this, is exactly when
+// everything is legitimately zero. So the version of the page you saw most was
+// the emptiest possible one.
+//
+// A card with nothing to say is now not drawn. Each of these is reachable
+// elsewhere (All Tasks, Calendar, Training), so nothing becomes unreachable —
+// and the moment there IS something, the card comes back on its own.
+// Each card paired with the element that actually holds its generated rows.
+// Naming the body explicitly matters: a loose "first child with an id" lookup
+// picked up the collapsible HEADER of My Tasks instead of its list, so the card
+// never registered as empty and stayed at full height with nothing in it.
+const HIDE_WHEN_EMPTY = [
+  { card: '#dashboardView .deadlines-card',       body: '#deadlinesList' },
+  { card: '#dashboardView .my-tasks-board-card',  body: '#myTasksBoard' },
+];
+
+function hideEmptyDashboardCards() {
+  HIDE_WHEN_EMPTY.forEach(({ card, body }) => {
+    const el = document.querySelector(card);
+    const host = document.querySelector(body);
+    if (!el || !host) return;
+    // emptyState() is the only thing rendered when there is nothing to show, so
+    // its presence in the body is the signal — no row counting needed.
+    el.hidden = !!host.querySelector('.empty-state');
+  });
+
+  // My Tasks and Deadlines share a two-column row. When one of them is hidden
+  // the other is left in a half-width column with dead space beside it, which
+  // reads as something that failed to load rather than something that isn't
+  // there. Whichever survives takes the whole row. Done in JS rather than with
+  // :has() so it behaves the same on older iOS Safari.
+  const pair = HIDE_WHEN_EMPTY.map(({ card }) => document.querySelector(card));
+  const shown = pair.filter(el => el && !el.hidden);
+  pair.forEach(el => { if (el) el.classList.toggle('is-solo', shown.length === 1 && !el.hidden); });
 }

@@ -99,17 +99,29 @@ function renderTodayPlan() {
         <span class="today-anytime-handle" aria-hidden="true">⠿</span>
       </div>`).join('') : '<div class="today-lane-empty">Nothing committed to today yet — pull a task up from the nudge above.</div>';
 
-  parts.push(`
-    <div class="today-lanes">
+  // A lane with nothing in it used to render a card explaining its own
+  // emptiness. In the morning both were empty, so Today opened with two boxes
+  // announcing what had not happened yet — and with the nudge above them, three
+  // consecutive statements of absence. An empty lane is now simply not drawn;
+  // when BOTH are empty the whole block disappears, because the nudge above is
+  // already the way in.
+  const hasScheduled = scheduled.length > 0;
+  const hasAnytime = anytime.length > 0;
+  if (hasScheduled || hasAnytime) {
+    parts.push(`
+    <div class="today-lanes${hasScheduled && hasAnytime ? '' : ' is-single'}">
+      ${hasScheduled ? `
       <div class="today-lane today-lane-scheduled">
         <div class="today-lane-label">Scheduled</div>
         <div class="today-sched-list" id="todaySchedList">${scheduledRows}</div>
-      </div>
+      </div>` : ''}
+      ${hasAnytime ? `
       <div class="today-lane today-lane-anytime">
-        <div class="today-lane-label">Anytime today <span class="today-lane-hint">drag up to schedule</span></div>
+        <div class="today-lane-label">Anytime today ${hasScheduled ? '<span class="today-lane-hint">drag up to schedule</span>' : ''}</div>
         <div class="today-anytime-list">${anytimeRows}</div>
-      </div>
+      </div>` : ''}
     </div>`);
+  }
 
   host.innerHTML = parts.join('');
   bindTodayPlan();
