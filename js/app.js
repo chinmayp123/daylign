@@ -104,8 +104,16 @@ function bindEvents() {
   });
   $('#modalClose').addEventListener('click', closeModal);
   $('#cancelBtn').addEventListener('click', closeModal);
+  // Tapping the backdrop used to be a silent Cancel — on a phone, with a
+  // full-height form, that is very easy to do by accident and it threw away
+  // everything typed. An untouched form still closes freely; one with content
+  // in it asks first.
   $('#taskModal').addEventListener('click', (e) => {
-    if (e.target === $('#taskModal')) closeModal();
+    if (e.target !== $('#taskModal')) return;
+    if (taskFormIsDirty()) {
+      if (!confirm('Discard this task? What you have typed will be lost.')) return;
+    }
+    closeModal();
   });
 
   // Form

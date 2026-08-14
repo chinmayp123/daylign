@@ -101,7 +101,6 @@ function quickAddToMeal(meal, result, keepSearchOpen) {
     fat: Number(d.fat) || 0,
   });
   saveData(state);
-  if (typeof showToast === 'function') showToast(`✓ ${result.name} → ${meal}`);
   // Tiles pass keepSearchOpen=false so a one-tap add doesn't pop the search box.
   if (keepSearchOpen !== false) dietInlineOpenMeal = meal;
   renderDiet();
@@ -275,29 +274,10 @@ function addComboToMeal(comboId, meal) {
   saveData(state);
   if (typeof haptic === 'function') haptic('success');
   // Undo matters more here than for a single food: one tap just wrote five rows.
-  lastComboAdd = { meal: meal, count: added.length, at: Date.now() };
-  if (typeof showToast === 'function') {
-    showToast(`✓ ${combo.name} — ${added.length} items → ${meal}. Tap to undo.`, undoLastCombo);
-  }
   renderDiet();
 }
 
-let lastComboAdd = null;
 
-function undoLastCombo() {
-  if (!lastComboAdd || Date.now() - lastComboAdd.at > 60000) return;
-  // Remove exactly the rows just appended — they are the last N of this meal.
-  let toRemove = lastComboAdd.count;
-  for (let i = state.diet.length - 1; i >= 0 && toRemove > 0; i--) {
-    if (state.diet[i] && state.diet[i].meal === lastComboAdd.meal && state.diet[i].date === dietViewDate) {
-      state.diet.splice(i, 1);
-      toRemove--;
-    }
-  }
-  lastComboAdd = null;
-  saveData(state);
-  renderDiet();
-}
 
 // The save picker. Deliberately a sheet rather than a prompt(): the whole point
 // is choosing WHICH items belong to the combo, and prompt() cannot show a list.
@@ -362,7 +342,6 @@ function openComboSaver(meal) {
     close();
     if (combo) {
       if (typeof haptic === 'function') haptic('success');
-      showToast(`✓ Saved "${combo.name}" — ${combo.items.length} items`);
       renderDiet();
     }
   });
@@ -448,7 +427,6 @@ function openComboEditor(id) {
     close();
     if (saved) {
       if (typeof haptic === 'function') haptic('success');
-      showToast(`✓ Updated "${saved.name}"`);
       renderDiet();
     }
   });
@@ -506,8 +484,10 @@ function addIngredientToGroup(gid, meal, name, per) {
 // Remove an entire logged meal group. Undoable rather than confirm-gated: a
 // confirm dialog on every removal is friction on the common case, and undo
 // covers the mistake better than a modal you learn to dismiss.
-let lastGroupDelete = null;
 
+// No undo toast: both directions are already one tap. A wrongly added meal
+// has an x on its header, a wrongly removed one is one tap on its chip. A
+// toast confirming what you just watched happen is noise.
 function deleteDietGroup(gid) {
   const removed = state.diet.filter(e => e && e.group === gid);
   if (!removed.length) return;
@@ -516,17 +496,6 @@ function deleteDietGroup(gid) {
   delete dietGroupOpen[gid];
   saveData(state);
   if (typeof haptic === 'function') haptic('light');
-  lastGroupDelete = { rows: removed, at: Date.now() };
-  if (typeof showToast === 'function') {
-    showToast(`Removed ${name} — ${removed.length} items. Tap to undo.`, undoGroupDelete);
-  }
   renderDiet();
 }
 
-function undoGroupDelete() {
-  if (!lastGroupDelete || Date.now() - lastGroupDelete.at > 60000) return;
-  lastGroupDelete.rows.forEach(r => state.diet.push(r));
-  lastGroupDelete = null;
-  saveData(state);
-  renderDiet();
-}

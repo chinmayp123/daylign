@@ -260,3 +260,17 @@ function bindSheetDrag() {
   document.addEventListener('touchend', release, { passive: true });
   document.addEventListener('touchcancel', release, { passive: true });
 }
+
+// Has anything actually been entered? Used to decide whether a backdrop tap is
+// a harmless dismissal or is about to throw away work. Only fields a person
+// fills in count — the selects carry defaults and are not evidence of intent.
+function taskFormIsDirty() {
+  const val = id => { const el = $(id); return el ? String(el.value || '').trim() : ''; };
+  if (val('#taskName') || val('#taskDesc') || val('#taskDueDate')) return true;
+  if (val('#taskScheduledHour')) return true;
+  if (Array.isArray(editingSubtasks) && editingSubtasks.length) return true;
+  // Editing an existing task: the content is not "typed" but closing still
+  // discards any changes made to it.
+  if (val('#taskId')) return true;
+  return false;
+}
