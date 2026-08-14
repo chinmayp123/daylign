@@ -8030,6 +8030,12 @@ body.logfood-sheet-lock { overflow: hidden; }
 .diet-library-open:hover { border-color: var(--accent); color: var(--accent-hover); }
 /* Sticks to the top of the bank list so it stays reachable while you scroll
    through 59 dishes rather than scrolling away on the first swipe. */
+/* The manual macro form is no longer a standing card at the top of the Food
+   Library — it only appears once you pick a food to edit. See revealFoodEditor
+   in diet-food.js for why the markup stays put rather than being deleted. */
+#dietView.lib-open .diet-bank-card { display: none; }
+#dietView.lib-open .diet-bank-card.is-editing { display: block; }
+
 .diet-bank-filter {
   position: sticky;
   top: 0;

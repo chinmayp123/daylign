@@ -174,6 +174,7 @@ function closeFoodLibrary() {
   const v = document.getElementById('dietView');
   if (!v) return;
   v.classList.remove('lib-open');
+  if (typeof hideFoodEditor === 'function') hideFoodEditor();
   window.scrollTo(0, 0);
 }
 function bindFoodLibrary() {
@@ -184,6 +185,11 @@ function bindFoodLibrary() {
   const close = document.getElementById('closeFoodLibraryBtn');
   if (open) open.addEventListener('click', openFoodLibrary);
   if (close) close.addEventListener('click', closeFoodLibrary);
+  // Dismisses the macro editor without leaving the library.
+  const editDone = document.getElementById('dietEditDoneBtn');
+  if (editDone) editDone.addEventListener('click', () => {
+    if (typeof hideFoodEditor === 'function') hideFoodEditor();
+  });
 }
 
 

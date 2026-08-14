@@ -64,6 +64,35 @@ function selectFoodFromDropdown(name, data) {
   if (data.sugar) info.push(`Sugar: ${data.sugar}g`);
   $('#dietServingInfo').innerHTML = `<span class="diet-serving-tag">${info.join(' &middot; ')}</span>`;
   syncSaveCustomLabel();
+  revealFoodEditor(name);
+}
+
+// The "Add a food to your bank" card is no longer a standing form — logging
+// happens inline on each meal, by photo, or from the bank, so a blank macro
+// form sitting at the top of the Food Library was the first thing you saw and
+// the last thing you needed. It is still the ONLY editor those fields have,
+// though: the pencil on a food and tapping any bank row both fill it in. So it
+// stays in the DOM, hidden, and appears when you actually pick something to
+// edit. Deleting the markup instead would throw on every food tap.
+function revealFoodEditor(name) {
+  const card = document.querySelector('.diet-bank-card');
+  if (!card) return;
+  card.classList.add('is-editing');
+  const title = card.querySelector('h2');
+  if (title && name) title.textContent = `Edit ${name}`;
+}
+
+function hideFoodEditor() {
+  const card = document.querySelector('.diet-bank-card');
+  if (!card) return;
+  card.classList.remove('is-editing');
+  const title = card.querySelector('h2');
+  if (title) title.textContent = 'Add a food to your bank';
+  ['#dietFoodName', '#dietCalories', '#dietProtein', '#dietCarbs', '#dietFat'].forEach(sel => {
+    const el = $(sel); if (el) el.value = '';
+  });
+  const info = $('#dietServingInfo'); if (info) info.innerHTML = '';
+  dietBaseMacros = null;
 }
 
 // "Save as My Food" flips to "Update My Food" when the typed name is already banked
