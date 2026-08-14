@@ -570,3 +570,87 @@ function clearDietForm() {
   dietBaseMacros = null;
 }
 
+
+// ---- Week strip ----
+// Seven days across the top of Diet, one ring each, so a week reads at a glance
+// instead of needing a day-by-day walk through the date arrows.
+//
+// The check means ONE thing: the day landed under its calorie goal. It is
+// deliberately not "hit every macro" — protein has been missed on every single
+// logged day at the current 150g target, so a badge requiring it would show a
+// cross forever and stop meaning anything. Protein gets its own small dot
+// instead: visible, but not able to fail the day on its own.
+//
+// A barely-logged day is NOT a win. Coming in under target because you forgot
+// to log dinner would otherwise earn the same tick as a day you actually
+// controlled, which is the one way a streak display can quietly lie to you.
+const WEEK_PARTIAL_FRACTION = 0.25;   // below this share of goal = incomplete log
+
+function dietDayStatus(dateStr, totals, goals) {
+  const today = getTodayStr();
+  if (dateStr > today) return 'future';
+  const cal = totals ? Math.round(totals.calories) : 0;
+  if (!cal) return dateStr === today ? 'today' : 'none';
+  if (dateStr === today) return 'today';
+  if (cal < goals.calories * WEEK_PARTIAL_FRACTION) return 'partial';
+  return cal <= goals.calories ? 'hit' : 'over';
+}
+
+// Sunday-first week containing the day being viewed, matching the weekday
+// header order people expect from a calendar.
+function dietWeekDays(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() - d.getDay());
+  const out = [];
+  for (let i = 0; i < 7; i++) {
+    const x = new Date(d);
+    x.setDate(d.getDate() + i);
+    out.push(toLocalDateStr(x));
+  }
+  return out;
+}
+
+const WEEK_TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+const WEEK_OVER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="5 12 12 5 19 12"/></svg>';
+
+function renderDietWeek() {
+  const host = document.getElementById('dietWeek');
+  if (!host) return;
+  const goals = getGoals();
+  const byDate = (typeof dietTotalsByDate === 'function') ? dietTotalsByDate() : {};
+  const today = getTodayStr();
+
+  host.innerHTML = dietWeekDays(dietViewDate).map(ds => {
+    const t = byDate[ds];
+    const status = dietDayStatus(ds, t, goals);
+    const cal = t ? Math.round(t.calories) : 0;
+    const protein = t ? Math.round(t.protein) : 0;
+    const proteinHit = protein >= goals.protein;
+    const dow = new Date(ds + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'narrow' });
+
+    let mark = '';
+    if (status === 'hit') mark = WEEK_TICK;
+    else if (status === 'over') mark = WEEK_OVER;
+
+    const tip = status === 'future' ? formatDate(ds)
+      : status === 'none' ? `${formatDate(ds)} · nothing logged`
+      : status === 'partial' ? `${formatDate(ds)} · ${cal} cal — looks part-logged`
+      : `${formatDate(ds)} · ${cal} / ${goals.calories} cal · ${protein}g protein`;
+
+    return `
+      <button type="button" class="diet-week-day is-${status}${ds === dietViewDate ? ' is-viewing' : ''}"
+              data-diet-week-day="${ds}" ${status === 'future' ? 'disabled' : ''} title="${esc(tip)}">
+        <span class="diet-week-dow">${dow}</span>
+        <span class="diet-week-ring">${mark}</span>
+        ${proteinHit ? '<span class="diet-week-protein" title="Protein goal met"></span>' : ''}
+      </button>`;
+  }).join('');
+
+  host.querySelectorAll('[data-diet-week-day]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      dietViewDate = btn.dataset.dietWeekDay;
+      if (typeof haptic === 'function') haptic('light');
+      renderDiet();
+    });
+  });
+}

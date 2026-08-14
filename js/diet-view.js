@@ -34,6 +34,7 @@ function renderDiet() {
 
   // Goal tracker
   renderDietGoals(totals);
+  renderDietWeek();
 
   // Food recommendations based on remaining macros
   renderDietRecs(totals);

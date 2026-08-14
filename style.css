@@ -2840,6 +2840,90 @@ body {
   align-items: start;
 }
 
+/* ---- Diet week strip ---- */
+.diet-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  /* Full width on a phone, where it belongs; capped on a monitor so the seven
+     rings do not end up 200px apart and stop reading as one week. */
+  max-width: 520px;
+  margin: 4px 0 14px;
+}
+.diet-week-day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;          /* thumb-sized: each one is a jump-to-day */
+  padding: 6px 2px;
+  background: none;
+  border: none;
+  border-radius: 10px;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+.diet-week-day:disabled { cursor: default; opacity: .4; }
+.diet-week-day:not(:disabled):hover { background: var(--bg-hover); }
+.diet-week-dow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+.diet-week-ring {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+}
+.diet-week-ring svg { width: 13px; height: 13px; }
+
+/* Under the calorie goal on a properly logged day. */
+.diet-week-day.is-hit { color: var(--green); }
+.diet-week-day.is-hit .diet-week-ring {
+  border-color: var(--green);
+  background: color-mix(in srgb, var(--green) 16%, transparent);
+}
+/* Over it. Amber, not red — one heavy day is information, not a failure. */
+.diet-week-day.is-over { color: var(--yellow); }
+.diet-week-day.is-over .diet-week-ring {
+  border-color: var(--yellow);
+  background: color-mix(in srgb, var(--yellow) 16%, transparent);
+}
+/* Logged, but too little to be a real day's food. No verdict either way. */
+.diet-week-day.is-partial .diet-week-ring {
+  border-style: dashed;
+  border-color: var(--text-muted);
+}
+/* Today is still in progress, so it never shows a verdict. */
+.diet-week-day.is-today { color: var(--accent); }
+.diet-week-day.is-today .diet-week-ring {
+  border-color: var(--accent);
+  border-style: dashed;
+}
+.diet-week-day.is-none .diet-week-ring { border-color: var(--border); }
+.diet-week-day.is-future .diet-week-ring { border-color: var(--border); opacity: .5; }
+
+/* The day currently on screen. */
+.diet-week-day.is-viewing { background: var(--bg-hover); }
+
+/* Protein met — a second signal that cannot fail the day on its own. */
+.diet-week-protein {
+  position: absolute;
+  right: 50%;
+  bottom: 2px;
+  transform: translateX(50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--blue);
+}
+
 .diet-date-bar {
   display: flex;
   align-items: center;
