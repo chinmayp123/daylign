@@ -10178,3 +10178,19 @@ html.layout-editing .layout-item.is-dragging {
   font-size: 12.5px; font-weight: 600; cursor: pointer;
 }
 .diet-combo-add-ing:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Remove a whole logged meal. Sized for a thumb and stopPropagation'd so it
+   never toggles the group instead of deleting it. */
+.diet-combo-group-del {
+  min-width: 32px;
+  min-height: 32px;
+  margin-left: 2px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 19px;
+  line-height: 1;
+  cursor: pointer;
+}
+.diet-combo-group-del:hover { background: color-mix(in srgb, var(--red) 18%, transparent); color: var(--red); }

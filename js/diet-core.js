@@ -502,3 +502,31 @@ function addIngredientToGroup(gid, meal, name, per) {
   if (typeof rememberFood === 'function') rememberFood(name, per, 1);
   renderDiet();
 }
+
+// Remove an entire logged meal group. Undoable rather than confirm-gated: a
+// confirm dialog on every removal is friction on the common case, and undo
+// covers the mistake better than a modal you learn to dismiss.
+let lastGroupDelete = null;
+
+function deleteDietGroup(gid) {
+  const removed = state.diet.filter(e => e && e.group === gid);
+  if (!removed.length) return;
+  const name = removed[0].groupName || 'Meal';
+  state.diet = state.diet.filter(e => !(e && e.group === gid));
+  delete dietGroupOpen[gid];
+  saveData(state);
+  if (typeof haptic === 'function') haptic('light');
+  lastGroupDelete = { rows: removed, at: Date.now() };
+  if (typeof showToast === 'function') {
+    showToast(`Removed ${name} — ${removed.length} items. Tap to undo.`, undoGroupDelete);
+  }
+  renderDiet();
+}
+
+function undoGroupDelete() {
+  if (!lastGroupDelete || Date.now() - lastGroupDelete.at > 60000) return;
+  lastGroupDelete.rows.forEach(r => state.diet.push(r));
+  lastGroupDelete = null;
+  saveData(state);
+  renderDiet();
+}

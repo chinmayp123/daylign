@@ -133,7 +133,7 @@ function renderDiet() {
                   <span class="diet-combo-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,6 15,12 9,18"/></svg></span>
                   <span class="diet-combo-group-name">${esc(block.name)}</span>
                   <span class="diet-combo-group-count">${block.items.length}</span>
-                  <span class="diet-combo-group-cal">${Math.round(t.calories)} cal</span>
+                  <span class="diet-combo-group-cal">${Math.round(t.calories)} cal</span><button type="button" class="diet-combo-group-del" data-del-group="${esc(block.gid)}" title="Remove this whole meal from the log" aria-label="Remove ${esc(block.name)}">&times;</button>
                 </div>
                 <div class="diet-combo-group-macros">
                   <span>${Math.round(t.protein)}g P</span>
@@ -179,6 +179,15 @@ function renderDiet() {
   // Expand/collapse a logged combo.
   $$('[data-toggle-group]').forEach(head => {
     head.addEventListener('click', () => toggleDietGroup(head.dataset.toggleGroup));
+  });
+
+  // Remove a whole logged meal in one action. Without this the only way out
+  // was expanding it and deleting six ingredients one at a time.
+  $$('[data-del-group]').forEach(btn => {
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation(); // must not toggle the group open
+      if (typeof deleteDietGroup === 'function') deleteDietGroup(btn.dataset.delGroup);
+    });
   });
 
   // Add an ingredient into an existing logged combo — recipes change with what
