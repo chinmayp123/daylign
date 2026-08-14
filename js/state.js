@@ -114,23 +114,29 @@ function saveData(data) {
   if (typeof saveToFirebase === 'function') saveToFirebase(data);
 }
 
+// Keys the cloud owns, with the empty value each falls back to.
+const CLOUD_KEYS = {
+  tasks: [], categories: [], projects: [], gym: [], cardio: [], modules: {},
+  diet: [], customFoods: {}, water: {}, events: [], removedFoods: [],
+  combos: [], weight: {}, goals: {}, sleep: {}, aiUsage: {},
+};
+
 function applyFirebaseData(data) {
-  state.tasks = data.tasks || [];
-  state.categories = data.categories || [];
-  state.projects = data.projects || [];
-  state.gym = data.gym || [];
-  state.cardio = data.cardio || [];
-  state.modules = data.modules || {};
-  state.diet = data.diet || [];
-  state.customFoods = data.customFoods || {};
-  state.water = data.water || {};
-  state.events = data.events || [];
-  state.removedFoods = data.removedFoods || [];
-  state.combos = data.combos || [];
-  state.weight = data.weight || {};
-  state.goals = data.goals || {};
-  state.sleep = data.sleep || {};
-  state.aiUsage = data.aiUsage || {};
+  // ABSENT is not the same as EMPTY, and treating them the same destroyed real
+  // data. Saved meals lived under `combos`, a key added after the app had been
+  // writing all-or-nothing set() payloads listing fifteen keys. Any device on an
+  // older cached build wrote without it, deleting the node; this function then
+  // read the gap as [] and blanked the local copy too, so the next save made it
+  // permanent. Two saved meals went that way.
+  //
+  // A key genuinely being cleared arrives as an empty array or object, never as
+  // a missing key — so when the cloud simply does not mention a key, whatever is
+  // already in memory is the better answer.
+  Object.keys(CLOUD_KEYS).forEach(k => {
+    if (data[k] !== undefined && data[k] !== null) state[k] = data[k];
+    else if (state[k] === undefined || state[k] === null) state[k] = CLOUD_KEYS[k];
+    // else: cloud is silent and we already hold a value — keep it.
+  });
   // Cache locally (same 15 keys saveData writes — one shared writer)
   // Best-effort too: a quota error here must not abort before the re-render.
   try {

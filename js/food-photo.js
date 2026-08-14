@@ -336,53 +336,65 @@ function renderInlinePhotoKeyPrompt() {
 }
 
 function bindPhotoEvents() {
-  const snapBtn = $('#snapMealBtn');
-  if (!snapBtn) return;
-
-  // First-time setup: if no key is saved yet, show the paste field up front
-  // so it's obvious where the key goes. It collapses once a key is saved.
-  if (!getAnthropicKey()) {
-    const setup = $('#photoKeySetup');
-    if (setup) setup.hidden = false;
+  // The file input is the one piece EVERY camera button needs — each meal row's
+  // snap reaches for it. This used to open with `if (!snapBtn) return;`, so
+  // retiring the Log Food card's standalone Snap button skipped this binding
+  // and killed photo logging app-wide. Bound first, unconditionally.
+  const fileInput = $('#photoFileInput');
+  if (fileInput) {
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      e.target.value = ''; // allow re-selecting the same photo
+      if (file) analyzeMealPhoto(file);
+    });
   }
 
-  snapBtn.addEventListener('click', () => {
-    // Card's own Snap logs via the meal dropdown, confirm renders in #photoResult.
-    photoTargetMeal = null;
-    photoResultSel = null;
-    if (!getAnthropicKey()) {
-      $('#photoKeySetup').hidden = false;
-      $('#photoKeyInput').focus();
-      return;
-    }
-    $('#photoFileInput').click();
-  });
+  // Everything below belonged to the retired card. Guarded rather than deleted
+  // so the flow still works if that markup ever returns; the canonical API key
+  // field is Settings > AI features.
+  const snapBtn = $('#snapMealBtn');
+  const keyBtn = $('#photoKeyBtn');
+  const keySave = $('#photoKeySaveBtn');
+  const setupEl = $('#photoKeySetup');
+  const keyInput = $('#photoKeyInput');
 
-  $('#photoFileInput').addEventListener('change', (e) => {
-    const file = e.target.files && e.target.files[0];
-    e.target.value = ''; // allow re-selecting the same photo
-    if (file) analyzeMealPhoto(file);
-  });
+  if (setupEl && !getAnthropicKey()) setupEl.hidden = false;
 
-  $('#photoKeyBtn').addEventListener('click', () => {
-    const setup = $('#photoKeySetup');
-    setup.hidden = !setup.hidden;
-    if (!setup.hidden) $('#photoKeyInput').focus();
-  });
+  if (snapBtn) {
+    snapBtn.addEventListener('click', () => {
+      photoTargetMeal = null;
+      photoResultSel = null;
+      if (!getAnthropicKey()) {
+        if (setupEl) setupEl.hidden = false;
+        if (keyInput) keyInput.focus();
+        return;
+      }
+      if (fileInput) fileInput.click();
+    });
+  }
 
-  $('#photoKeySaveBtn').addEventListener('click', () => {
-    const v = $('#photoKeyInput').value.trim();
-    if (!v) {
-      localStorage.removeItem(FOOD_PHOTO_KEY);
-      showToast('API key removed from this device');
-    } else if (!v.startsWith('sk-ant-')) {
-      showToast('That does not look like an Anthropic key (sk-ant-…)');
-      return;
-    } else {
-      localStorage.setItem(FOOD_PHOTO_KEY, v);
-      showToast('✓ Key saved on this device — snap away');
-    }
-    $('#photoKeyInput').value = '';
-    $('#photoKeySetup').hidden = true;
-  });
+  if (keyBtn && setupEl) {
+    keyBtn.addEventListener('click', () => {
+      setupEl.hidden = !setupEl.hidden;
+      if (!setupEl.hidden && keyInput) keyInput.focus();
+    });
+  }
+
+  if (keySave && keyInput) {
+    keySave.addEventListener('click', () => {
+      const v = keyInput.value.trim();
+      if (!v) {
+        localStorage.removeItem(FOOD_PHOTO_KEY);
+        showToast('API key removed from this device');
+      } else if (!v.startsWith('sk-ant-')) {
+        showToast('That does not look like an Anthropic key (sk-ant-…)');
+        return;
+      } else {
+        localStorage.setItem(FOOD_PHOTO_KEY, v);
+        showToast('Key saved on this device');
+      }
+      keyInput.value = '';
+      if (setupEl) setupEl.hidden = true;
+    });
+  }
 }

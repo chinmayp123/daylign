@@ -10241,3 +10241,19 @@ html.layout-editing .layout-item.is-dragging {
   margin: 0 auto;
 }
 #dietView.lib-open .diet-layout > * { min-width: 0; }
+
+/* ---- Diet layout corrections ----
+   1. The Log Food card became .diet-bank-card, which orphaned it from
+      grid-area: log — a rename that silently unplaced it in the library.
+   2. The day view holds exactly one card (the summary; meals, review and
+      water all live inside it), but the grid still reserved a 372px column
+      for library cards that are hidden, leaving a dead strip down the right
+      of the page. Day view gets the full width. */
+@media (min-width: 1024px) {
+  .diet-bank-card { grid-area: log; }
+
+  #dietView:not(.lib-open) .diet-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "summary";
+  }
+}
