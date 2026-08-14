@@ -11,6 +11,13 @@
   --bg-card: #14141d;
   --bg-hover: #1e1e2a;
   --bg-input: #0b0b10;
+
+  /* The unfilled part of a progress bar. Needs to read against --bg-card, which
+     is what every one of these sits on. Tracks used to borrow --bg-input, and in
+     light mode BOTH are #ffffff — so the bars lost their tracks entirely and you
+     could not see how much of the goal was left. Same value as before in dark,
+     so nothing there changes. */
+  --track: #0b0b10;
   --border: #232330;
   --text-primary: #f2f2f7;
   --text-secondary: #a5a5bd;
@@ -1204,7 +1211,7 @@ body {
 
 .priority-bar-track {
   height: 8px;
-  background: var(--bg-primary);
+  background: var(--track);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -3273,7 +3280,7 @@ body {
 .water-bar-track {
   width: 100%;
   height: 10px;
-  background: var(--bg-primary);
+  background: var(--track);
   border-radius: 5px;
   overflow: hidden;
   margin-bottom: 10px;
@@ -3401,7 +3408,7 @@ body {
 .diet-goal-bar-track {
   width: 100%;
   height: 8px;
-  background: var(--bg-primary);
+  background: var(--track);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -4411,7 +4418,7 @@ button:not(:disabled):active {
 
 .health-bar-track {
   height: 6px;
-  background: var(--bg-primary);
+  background: var(--track);
   border-radius: 3px;
   overflow: hidden;
 }
@@ -4703,7 +4710,7 @@ button:not(:disabled):active {
 
 .coach-bar-track {
   height: 6px;
-  background: var(--bg-card);
+  background: var(--track);
   border-radius: 999px;
   overflow: hidden;
 }
@@ -5595,6 +5602,7 @@ html[data-theme="light"] {
   --bg-card: #ffffff;
   --bg-hover: #e7e7f0;
   --bg-input: #ffffff;
+  --track: #e7e7f0;
   --border: #e2e2ec;
   --text-primary: #1a1a24;
   --text-secondary: #56566a;
@@ -5967,7 +5975,7 @@ html[data-theme="light"] .more-sheet-overlay { background: rgba(20, 20, 45, 0.35
 .diet-goal-current { font-size: 17px; font-weight: 700; }
 .diet-goal-sep { color: var(--text-muted); margin: 0 3px; }
 .diet-goal-target { font-size: 13px; color: var(--text-secondary); font-weight: 600; }
-.diet-goal-bar-track { height: 7px; border-radius: 4px; background: var(--bg-input); overflow: hidden; }
+.diet-goal-bar-track { height: 7px; border-radius: 4px; background: var(--track); overflow: hidden; }
 .diet-goal-bar-fill { height: 100%; border-radius: 4px; }
 .diet-goal-remaining { font-size: 11.5px; color: var(--text-muted); }
 
@@ -6869,7 +6877,7 @@ body.onboard-open { overflow: hidden; }
 .dg-bar-left { margin-left: 10px; font-size: 11.5px; font-weight: 600; }
 .dg-bar-track {
   height: 8px;
-  background: var(--bg-input);
+  background: var(--track);
   border-radius: 999px;
   overflow: hidden;
 }
@@ -8416,7 +8424,7 @@ body.logfood-sheet-lock { overflow: hidden; }
 .mb-sets b { font-weight: 700; }
 .mb-zero { color: var(--text-muted); font-style: italic; }
 .mb-barwrap { display: flex; align-items: center; gap: 10px; }
-.mb-track { flex: 1; height: 8px; background: var(--bg-input); border-radius: 999px; overflow: hidden; }
+.mb-track { flex: 1; height: 8px; background: var(--track); border-radius: 999px; overflow: hidden; }
 .mb-fill {
   height: 100%;
   border-radius: 999px;
@@ -9045,7 +9053,7 @@ body.app-loading #syncProgress { opacity: 1; }
 .ins-split { display: flex; flex-direction: column; gap: 11px; }
 .ins-split-row { display: flex; align-items: center; gap: 10px; }
 .ins-split-name { flex: 0 0 46px; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
-.ins-split-track { flex: 1; height: 8px; background: var(--bg-input); border-radius: 999px; overflow: hidden; }
+.ins-split-track { flex: 1; height: 8px; background: var(--track); border-radius: 999px; overflow: hidden; }
 .ins-split-fill { height: 100%; border-radius: 999px; animation: barGrow .7s cubic-bezier(0.22, 1, 0.36, 1); transform-origin: left; }
 .ins-split-val { flex: 0 0 26px; text-align: right; font-size: 12px; font-weight: 700; color: var(--text-primary); }
 
