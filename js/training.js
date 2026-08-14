@@ -417,6 +417,25 @@ function renderWatchSync() {
 
   const tone = s.daysOld <= 0 ? 'ok' : s.daysOld === 1 ? 'warn' : 'stale';
   const when = s.daysOld <= 0 ? 'today' : s.daysOld === 1 ? 'yesterday' : `${s.daysOld} days ago`;
+
+  // Two different facts, previously said as one. "Synced yesterday" was really
+  // "the newest data is dated yesterday" — which is exactly what a SUCCESSFUL
+  // 9pm run produces, since it writes that day's totals. So without a real
+  // timestamp the card talks about the DATA, and only claims a sync time when
+  // the Shortcut has actually recorded one at external/lastSync.
+  let headline;
+  if (s.explicit) {
+    const ran = new Date(s.explicit);
+    const ranDay = toLocalDateStr(ran);
+    const today = getTodayStr();
+    const dayWord = ranDay === today ? 'today'
+      : ranDay === offsetDateStr(today, -1) ? 'yesterday'
+      : formatDate(ranDay);
+    const time = ran.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    headline = `Watch synced <strong>${dayWord} at ${time}</strong>`;
+  } else {
+    headline = `Watch data through <strong>${formatDate(s.newest)}</strong> (${when})`;
+  }
   // A partial run matters: sleep alone landing is not a successful sync.
   const partial = s.current < s.total;
   const missing = s.perMetric.filter(m => m.latest !== s.newest).map(m => m.label);
@@ -425,7 +444,7 @@ function renderWatchSync() {
     <details class="watch-sync is-${tone}">
       <summary>
         <span class="watch-sync-dot"></span>
-        <span class="watch-sync-text">Watch synced <strong>${when}</strong>${partial ? ` &middot; ${s.current}/${s.total} metrics` : ''}</span>
+        <span class="watch-sync-text">${headline}${partial ? ` &middot; ${s.current}/${s.total} metrics` : ''}</span>
         <span class="watch-sync-more">details</span>
       </summary>
       <div class="watch-sync-grid">
@@ -435,6 +454,7 @@ function renderWatchSync() {
             <span>${m.latest ? formatDate(m.latest) : 'never'}</span>
           </div>`).join('')}
       </div>
+      ${!s.explicit ? `<p class="watch-sync-note">That is the date the data covers, not when the Shortcut ran — it never records that. Add one <em>Get Contents of URL</em> step PUTting <code>{"lastSync": &lt;current timestamp&gt;}</code> to <code>external.json</code> and this shows the real time.</p>` : ''}
       ${partial ? `<p class="watch-sync-note">${esc(missing.join(', '))} did not land in the last run. iOS skips the automation when the phone is locked — a charger-connect trigger fires more reliably than a fixed time.</p>` : ''}
     </details>`;
 }

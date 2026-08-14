@@ -22,13 +22,39 @@ const COMMON_EXERCISES = [
 let gymBodyweight = false; // current input mode
 let gymEditingIdx = null; // index into day's exercises when editing
 
+// Movements that carry no external load unless you say otherwise. Matched as
+// patterns, not exact names: the catalogue lists "Crunches", so an exact match
+// asked "reverse crunches" for a weight in lbs. Anything you type that is a
+// variation of a bodyweight movement is one.
+const BODYWEIGHT_PATTERNS = [
+  'push up', 'pushup', 'push-up', 'pull up', 'pullup', 'chin up', 'chinup',
+  'muscle up', 'dip', 'crunch', 'sit up', 'situp', 'plank', 'leg raise',
+  'knee raise', 'flutter', 'l-sit', 'dragon flag', 'mountain climber',
+  'superman', 'glute bridge', 'burpee', 'jumping jack', 'box jump', 'lunge',
+  'pistol squat', 'bodyweight', 'body weight', 'inverted row', 'australian row',
+  'handstand', 'lever', 'ab wheel', 'ab roller', 'hollow', 'dead bug',
+  'russian twist', 'step up', 'calf raise (bw)', 'hanging',
+];
+
+// Anything naming equipment overrides the above — a weighted pull up, a goblet
+// squat and a plate crunch all take a load, however bodyweight the base
+// movement is. 'dumb' rather than 'dumbbell' on purpose: the log contains
+// "Dumbel", "Dumbell" and "dubmbbel".
+const LOADED_MARKERS = [
+  'weighted', 'dumb', 'barbell', 'plate', 'cable', 'machine', 'kettlebell',
+  'smith', 'goblet', 'band', 'sled', 'trap bar', 'ez bar', 'landmine',
+];
+
 function isBodyweightExercise(name) {
   if (!name) return false;
-  const lower = name.toLowerCase().trim();
+  const lower = String(name).toLowerCase().trim();
+  if (!lower) return false;
+  // Exact catalogue entries stay authoritative.
   for (const bw of BODYWEIGHT_EXERCISES) {
     if (bw.toLowerCase() === lower) return true;
   }
-  return false;
+  if (LOADED_MARKERS.some(k => lower.includes(k))) return false;
+  return BODYWEIGHT_PATTERNS.some(k => lower.includes(k));
 }
 
 // 7-day rolling average of weigh-ins. Daily scale weight swings 1-3 lbs on
@@ -408,6 +434,53 @@ function isConsistencyDay(dateStr) {
 // 'core' when one group carries 60%+ of the classified sets, otherwise 'mixed'.
 // A day with no classifiable lifting but a cardio session reads as 'cardio';
 // a day with nothing at all returns null.
+// Every group worked on a day, biggest share first. dayFocusGroup collapses
+// anything under 60% dominance to 'mixed', which painted a Pull + Core day one
+// flat grey and threw away what was actually done. The calendar splits the cell
+// instead, so a day reads as the work it contained.
+const CAL_GROUP_CSS = {
+  push: 'var(--accent)', pull: 'var(--blue)', legs: 'var(--green)',
+  core: 'var(--yellow)', cardio: 'var(--purple)',
+};
+
+function dayGroupBreakdown(dateStr) {
+  const tally = { push: 0, pull: 0, legs: 0, core: 0 };
+  let classified = 0;
+  (state.gym || []).forEach(e => {
+    if (e.date !== dateStr) return;
+    const g = muscleGroupFor(e.exercise);
+    const n = (e.sets || []).length;
+    if (g) { tally[g] += n; classified += n; }
+  });
+  const out = ['push', 'pull', 'legs', 'core']
+    .filter(g => tally[g] > 0)
+    .map(g => ({ group: g, sets: tally[g] }))
+    .sort((a, b) => b.sets - a.sets);
+  // Cardio has no sets, so it joins as an equal share rather than a zero one.
+  if ((state.cardio || []).some(x => x.date === dateStr)) {
+    const share = classified ? Math.max(1, Math.round(classified / Math.max(1, out.length + 1))) : 1;
+    out.push({ group: 'cardio', sets: share });
+  }
+  const total = out.reduce((n, x) => n + x.sets, 0) || 1;
+  out.forEach(x => { x.pct = (x.sets / total) * 100; });
+  return out;
+}
+
+// Hard-stop gradient so the cell reads as distinct blocks, not a blend.
+// Capped at three: a 22px square split four ways is mush.
+function calCellStyle(parts) {
+  if (parts.length < 2) return '';
+  const top = parts.slice(0, 3);
+  const scale = 100 / top.reduce((n, x) => n + x.pct, 0);
+  let at = 0;
+  const stops = top.map(x => {
+    const from = at;
+    at += x.pct * scale;
+    return `${CAL_GROUP_CSS[x.group]} ${from.toFixed(1)}% ${at.toFixed(1)}%`;
+  });
+  return ` style="background: linear-gradient(135deg, ${stops.join(', ')}); border-color: transparent;"`;
+}
+
 function dayFocusGroup(dateStr) {
   const tally = { push: 0, pull: 0, legs: 0, core: 0 };
   let classified = 0;
@@ -810,7 +883,13 @@ function renderConsistencyCalendar(host, daySets, today, windowDays) {
     } else {
       tip = `${label} · ${CAL_GROUP_LABEL[group]} · ${distinct} exercise${distinct === 1 ? '' : 's'}, ${sets} set${sets === 1 ? '' : 's'}${real ? '' : ' · check-in'}`;
     }
-    cells.push(`<div class="gym-cal-cell g-${group} ${real ? 'is-real' : 'is-check'}" title="${tip}"></div>`);
+    // A day that worked more than one group is split rather than flattened.
+    const parts = dayGroupBreakdown(ds);
+    const split = calCellStyle(parts);
+    if (split && parts.length > 1) {
+      tip = `${label} · ${parts.map(x => CAL_GROUP_LABEL[x.group] || x.group).join(' + ')} · ${sets} set${sets === 1 ? '' : 's'}${real ? '' : ' · check-in'}`;
+    }
+    cells.push(`<div class="gym-cal-cell g-${group} ${real ? 'is-real' : 'is-check'}"${split} title="${tip}"></div>`);
   }
 
   const legendGroups = ['push', 'pull', 'legs', 'core', 'cardio'];
