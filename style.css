@@ -2845,10 +2845,9 @@ body {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 4px;
-  /* Full width on a phone, where it belongs; capped on a monitor so the seven
-     rings do not end up 200px apart and stop reading as one week. */
-  max-width: 520px;
-  margin: 4px 0 14px;
+  /* Fills the control it now sits in, rather than being capped and stranded
+     in the top-left corner of the page. */
+  margin: 0;
 }
 .diet-week-day {
   position: relative;
@@ -2924,12 +2923,32 @@ body {
   background: var(--blue);
 }
 
+/* One control: the label and arrows on top, the week underneath, in a single
+   panel. They were two stacked rows saying overlapping things. */
+.diet-datehead {
+  padding: 12px 14px 10px;
+  margin-bottom: 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
 .diet-date-bar {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
+
+/* Pushes Today + the date picker to the far end, so the label and arrows read
+   as one group and the jump controls as another. */
+.diet-datehead-spacer { flex: 1; }
+
+/* The label used to be the last thing in the row and carried flex:1 to push
+   the date picker over. It now sits BETWEEN the two arrows, where growing to
+   547px shoved the next-day arrow into the middle of the panel. The spacer
+   does the pushing instead. */
+.diet-datehead .diet-date-label { flex: 0 0 auto; }
 
 .diet-date-label {
   font-size: 15px;

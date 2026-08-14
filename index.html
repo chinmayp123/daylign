@@ -582,17 +582,22 @@
       </div><!-- /#trainingView -->
 
       <div class="view" id="dietView">
-        <!-- Diet Date Navigation -->
-        <div class="diet-date-bar">
-          <button class="gym-date-nav" id="dietPrevDay" aria-label="Previous day">&lt;</button>
-          <button class="gym-date-today" id="dietToday">Today</button>
-          <button class="gym-date-nav" id="dietNextDay" aria-label="Next day">&gt;</button>
-          <span class="diet-date-label" id="dietDateLabel"></span>
-          <input type="date" id="dietDate" class="gym-date-input">
-        </div>
+        <!-- Date navigation and the week strip are ONE control: the strip is
+             the day picker, the arrows step it, and the label says where you
+             are. Stacked as two separate rows they duplicated each other. -->
+        <div class="diet-datehead">
+          <div class="diet-date-bar">
+            <button class="gym-date-nav" id="dietPrevDay" aria-label="Previous day">&lt;</button>
+            <span class="diet-date-label" id="dietDateLabel"></span>
+            <button class="gym-date-nav" id="dietNextDay" aria-label="Next day">&gt;</button>
+            <span class="diet-datehead-spacer"></span>
+            <button class="gym-date-today" id="dietToday">Today</button>
+            <input type="date" id="dietDate" class="gym-date-input">
+          </div>
 
-        <!-- Seven rings, one per day of the week being viewed. See renderDietWeek. -->
-        <div class="diet-week" id="dietWeek"></div>
+          <!-- Seven rings, one per day of the week being viewed. See renderDietWeek. -->
+          <div class="diet-week" id="dietWeek"></div>
+        </div>
         <div class="diet-layout">
           <!-- Food Library page: manual log form + Snap + key (back button first) -->
           <button type="button" class="diet-library-back diet-lib-section" id="closeFoodLibraryBtn">&larr; Back to today</button>
