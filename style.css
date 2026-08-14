@@ -10229,3 +10229,15 @@ html.layout-editing .layout-item.is-dragging {
 }
 .dic-field > span i { font-style: normal; opacity: 0.7; text-transform: none; }
 .dic-field .dic-in { width: 100%; }
+
+/* The Diet grid is 340px / 1fr / 300px for the day view. Opening the Food
+   Library hid the day cards but left the three columns standing, so the
+   library's own cards were auto-placed into whatever column was free — one
+   narrow card on the right and a dead zone filling the rest of the page.
+   The library is its own page; it gets its own single column. */
+#dietView.lib-open .diet-layout {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 860px;   /* a readable measure, not the full width of a monitor */
+  margin: 0 auto;
+}
+#dietView.lib-open .diet-layout > * { min-width: 0; }
