@@ -1154,13 +1154,29 @@ body {
   border-color: var(--green);
 }
 
-.task-check.checked::after {
+/* The tick draws on ::before, NOT ::after.
+
+   ::after on .task-check is claimed further down as an invisible 44x44 hit
+   area, and the two were sharing one pseudo-element. .task-check.checked::after
+   is the more specific rule so it won width/height/border/transform — but it
+   never declared position/top/left, so THOSE leaked in from the hit-area rule,
+   and its own transform replaced the translate(-50%,-50%) that was centring
+   things. The tick ended up pinned at the circle's centre POINT and growing
+   down-right out of it, and every completed task silently lost its 44px touch
+   target because the tick's 6x10 overrode it.
+
+   Separate pseudo-elements, separate jobs. */
+.task-check.checked::before {
   content: '';
-  width: 6px;
-  height: 10px;
-  border: solid white;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 9px;
+  border: solid #fff;
   border-width: 0 2px 2px 0;
-  transform: rotate(45deg) translate(-1px, -1px);
+  /* Nudged up a touch: a rotated tick sits low if centred geometrically. */
+  transform: translate(-50%, -60%) rotate(45deg);
 }
 
 .recent-task-name {
