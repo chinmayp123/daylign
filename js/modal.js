@@ -10,32 +10,60 @@ function populateScheduleHourDropdown() {
   sel.innerHTML = html;
 }
 
-function openModal(taskId = null, scheduledHour = null) {
+// Fills the edit form from an existing task. Split out of openModal so the
+// Edit button on the view pane can reuse it without reopening the modal.
+function fillTaskForm(taskId) {
+  const task = state.tasks.find(t => t.id === taskId);
+  if (!task) return;
+  $('#modalIcon').classList.add('editing');
+  $('#modalIcon').innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+  $('#taskId').value = task.id;
+  $('#taskName').value = task.name;
+  $('#taskDesc').value = task.description || '';
+  $('#taskStatus').value = task.status;
+  $('#taskCategory').value = task.category;
+  $('#taskDueDate').value = task.dueDate || '';
+  $('#taskProject').value = task.project || '';
+  $('#taskScheduledHour').value = task.scheduledHour != null ? task.scheduledHour : '';
+  $('#taskDuration').value = task.duration || '1';
+  editingSubtasks = task.subtasks ? task.subtasks.map(s => ({ ...s })) : [];
+  $('#deleteBtn').style.display = 'inline-flex';
+  toggleProjectRow();
+  renderSubtasks();
+}
+
+// mode: 'view' (default for an existing task) or 'edit'. Opening a task to read
+// it is far commoner than opening it to change it, so reading is what a tap
+// gets you; the schedule button passes 'edit' because setting a time IS a change.
+function openModal(taskId = null, scheduledHour = null, mode = 'view') {
   const modal = $('#taskModal');
   const form = $('#taskForm');
+  const view = $('#taskView');
   form.reset();
   editingSubtasks = [];
   populateScheduleHourDropdown();
   populateProjectDropdown();
 
+  if (taskId && mode !== 'edit') {
+    if (!state.tasks.find(t => t.id === taskId)) return;
+    if (view) { view.hidden = false; renderTaskView(taskId); }
+    form.hidden = true;
+    $('#modalTitle').textContent = 'Task';
+    $('#modalSubtitle').textContent = 'Read it here, edit if you need to';
+    $('#modalIcon').classList.remove('editing');
+    $('#modalIcon').innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>';
+    modal.classList.add('active');
+    return;
+  }
+
+  if (view) view.hidden = true;
+  form.hidden = false;
+
   if (taskId) {
-    const task = state.tasks.find(t => t.id === taskId);
-    if (!task) return;
+    if (!state.tasks.find(t => t.id === taskId)) return;
     $('#modalTitle').textContent = 'Edit Task';
     $('#modalSubtitle').textContent = 'Update the task details';
-    $('#modalIcon').classList.add('editing');
-    $('#modalIcon').innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
-    $('#taskId').value = task.id;
-    $('#taskName').value = task.name;
-    $('#taskDesc').value = task.description || '';
-    $('#taskStatus').value = task.status;
-    $('#taskCategory').value = task.category;
-    $('#taskDueDate').value = task.dueDate || '';
-    $('#taskProject').value = task.project || '';
-    $('#taskScheduledHour').value = task.scheduledHour != null ? task.scheduledHour : '';
-    $('#taskDuration').value = task.duration || '1';
-    editingSubtasks = task.subtasks ? task.subtasks.map(s => ({ ...s })) : [];
-    $('#deleteBtn').style.display = 'inline-flex';
+    fillTaskForm(taskId);
   } else {
     $('#modalTitle').textContent = 'New Task';
     $('#modalSubtitle').textContent = 'Fill in the details below';
@@ -48,10 +76,10 @@ function openModal(taskId = null, scheduledHour = null) {
       $('#taskScheduledHour').value = scheduledHour;
       $('#taskDueDate').value = getTodayStr();
     }
+    toggleProjectRow();
+    renderSubtasks();
   }
 
-  toggleProjectRow();
-  renderSubtasks();
   modal.classList.add('active');
   setTimeout(() => $('#taskName').focus(), 100);
 }
@@ -273,4 +301,118 @@ function taskFormIsDirty() {
   // discards any changes made to it.
   if (val('#taskId')) return true;
   return false;
+}
+
+// ========== Task view (read first, edit on request) ==========
+// Clicking a task used to drop you straight into the edit form, where the
+// description lived in a three-line textarea with its own scrollbar — the one
+// field you most often open a task to READ was the hardest thing to read. The
+// view pane shows it in full, and Edit swaps the form in when you actually want
+// to change something.
+const STATUS_LABEL = { 'todo': 'To Do', 'in-progress': 'In Progress', 'done': 'Done' };
+
+function taskViewMeta(task) {
+  const rows = [];
+  rows.push(['Status', STATUS_LABEL[task.status] || task.status]);
+
+  const cat = state.categories.find(c => c.id === task.category);
+  if (cat) rows.push(['Category', `<span class="category-dot" style="background:${cat.color}"></span>${esc(cat.name)}`, true]);
+
+  const proj = task.project && state.projects.find(p => p.id === task.project);
+  if (proj) rows.push(['Project', esc(proj.name), true]);
+
+  if (task.dueDate) {
+    const overdue = task.dueDate < getTodayStr() && task.status !== 'done';
+    rows.push(['Due', `<span class="${overdue ? 'task-view-overdue' : ''}">${formatDate(task.dueDate)}${overdue ? ' · overdue' : ''}</span>`, true]);
+  }
+  if (task.scheduledHour != null) {
+    const h = task.scheduledHour;
+    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    const when = `${h12}:00 ${h >= 12 ? 'PM' : 'AM'}`;
+    rows.push(['Scheduled', task.duration && task.duration !== 1 ? `${when} · ${task.duration}h` : when]);
+  }
+  return rows.map(([k, v, isHtml]) => `
+    <div class="task-view-meta-row">
+      <span class="task-view-meta-key">${k}</span>
+      <span class="task-view-meta-val">${isHtml ? v : esc(String(v))}</span>
+    </div>`).join('');
+}
+
+function renderTaskView(taskId) {
+  const host = document.getElementById('taskView');
+  if (!host) return;
+  const task = state.tasks.find(t => t.id === taskId);
+  if (!task) { host.innerHTML = ''; return; }
+
+  const subs = task.subtasks || [];
+  const doneCount = subs.filter(s => s.done).length;
+  const isDone = task.status === 'done';
+
+  host.innerHTML = `
+    <h3 class="task-view-name${isDone ? ' is-done' : ''}">${esc(task.name)}</h3>
+
+    ${task.description
+      ? `<div class="task-view-desc">${esc(task.description).replace(/\n/g, '<br>')}</div>`
+      : '<p class="task-view-nodesc">No description.</p>'}
+
+    <div class="task-view-meta">${taskViewMeta(task)}</div>
+
+    ${subs.length ? `
+      <div class="task-view-subs">
+        <div class="task-view-subs-head">
+          <span>Subtasks</span>
+          <span class="task-view-subs-count">${doneCount}/${subs.length}</span>
+        </div>
+        ${subs.map((s, i) => `
+          <label class="task-view-sub">
+            <input type="checkbox" data-view-sub="${i}" ${s.done ? 'checked' : ''}>
+            <span class="${s.done ? 'done' : ''}">${esc(s.text)}</span>
+          </label>`).join('')}
+      </div>` : ''}
+
+    <div class="task-view-actions">
+      <button type="button" class="btn-secondary" id="taskViewToggleDone">
+        ${isDone ? 'Mark not done' : 'Mark done'}
+      </button>
+      <button type="button" class="btn-primary" id="taskViewEdit">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Edit
+      </button>
+    </div>`;
+
+  // Ticking a subtask is the commonest reason to open a task without wanting to
+  // change anything else, so it works right here rather than only in the form.
+  host.querySelectorAll('[data-view-sub]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const t = state.tasks.find(x => x.id === taskId);
+      if (!t || !t.subtasks) return;
+      t.subtasks[Number(cb.dataset.viewSub)].done = cb.checked;
+      if (typeof haptic === 'function') haptic('light');
+      saveData(state);
+      renderTaskView(taskId);
+      render();
+    });
+  });
+
+  const editBtn = document.getElementById('taskViewEdit');
+  if (editBtn) editBtn.addEventListener('click', () => showTaskEditPane(taskId));
+
+  const doneBtn = document.getElementById('taskViewToggleDone');
+  if (doneBtn) doneBtn.addEventListener('click', () => {
+    toggleTaskDone(taskId);
+    // toggleTaskDone re-renders the app; the open modal needs it too.
+    renderTaskView(taskId);
+  });
+}
+
+// Swap the modal from reading to editing, keeping it open.
+function showTaskEditPane(taskId) {
+  const view = document.getElementById('taskView');
+  const form = document.getElementById('taskForm');
+  if (view) view.hidden = true;
+  if (form) form.hidden = false;
+  $('#modalTitle').textContent = 'Edit Task';
+  $('#modalSubtitle').textContent = 'Update the task details';
+  fillTaskForm(taskId);
+  setTimeout(() => { const el = $('#taskName'); if (el) el.focus(); }, 60);
 }

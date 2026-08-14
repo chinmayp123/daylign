@@ -1109,6 +1109,11 @@
           <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
+      <!-- Read-first pane. Clicking a task lands here; Edit swaps in the form
+           below. Built because the description was only ever readable through a
+           three-line textarea with its own scrollbar. -->
+      <div class="task-view" id="taskView" hidden></div>
+
       <form id="taskForm">
         <input type="hidden" id="taskId">
 

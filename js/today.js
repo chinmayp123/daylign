@@ -169,7 +169,7 @@ function bindTodayPlan() {
   host.querySelectorAll('[data-schedule-task]').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
-      if (typeof openModal === 'function') openModal(btn.dataset.scheduleTask);
+      if (typeof openModal === 'function') openModal(btn.dataset.scheduleTask, null, 'edit');
     });
   });
 
