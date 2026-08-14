@@ -341,11 +341,18 @@ function renderDiet() {
     recentGroups[meal].push(item);
   }
 
-  // First render: open the meal that matches the time of day, collapse the rest
+  // First render: open the meal that matches the time of day, collapse the rest.
+  //
+  // 'bank' was missing from this object, so recentFoodsOpen.bank read undefined
+  // and My Food Bank rendered collapsed every time — 59 dishes behind a shut
+  // header. This list only appears inside the Food Library, and the bank IS the
+  // library, so opening it to a row of closed accordions showed nothing at all.
+  // The meal groups stay collapsed: those are recent-food shortcuts, and all
+  // five open at once buries the bank under them.
   if (!recentFoodsOpen) {
     const hour = new Date().getHours();
     const nowMeal = mealForHour(hour);
-    recentFoodsOpen = { breakfast: false, lunch: false, dinner: false, snack: false, [nowMeal]: true };
+    recentFoodsOpen = { breakfast: false, lunch: false, dinner: false, snack: false, bank: true, [nowMeal]: true };
   }
 
   // Full food bank — every banked dish (your South Indian pool + saved brands), A→Z
@@ -422,11 +429,33 @@ function renderDiet() {
           <span class="recent-meal-count">${bankEntries.length}</span>
         </div>
         <div class="recent-meal-body">
+          <input type="search" class="diet-bank-filter" id="dietBankFilter" placeholder="Search your ${bankEntries.length} foods" autocomplete="off" aria-label="Search the food bank">
+          <p class="diet-bank-filter-empty" id="dietBankFilterEmpty" hidden>Nothing matches that.</p>
           ${bankEntries.map(([name, data]) => foodItem(name, data, `data-bank-name="${esc(name)}"`)).join('')}
         </div>
       </div>` : '';
 
     $('#dietCustomList').innerHTML = combosHtml + groupsHtml + bankHtml;
+
+    // 59 dishes A-Z is six screens of scrolling to reach one. Filters in place
+    // rather than re-rendering, so the row you are aiming at does not move out
+    // from under your finger as you type.
+    const bankFilter = document.getElementById('dietBankFilter');
+    if (bankFilter) {
+      bankFilter.addEventListener('click', e => e.stopPropagation());
+      bankFilter.addEventListener('input', () => {
+        const q = bankFilter.value.trim().toLowerCase();
+        let shown = 0;
+        $$('.recent-bank .diet-custom-item').forEach(row => {
+          const name = (row.querySelector('.diet-custom-item-name') || {}).textContent || '';
+          const hit = !q || name.toLowerCase().includes(q);
+          row.hidden = !hit;
+          if (hit) shown++;
+        });
+        const none = document.getElementById('dietBankFilterEmpty');
+        if (none) none.hidden = !(q && shown === 0);
+      });
+    }
 
     $$('[data-edit-combo]').forEach(btn => {
       btn.addEventListener('click', (e) => {
