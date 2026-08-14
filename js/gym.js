@@ -514,12 +514,25 @@ const SPLIT_FOCUS = {
 // What a logged day represents in the cycle, read from its dominant work:
 // a strength day (pull/push/legs), a recovery day (cardio/mobility only),
 // a core-only day, a mixed day, or nothing.
+// What a day COUNTS AS for planning — which is not the same question as what
+// was done on it. Push Ups and Sit Ups get logged at one set every single day
+// as a standing habit, so a rest day with nothing but the habit in it used to
+// come back as a full 'push' day: it was the only thing logged, so it won 100%
+// of the day's volume. That turned a genuine 3-day block plus a rest day into
+// "4 strength days straight" and had the app recommending recovery the day
+// AFTER a recovery day.
+//
+// A day only counts as strength training if it clears the session bar. Anything
+// logged below it is 'light' — the habit, a few odd sets — which reads as rest
+// for planning while still showing up on the calendar as what it was.
 function trainingDayType(dateStr) {
   const g = dayFocusGroup(dateStr);
   if (!g) return null;
   if (g === 'cardio') return 'recovery';
-  if (g === 'push' || g === 'pull' || g === 'legs') return g;
-  return g; // 'core' or 'mixed'
+  if (g === 'push' || g === 'pull' || g === 'legs') {
+    return isFullSession(dateStr) ? g : 'light';
+  }
+  return isFullSession(dateStr) ? g : 'light'; // 'core' or 'mixed'
 }
 
 const RECOVERY_AFTER_STREAK = 3; // strength days in a row before recovery is due
@@ -566,7 +579,19 @@ function nextTrainingDay() {
     daysSince(b) - daysSince(a) || SPLIT_ORDER.indexOf(a) - SPLIT_ORDER.indexOf(b))[0];
   const ds = daysSince(day);
   const cap = day.charAt(0).toUpperCase() + day.slice(1);
-  const reason = ds >= 999 ? 'Kicking off your cycle.' : `${cap} was ${ds === 0 ? 'today' : ds + 'd ago'} — it's the most rested.`;
+
+  // Say what yesterday counted as. The whole confusion here was the app calling
+  // a rest day a strength day, so when the recommendation turns on yesterday
+  // being rest, it should show its working rather than leave you to infer it.
+  const yday = trainingDayType(offsetDateStr(today, -1));
+  let restNote = '';
+  if (yday === 'light') restNote = 'Yesterday was a check-in, not a session. ';
+  else if (!yday) restNote = 'Rested yesterday. ';
+  else if (yday === 'recovery') restNote = 'Recovery yesterday. ';
+
+  const reason = ds >= 999
+    ? 'Kicking off your cycle.'
+    : `${restNote}${cap} was ${ds === 0 ? 'today' : ds + 'd ago'} — it's the most rested.`;
   return { day, label: SPLIT_LABEL[day], focus: SPLIT_FOCUS[day], reason, suggestion: GROUP_SUGGESTIONS[day] };
 }
 

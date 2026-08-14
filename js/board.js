@@ -105,7 +105,15 @@ function renderBoard() {
   // nav-button clicks — so completing, adding, or dragging a task updates the
   // To Do / Doing / Done tallies immediately.
   const bmsCounts = { todo: $('#bmsTodo'), 'in-progress': $('#bmsProgress'), done: $('#bmsDone') };
-  statuses.forEach(s => { if (bmsCounts[s] && counts[s]) bmsCounts[s].textContent = counts[s].textContent; });
+  statuses.forEach(s => {
+    const el = bmsCounts[s];
+    if (!el || !counts[s]) return;
+    const n = counts[s].textContent;
+    el.textContent = n;
+    // Dims an empty column's badge — a zero is the one count that means
+    // "nothing here", and it should not compete with the real numbers.
+    el.dataset.zero = (parseInt(n, 10) || 0) === 0 ? '1' : '0';
+  });
 
   $$('.board-folder-header').forEach(header => {
     header.addEventListener('click', (e) => {

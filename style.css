@@ -5402,10 +5402,39 @@ button:not(:disabled):active {
     font-size: 13px; font-weight: 600;
     border-radius: 9px;
     cursor: pointer;
+    /* The label and the count are separate flex items, and flex drops the
+       whitespace-only text node between them — which is why this used to read
+       "To Do3" with the number welded to the word. The gap is what separates
+       them now; the space in the HTML never survived layout. */
+    gap: 6px;
   }
   .bms-btn.active { background: var(--accent); color: #fff; }
-  .bms-count { opacity: .7; font-weight: 700; }
-  .bms-btn.active .bms-count { opacity: .85; }
+
+  /* A count, not another syllable of the label: its own pill, dimmer and a
+     size down, so the eye reads "To Do" first and the tally second. */
+  .bms-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--bg-hover);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    /* Digits keep the same width, so the pills don't twitch as counts change. */
+    font-variant-numeric: tabular-nums;
+  }
+  .bms-btn.active .bms-count {
+    background: rgba(255, 255, 255, .22);
+    color: #fff;
+  }
+  /* Zero is worth less attention than a real number — it is the one count that
+     means "nothing to do here". */
+  .bms-count[data-zero="1"] { opacity: .45; }
 
   /* Show only the selected column; stack it full width */
   .board { display: block !important; }
