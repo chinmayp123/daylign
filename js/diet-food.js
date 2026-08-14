@@ -414,7 +414,10 @@ function bindDietEvents() {
     }
   });
 
-  $('#dietSaveBtn').addEventListener('click', () => {
+  // The Log Food card's "+ Add Food" is gone — logging happens on the meal
+  // rows, which already know the meal and the date. Guarded, not deleted.
+  const legacyAddBtn = $('#dietSaveBtn');
+  if (legacyAddBtn) legacyAddBtn.addEventListener('click', () => {
     const food = $('#dietFoodName').value.trim();
     if (!food) return;
     const servings = Number($('#dietServings').value) || 1;

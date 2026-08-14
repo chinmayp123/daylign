@@ -300,6 +300,7 @@ function savePhotoItems() {
   photoResultSel = null;
   saveData(state);
   renderDiet();
+}
 
 // Launch the photo flow from a specific meal row: log to that meal, render the
 // confirm UI inline there. If no API key yet, show an inline paste field first.

@@ -594,77 +594,45 @@
           <!-- Food Library page: manual log form + Snap + key (back button first) -->
           <button type="button" class="diet-library-back diet-lib-section" id="closeFoodLibraryBtn">&larr; Back to today</button>
           <!-- Log Food Panel -->
-          <div class="card diet-log-card diet-lib-section">
-            <h2>Log Food</h2>
+          <div class="card diet-bank-card diet-lib-section">
+            <h2>Add a food to your bank</h2>
+            <p class="settings-desc">For something you want saved before you eat it. Anything you log is banked automatically.</p>
             <div class="diet-food-form">
-              <div class="diet-search-wrapper">
-                <input type="text" id="dietFoodName" placeholder="Search food (e.g. chicken breast, banana)..." class="diet-food-input" autocomplete="off">
-                <div class="diet-search-dropdown" id="dietSearchDropdown"></div>
-              </div>
+              <input type="text" id="dietFoodName" placeholder="Food name" class="diet-search-input" autocomplete="off">
               <div class="diet-serving-info" id="dietServingInfo"></div>
-              <div class="diet-portion-row">
-                <div class="form-group">
-                  <label>Servings</label>
-                  <input type="number" id="dietServings" value="1" min="0.5" step="0.5">
-                </div>
-                <div class="form-group">
-                  <label>Meal</label>
-                  <select id="dietMeal">
-                    <option value="breakfast">Breakfast</option>
-                    <option value="lunch">Lunch</option>
-                    <option value="dinner">Dinner</option>
-                    <option value="snack">Snack</option>
-                  </select>
-                </div>
-              </div>
               <div class="diet-macro-inputs">
                 <div class="form-group">
-                  <label>Calories</label>
-                  <input type="number" id="dietCalories" placeholder="kcal" min="0">
+                  <label for="dietCalories">Calories</label>
+                  <input type="number" id="dietCalories" placeholder="0" min="0" inputmode="numeric">
                 </div>
                 <div class="form-group">
-                  <label>Protein (g)</label>
-                  <input type="number" id="dietProtein" placeholder="g" min="0" step="0.1">
+                  <label for="dietProtein">Protein (g)</label>
+                  <input type="number" id="dietProtein" placeholder="0" min="0" step="0.1" inputmode="decimal">
                 </div>
                 <div class="form-group">
-                  <label>Carbs (g)</label>
-                  <input type="number" id="dietCarbs" placeholder="g" min="0" step="0.1">
+                  <label for="dietCarbs">Carbs (g)</label>
+                  <input type="number" id="dietCarbs" placeholder="0" min="0" step="0.1" inputmode="decimal">
                 </div>
                 <div class="form-group">
-                  <label>Fat (g)</label>
-                  <input type="number" id="dietFat" placeholder="g" min="0" step="0.1">
+                  <label for="dietFat">Fat (g)</label>
+                  <input type="number" id="dietFat" placeholder="0" min="0" step="0.1" inputmode="decimal">
                 </div>
               </div>
               <div class="diet-btn-row">
-                <button type="button" class="btn-primary diet-save-btn" id="dietSaveBtn">+ Add Food</button>
-                <button type="button" class="diet-save-custom-btn" id="dietSaveCustomBtn" aria-label="Save this food to My Foods">
-                  <svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
+                <button type="button" class="btn-primary diet-save-custom-btn" id="dietSaveCustomBtn" aria-label="Save this food to your bank">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
                   <span id="dietSaveCustomLabel">Save as My Food</span>
                 </button>
               </div>
-            </div>
-            <!-- Photo food logging -->
-            <div class="photo-log">
-              <div class="photo-log-row">
-                <button type="button" class="photo-snap-btn" id="snapMealBtn" aria-label="Snap a photo of your meal">
-                  <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
-                  Snap a meal
-                </button>
-                <button type="button" class="photo-key-btn" id="photoKeyBtn" aria-label="Set Anthropic API key" title="Set or change your Anthropic API key">
-                  <svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
-                </button>
-              </div>
-              <input type="file" id="photoFileInput" accept="image/*" capture="environment" hidden>
-              <div class="photo-key-setup" id="photoKeySetup" hidden>
-                <input type="password" id="photoKeyInput" placeholder="Paste Anthropic API key (sk-ant-…)" autocomplete="off">
-                <button type="button" class="btn-primary" id="photoKeySaveBtn">Save</button>
-                <p class="photo-key-note">Stored only on this device — never synced. Get a key at console.anthropic.com. Save with the field empty to remove it.</p>
-              </div>
-              <div class="photo-result" id="photoResult"></div>
+              <!-- Read by the save path and by diet-goals; kept out of sight
+                   rather than deleted, because unpicking every reader is a
+                   separate change from removing this card. -->
+              <input type="hidden" id="dietServings" value="1">
+              <input type="hidden" id="dietMeal" value="breakfast">
+              <div id="dietSearchDropdown" hidden></div>
             </div>
           </div>
 
-          <!-- Daily Summary -->
           <div class="card diet-summary-card">
             <div class="diet-summary-header">
               <h2 id="dietSummaryTitle">Today's Nutrition</h2>
@@ -981,6 +949,12 @@
       </button>
     </div>
   </div>
+
+  <!-- Photo-logging infrastructure. Every meal row's camera button uses these;
+       they used to live inside the Log Food card, so removing that card would
+       have silently killed photo logging everywhere. -->
+  <input type="file" id="photoFileInput" accept="image/*" capture="environment" hidden>
+  <div class="photo-result" id="photoResult" hidden></div>
 
   <!-- Primary action, thumb-reachable. Mobile only; the header button in
        .header-right is the same action and stays for desktop. -->
