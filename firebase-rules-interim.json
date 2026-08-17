@@ -56,6 +56,15 @@
         "$date": { ".write": "newData.exists()" }
       },
 
+      // When the Shortcut last finished a full run. A single value at the
+      // METRIC level, not metric/date like the readings, so it needs its own
+      // rule — $metric below only ever matches a $date child, which would
+      // have left this write denied by the root ".write": false.
+      "lastSync": {
+        ".write": "newData.exists()",
+        ".validate": "newData.isNumber() || (newData.isString() && newData.val().length <= 64)"
+      },
+
       "$metric": {
         "$date": {
           ".write": "newData.exists()",
