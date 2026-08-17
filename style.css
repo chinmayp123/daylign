@@ -10611,3 +10611,51 @@ html.layout-editing .layout-item.is-dragging {
   .task-view-actions { flex-direction: column-reverse; }
   .task-view-actions button { width: 100%; }
 }
+
+/* ========== Sync status detail ========== */
+/* "Not saving" used to be a dead end: the reason lived in a title tooltip,
+   which does not exist on touch, and nothing retried unless you happened to
+   edit something else. */
+/* The status was a direct flex child of the header; wrapping it for the popover
+   would otherwise drop that alignment. */
+.sync-status-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+button.sync-status {
+  border: none;
+  font: inherit;
+  cursor: pointer;
+  background: none;
+}
+
+.sync-detail {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 60;
+  width: min(300px, calc(100vw - 32px));
+  padding: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+.sync-detail-msg {
+  margin: 0 0 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.sync-detail-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.sync-detail-actions button {
+  min-height: 40px;
+  padding: 0 14px;
+  font-size: 13px;
+}

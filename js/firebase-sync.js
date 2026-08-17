@@ -279,8 +279,19 @@ let appReconciled = false;
 
 // Update the visible sync indicator in the header.
 // state: 'connecting' | 'saving' | 'synced' | 'error'
+// The last failure reason, and whether we are currently in one. Kept in a
+// variable rather than only on the element's title, because a title attribute
+// is unreachable on a touch device — the phone showed "Not saving" in red with
+// no way whatsoever to find out why or to do anything about it.
+let lastSyncError = null;
+let syncRetryTimer = null;
+
 function setSyncStatus(state, message) {
   const el = document.getElementById('syncStatus');
+  lastSyncError = state === 'error' ? (message || 'Cloud sync failed.') : null;
+  if (state === 'error') scheduleSyncRetry(); else cancelSyncRetry();
+  const detail = document.getElementById('syncDetail');
+  if (detail && state !== 'error') detail.hidden = true;
   if (!el) return;
   el.classList.remove('is-synced', 'is-saving', 'is-error');
   const txt = el.querySelector('.sync-text');
@@ -491,4 +502,62 @@ function startFirebaseSync(onDataReceived) {
       console.log('Received real-time update from Firebase');
     }
   });
+}
+
+
+// ---- Recovering from a failed save ----
+// A rejected write used to sit there permanently: lastSentByKey is deliberately
+// not advanced on failure, so the data WOULD go up on the next save — but only
+// if you happened to edit something else. Log a meal on a dead connection and
+// the app would show "Not saving" until you touched it again, which is exactly
+// when you would put the phone down.
+const SYNC_RETRY_MS = 30000;
+
+function scheduleSyncRetry() {
+  if (syncRetryTimer) return;
+  syncRetryTimer = setInterval(() => {
+    if (!lastSyncError) { cancelSyncRetry(); return; }
+    if (!navigator.onLine) return;   // nothing to gain until the radio is back
+    retrySync();
+  }, SYNC_RETRY_MS);
+}
+
+function cancelSyncRetry() {
+  if (!syncRetryTimer) return;
+  clearInterval(syncRetryTimer);
+  syncRetryTimer = null;
+}
+
+// Re-push. saveToFirebase diffs against lastSentByKey, which a failed write
+// never updated, so the same keys are still marked dirty and go again.
+function retrySync() {
+  if (typeof saveToFirebase !== 'function' || typeof state === 'undefined') return;
+  setSyncStatus('saving');
+  try { saveToFirebase(state); }
+  catch (e) { setSyncStatus('error', 'Retry failed: ' + (e && e.message ? e.message : 'unknown error')); }
+}
+
+function bindSyncStatusUI() {
+  const btn = document.getElementById('syncStatus');
+  const detail = document.getElementById('syncDetail');
+  const msg = document.getElementById('syncDetailMsg');
+  const retry = document.getElementById('syncRetryBtn');
+  const close = document.getElementById('syncDetailClose');
+
+  if (btn && detail && msg) {
+    btn.addEventListener('click', () => {
+      msg.textContent = lastSyncError
+        ? lastSyncError
+        : 'Everything on this device is saved to the cloud.';
+      detail.hidden = !detail.hidden;
+    });
+  }
+  if (close && detail) close.addEventListener('click', () => { detail.hidden = true; });
+  if (retry) retry.addEventListener('click', () => {
+    if (detail) detail.hidden = true;
+    retrySync();
+  });
+
+  // Coming back online is the single best moment to try again.
+  window.addEventListener('online', () => { if (lastSyncError) retrySync(); });
 }
