@@ -872,6 +872,21 @@
             <button class="btn-primary" id="exportBtn">Download backup</button>
           </section>
 
+          <!-- recordError() has been collecting the last 10 failures since it was
+               written, for a diagnostics panel that never got built — so the app
+               would say "Something went wrong" and then hide the one thing that
+               explained it. On an installed PWA there is no console to fall back
+               on. This is that panel. -->
+          <section class="settings-card">
+            <h2>Recent errors</h2>
+            <p class="settings-desc">When something says &ldquo;that action may not have saved&rdquo;, the reason lands here. There is no console on an installed app, so this is the only place to see it.</p>
+            <div class="diag-list" id="diagList"></div>
+            <div class="settings-btn-row">
+              <button class="btn-secondary" id="diagCopyBtn">Copy</button>
+              <button class="btn-secondary" id="diagClearBtn">Clear</button>
+            </div>
+          </section>
+
           <section class="settings-card">
             <h2>How the app is being used</h2>
             <p class="settings-desc">A read-only look at what each profile is actually logging — useful for working out which parts of Daylign are worth improving. This never loads anyone else's data into the app, so it cannot change their numbers.</p>

@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
   bindPullToRefresh();
   bindSheetDrag();
   if (typeof bindSyncStatusUI === 'function') bindSyncStatusUI();
+  if (typeof bindDiagnostics === 'function') bindDiagnostics();
   // The date format is breakpoint-dependent, so it has to be re-derived when
   // the viewport crosses 600px (rotation, or a resized desktop window).
   window.matchMedia('(max-width: 600px)').addEventListener('change', setHeaderDate);
@@ -534,6 +535,7 @@ function render() {
   if (typeof updateProfileSettingsCard === 'function') updateProfileSettingsCard();
   if (typeof renderGoalsSummary === 'function') renderGoalsSummary();
   if (typeof renderWatchConnect === 'function') renderWatchConnect();
+  if (typeof renderDiagnostics === 'function') renderDiagnostics();
   if (typeof renderTaxonomyManager === 'function') {
     renderTaxonomyManager();
     // Keep the popup in sync while it's open (add/delete/rename call render()).

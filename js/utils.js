@@ -35,6 +35,9 @@ function recordError(kind, detail) {
   if (recentErrors.length > 10) recentErrors.shift();
   console.warn('[daylign]', kind, detail);
   if (typeof showToast === 'function') showToast('Something went wrong — that action may not have saved');
+  // Keep the panel live if it happens to be open, so an error that fires while
+  // you are looking at Settings appears without a reload.
+  if (typeof renderDiagnostics === 'function') { try { renderDiagnostics(); } catch (e) {} }
 }
 window.addEventListener('error', (e) => recordError('error', (e && e.message) || 'unknown'));
 window.addEventListener('unhandledrejection', (e) => {
@@ -302,4 +305,46 @@ function haptic(kind) {
     const proxy = ensureHapticSwitch();
     if (proxy) proxy.click(); // iOS only ever gives one flavour of tick
   } catch (e) { /* haptics are a nicety — never let them surface */ }
+}
+
+// ---- Recent errors panel (Settings > Your data) ----
+// recordError has been filling recentErrors since it was written, for a panel
+// that was never built. So the app would tell you "Something went wrong — that
+// action may not have saved" and then discard the single fact that explained
+// it. On an installed PWA there is no console to open, which made an
+// intermittent failure genuinely undiagnosable.
+function renderDiagnostics() {
+  const host = document.getElementById('diagList');
+  if (!host) return;
+  if (!recentErrors.length) {
+    host.innerHTML = '<p class="diag-empty">No errors recorded this session.</p>';
+    return;
+  }
+  // Newest first — the one you just hit is the one you came here to read.
+  host.innerHTML = recentErrors.slice().reverse().map(e => {
+    const t = new Date(e.at);
+    const when = isNaN(t) ? e.at : t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+    return `<div class="diag-row">
+      <div class="diag-row-head"><span class="diag-kind">${esc(e.kind)}</span><span class="diag-when">${esc(when)}</span></div>
+      <div class="diag-detail">${esc(e.detail)}</div>
+    </div>`;
+  }).join('');
+}
+
+function diagnosticsText() {
+  if (!recentErrors.length) return 'No errors recorded.';
+  return recentErrors.map(e => `[${e.at}] ${e.kind}: ${e.detail}`).join('\n');
+}
+
+function bindDiagnostics() {
+  const copy = document.getElementById('diagCopyBtn');
+  const clear = document.getElementById('diagClearBtn');
+  if (copy) copy.addEventListener('click', () => {
+    const txt = diagnosticsText();
+    if (navigator.clipboard) navigator.clipboard.writeText(txt).catch(() => {});
+  });
+  if (clear) clear.addEventListener('click', () => {
+    recentErrors.length = 0;
+    renderDiagnostics();
+  });
 }
