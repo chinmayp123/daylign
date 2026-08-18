@@ -384,9 +384,38 @@ function saveToFirebase(data) {
   }, 12000);
 
   setSyncStatus('saving');
+
+  // Last line of defence on key names. customFoods is keyed by the food's
+  // display name, and the photo/voice analysis invents those names — one called
+  // "Pappu (dal/lentil curry)" was enough to break EVERY save, because Firebase
+  // rejects / in a key. Sanitising at the banking sites is the real fix; this
+  // catches anything that reaches here by some other route.
+  if (payload.customFoods && typeof payload.customFoods === 'object') {
+    const clean = {};
+    let renamed = 0;
+    Object.keys(payload.customFoods).forEach(k => {
+      const safe = (typeof safeFoodName === 'function') ? safeFoodName(k) : k;
+      if (!safe) return;
+      if (safe !== k) renamed++;
+      clean[safe] = payload.customFoods[k];
+    });
+    if (renamed) {
+      console.warn('[daylign] renamed ' + renamed + ' food key(s) that Firebase would have rejected');
+      payload.customFoods = clean;
+      state.customFoods = clean;   // keep memory and cloud agreeing
+    }
+  }
+
   // update() rather than set(): set() would delete any key left out of the
   // payload, which is now most of them.
-  DATA_REF.update(payload)
+  //
+  // Wrapped because update() validates keys SYNCHRONOUSLY and throws rather
+  // than rejecting — so the .catch() below never saw it. That uncaught throw
+  // propagated up through saveData -> renderDiet -> render and took the whole
+  // render down, while the indicator sat on "Saving…" for ever because
+  // pendingWrites was never decremented.
+  try {
+    DATA_REF.update(payload)
     .then(() => {
       clearTimeout(stallTimer);
       pendingWrites--;
@@ -399,9 +428,16 @@ function saveToFirebase(data) {
     .catch(err => {
       clearTimeout(stallTimer);
       pendingWrites--;
-      console.warn('Firebase write failed:', err);
-      setSyncStatus('error', 'Cloud sync failed: ' + (err && err.message ? err.message : 'unknown error') + '. Use Backup to save a copy.');
-    });
+        console.warn('Firebase write failed:', err);
+        setSyncStatus('error', 'Cloud sync failed: ' + (err && err.message ? err.message : 'unknown error') + '. Use Backup to save a copy.');
+      });
+  } catch (err) {
+    clearTimeout(stallTimer);
+    pendingWrites--;
+    console.warn('Firebase rejected the payload outright:', err);
+    setSyncStatus('error', 'Cloud sync failed: ' + (err && err.message ? err.message : 'unknown error') +
+      ' — your data is safe on this device. Use Backup to keep a copy.');
+  }
 }
 
 // One-time move of the original single-user node into users/chinmay.

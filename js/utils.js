@@ -348,3 +348,36 @@ function bindDiagnostics() {
     renderDiagnostics();
   });
 }
+
+// ---- Firebase-safe food names ----
+// Firebase Realtime Database forbids . # $ / [ ] in KEYS, and state.customFoods
+// is keyed by the food's display name. So one logged food called
+// "Pappu (dal/lentil curry)" — a name the photo analysis produced on its own —
+// made DATA_REF.update() throw, and because it throws SYNCHRONOUSLY the .catch()
+// on the write was never reached. Every save after that failed, the indicator
+// stuck on "Saving…" forever, and the throw took the render down with it.
+//
+// It healed on reload, which is what made it so confusing: applyFirebaseData
+// replaces customFoods with the cloud's clean copy, so the bad key vanished
+// until the next time that food was logged.
+//
+// The shared foodBank already had foodBankKey() for exactly this. The per-user
+// bank did not. This keeps the name readable rather than slugifying it, because
+// unlike foodBank the key here IS what the UI displays.
+const FIREBASE_ILLEGAL_KEY_CHARS = /[.#$/\[\]]/g;
+
+function safeFoodName(name) {
+  return String(name == null ? '' : name)
+    // "dal/lentil" -> "dal-lentil" reads correctly; the others just go.
+    .replace(/\//g, '-')
+    .replace(/[\[]/g, '(')
+    .replace(/[\]]/g, ')')
+    .replace(FIREBASE_ILLEGAL_KEY_CHARS, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function hasIllegalKeyChars(name) {
+  FIREBASE_ILLEGAL_KEY_CHARS.lastIndex = 0;
+  return FIREBASE_ILLEGAL_KEY_CHARS.test(String(name == null ? '' : name));
+}

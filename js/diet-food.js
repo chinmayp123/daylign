@@ -112,7 +112,7 @@ function isRemovedFood(name) {
 }
 
 function rememberFood(name, totals, servings) {
-  const key = (name || '').trim();
+  let key = (name || '').trim();
   if (!key) return false;
   const lower = key.toLowerCase();
   // User deleted this food before — respect that.
@@ -140,6 +140,9 @@ function rememberFood(name, totals, servings) {
     .replace(/\(.*$/, '')
     .trim() || '1 serving';
 
+  // Keyed by display name, so the name has to be a legal Firebase key.
+  key = (typeof safeFoodName === 'function') ? safeFoodName(key) : key;
+  if (!key) return false;
   state.customFoods[key] = {
     calories: per.calories,
     protein: per.protein,
@@ -167,7 +170,11 @@ function backfillRememberedFoods() {
     if (FOOD_DATABASE[lower] || seen.has(lower) || isRemovedFood(lower)) continue;
     if (!e.calories) continue;
     const n = Number(e.servings) > 0 ? Number(e.servings) : 1;
-    state.customFoods[key] = {
+    // Same rule for auto-banking: the photo/voice analysis names foods freely,
+    // and one slash in a name used to break every save from then on.
+    const safeKey = (typeof safeFoodName === 'function') ? safeFoodName(key) : key;
+    if (!safeKey) continue;
+    state.customFoods[safeKey] = {
       calories: Math.round(e.calories / n),
       protein: Math.round(((e.protein || 0) / n) * 10) / 10,
       carbs: Math.round(((e.carbs || 0) / n) * 10) / 10,
@@ -176,7 +183,7 @@ function backfillRememberedFoods() {
       fiber: 0,
       sugar: 0,
     };
-    if (typeof publishFoodToBank === 'function') publishFoodToBank(key, state.customFoods[key]);
+    if (typeof publishFoodToBank === 'function') publishFoodToBank(safeKey, state.customFoods[safeKey]);
     seen.add(lower);
     added++;
   }
@@ -447,7 +454,7 @@ function bindDietEvents() {
   // rows, which already know the meal and the date. Guarded, not deleted.
   const legacyAddBtn = $('#dietSaveBtn');
   if (legacyAddBtn) legacyAddBtn.addEventListener('click', () => {
-    const food = $('#dietFoodName').value.trim();
+    let food = $('#dietFoodName').value.trim();
     if (!food) return;
     const servings = Number($('#dietServings').value) || 1;
     const calories = Number($('#dietCalories').value) || 0;
@@ -491,6 +498,7 @@ function bindDietEvents() {
     // The macro fields hold totals for the current servings count — bank per-serving
     const n = Number($('#dietServings').value) > 0 ? Number($('#dietServings').value) : 1;
     const serving = ($('#dietServingInfo').textContent || '').replace(/^Per serving:\s*/i, '').split('·')[0].trim() || '1 serving';
+    food = (typeof safeFoodName === 'function') ? safeFoodName(food) : food;
     state.customFoods[food] = {
       calories: Math.round(calories / n),
       protein: Math.round(((Number($('#dietProtein').value) || 0) / n) * 10) / 10,
