@@ -1,7 +1,7 @@
 // Daylign service worker — network-first with cache fallback.
 // Online: every request hits the network (no stale code), responses refresh the cache.
 // Offline: the cached app shell serves, and data loads from localStorage.
-const CACHE = 'daylign-v112';
+const CACHE = 'daylign-v113';
 const ASSETS = [
   '.',
   'index.html',
@@ -48,11 +48,30 @@ const ASSETS = [
   'icons/icon-512.png',
 ];
 
+// cache.addAll() is ALL-OR-NOTHING: one asset failing to fetch rejects the
+// whole thing, so the install fails, skipWaiting() never runs, and the new
+// worker never activates — the app silently stays on the previous version.
+//
+// GitHub Pages returns the odd 503 while a deploy is propagating, which is
+// precisely when a new worker is trying to install. So a transient blip on any
+// ONE of ~40 files could pin a phone to an old build indefinitely. That is not
+// hypothetical: js/layout.js 503'd during the v112 rollout.
+//
+// Each file is cached on its own now. A miss is survivable — the fetch handler
+// is network-first and falls back to the cache, so an uncached asset simply
+// comes off the network on first use.
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CACHE)
-      .then((c) => c.addAll(ASSETS))
+      .then((c) => Promise.all(ASSETS.map((url) =>
+        c.add(url).catch((err) => {
+          console.warn('[sw] could not precache', url, err && err.message);
+        })
+      )))
       .then(() => self.skipWaiting())
+      // Even a catastrophic cache failure must not block activation; a worker
+      // that cannot cache is still better than one that never takes over.
+      .catch(() => self.skipWaiting())
   );
 });
 
