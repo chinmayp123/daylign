@@ -10703,7 +10703,7 @@ button.sync-status {
   left: 12px;
   right: 12px;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 76px);
-  z-index: 200;
+  z-index: 950;   /* above the FABs, which sit at 900 */
   display: flex;
   align-items: center;
   gap: 10px;
@@ -10725,7 +10725,7 @@ button.sync-status {
   line-height: 1.35;
 }
 .update-banner-btn {
-  min-height: 40px;
+  min-height: 44px;   /* same tap target as every other control */
   padding: 0 16px;
   background: #fff;
   border: none;
@@ -10746,6 +10746,17 @@ button.sync-status {
   line-height: 1;
   cursor: pointer;
 }
+/* The primary and voice FABs sit at z-index 900 in the same corner and covered
+   the Reload button outright - the one action the banner exists for. Rather
+   than push the banner up out of thumb reach, the FABs stand down while it is
+   showing; it is transient and dismissible, and New Task is still on Today. */
+body.has-update-banner .primary-fab,
+body.has-update-banner .voice-fab {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease;
+}
+
 @media (min-width: 900px) {
   /* No bottom nav on desktop, so it can sit lower. */
   .update-banner { left: auto; right: 20px; bottom: 20px; max-width: 380px; }

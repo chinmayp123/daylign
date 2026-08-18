@@ -929,8 +929,12 @@ function showUpdateBanner() {
     <button type="button" class="update-banner-btn" id="updateReloadBtn">Reload</button>
     <button type="button" class="update-banner-x" id="updateDismissBtn" aria-label="Dismiss">&times;</button>`;
   document.body.appendChild(el);
+  document.body.classList.add('has-update-banner');
   const go = document.getElementById('updateReloadBtn');
   if (go) go.addEventListener('click', () => location.reload());
   const x = document.getElementById('updateDismissBtn');
-  if (x) x.addEventListener('click', () => { el.remove(); });
+  if (x) x.addEventListener('click', () => {
+    el.remove();
+    document.body.classList.remove('has-update-banner');   // give the FABs back
+  });
 }
