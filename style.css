@@ -10693,3 +10693,60 @@ button.sync-status {
   overflow-wrap: anywhere;
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
 }
+
+/* ========== Update banner ========== */
+/* Sits above the bottom nav and clear of the home indicator, because on the
+   phone this is the one message that must not be missed — a stale build is
+   what made every fix this week look like it had not worked. */
+.update-banner {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 76px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--accent);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
+  color: #fff;
+  animation: updateBannerIn .28s cubic-bezier(.22, 1, .36, 1);
+}
+@keyframes updateBannerIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+.update-banner-text {
+  flex: 1;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.update-banner-btn {
+  min-height: 40px;
+  padding: 0 16px;
+  background: #fff;
+  border: none;
+  border-radius: 10px;
+  color: var(--accent);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.update-banner-x {
+  min-width: 32px;
+  min-height: 32px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, .8);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+@media (min-width: 900px) {
+  /* No bottom nav on desktop, so it can sit lower. */
+  .update-banner { left: auto; right: 20px; bottom: 20px; max-width: 380px; }
+}

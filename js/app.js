@@ -2,7 +2,9 @@
 document.addEventListener('DOMContentLoaded', () => {
   // Offline support: network-first SW, so code is always fresh when online
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    navigator.serviceWorker.register('sw.js')
+      .then(setupUpdateWatch)
+      .catch(() => {});
   }
   // state.js could not read the preference at parse time (settings-prefs.js
   // had not loaded), so honour it now that everything is present.
@@ -871,4 +873,64 @@ function populateCategoryDropdowns() {
   const opts = state.categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
   $('#taskCategory').innerHTML = opts;
   $('#filterCategory').innerHTML = '<option value="all">All Categories</option>' + opts;
+}
+
+// ========== Staying on the current version ==========
+// Registering a service worker was the whole update story: no updatefound, no
+// registration.update(), no reload. A new worker could install and activate
+// while the PAGE carried on running the JavaScript it loaded at startup.
+//
+// On desktop that barely shows, because opening a tab is a fresh load. An
+// installed iPhone PWA is RESUMED from the background for days without ever
+// re-executing its scripts, so it can sit on week-old code — which is why
+// every problem this week was "mostly the mobile version": the phone was
+// running builds that had already been fixed.
+//
+// Two halves: actually go and CHECK for a new worker (browsers only do this on
+// their own schedule, and an app that is never navigated may never trigger it),
+// and then do something visible when one is ready.
+let updateBannerShown = false;
+
+function setupUpdateWatch(reg) {
+  if (!reg) return;
+
+  // Resuming the app is the moment a phone is most likely to be stale, and the
+  // moment a reload costs least. Checking is cheap — unchanged files 304.
+  const check = () => { try { reg.update(); } catch (e) {} };
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
+  window.addEventListener('focus', check);
+  setTimeout(check, 3000);
+
+  reg.addEventListener('updatefound', () => {
+    const sw = reg.installing;
+    if (!sw) return;
+    sw.addEventListener('statechange', () => {
+      // A worker reaching 'installed' when one already controls the page means
+      // this is an UPDATE, not a first install.
+      if (sw.state === 'installed' && navigator.serviceWorker.controller) showUpdateBanner();
+    });
+  });
+
+  // sw.js calls skipWaiting(), so a new worker takes control on its own. The
+  // page is still running the old code at that point, so say so.
+  navigator.serviceWorker.addEventListener('controllerchange', showUpdateBanner);
+}
+
+// Deliberately NOT an automatic reload: a reload mid-set or mid-meal would
+// throw away whatever is typed but unsaved. Offer it instead, and make it
+// impossible to miss.
+function showUpdateBanner() {
+  if (updateBannerShown) return;
+  updateBannerShown = true;
+  const el = document.createElement('div');
+  el.className = 'update-banner';
+  el.innerHTML = `
+    <span class="update-banner-text">A newer version of Daylign is ready.</span>
+    <button type="button" class="update-banner-btn" id="updateReloadBtn">Reload</button>
+    <button type="button" class="update-banner-x" id="updateDismissBtn" aria-label="Dismiss">&times;</button>`;
+  document.body.appendChild(el);
+  const go = document.getElementById('updateReloadBtn');
+  if (go) go.addEventListener('click', () => location.reload());
+  const x = document.getElementById('updateDismissBtn');
+  if (x) x.addEventListener('click', () => { el.remove(); });
 }
