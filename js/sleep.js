@@ -86,8 +86,24 @@ function sleepRecentNights() {
   return out;
 }
 
+// Apple Health can hand back a night that sums 'In Bed' alongside the asleep
+// stages, which double-counts: three of Chinmay's nine readings came back at
+// 12.5-14.4h, and he confirmed those nights are simply wrong. They are left in
+// the record — that is his health data, not mine to rewrite — but they must not
+// be averaged as if real. The displayed 7-night mean was reading 11.5h against
+// an actual ~7.5h.
+//
+// A missing night is different and already handled everywhere: it is skipped,
+// never counted as zero, so forgetting the watch shrinks the sample without
+// dragging the number down.
+const SLEEP_MAX_PLAUSIBLE_HOURS = 12;
+
+function isPlausibleSleep(h) {
+  return typeof h === 'number' && h > 0 && h <= SLEEP_MAX_PLAUSIBLE_HOURS;
+}
+
 function sleepAverage(nights) {
-  const withData = nights.filter(n => n.hours !== null);
+  const withData = nights.filter(n => isPlausibleSleep(n.hours));
   if (!withData.length) return null;
   return withData.reduce((n, x) => n + x.hours, 0) / withData.length;
 }
@@ -123,7 +139,7 @@ function sleepBaselineHours() {
     const d = new Date(today + 'T00:00:00');
     d.setDate(d.getDate() - i);
     const h = sleepHoursFor(toLocalDateStr(d));
-    if (h !== null) vals.push(h);
+    if (isPlausibleSleep(h)) vals.push(h);
   }
   if (vals.length < 4) return null; // not enough to call anything "normal" yet
   vals.sort((a, b) => a - b);
@@ -321,16 +337,23 @@ function renderSleepCard() {
 
   const nights = sleepRecentNights();
   const avg = sleepAverage(nights);
-  const max = Math.max(9, ...nights.map(n => n.hours || 0));
+  // Scale to the believable nights only. A 14.4h double-count otherwise sets
+  // the ceiling and squashes every real night into the bottom half of the chart.
+  const max = Math.max(9, ...nights.map(n => isPlausibleSleep(n.hours) ? n.hours : 0));
   const source = sleepSourceFor(today);
 
   const bars = nights.map(n => {
-    const pct = n.hours ? Math.round((n.hours / max) * 100) : 0;
+    const pct = n.hours ? Math.min(100, Math.round((n.hours / max) * 100)) : 0;
     const dow = new Date(n.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'narrow' });
     const q = n.entry && n.entry.quality ? n.entry.quality : '';
-    const title = n.hours ? `${formatSleepHours(n.hours)} on ${formatDate(n.date)}` : `No sleep logged for ${formatDate(n.date)}`;
+    // Shown, but named for what it is — silently dropping a reading would be
+    // its own kind of lying about the data.
+    const odd = n.hours !== null && !isPlausibleSleep(n.hours);
+    const title = n.hours
+      ? `${formatSleepHours(n.hours)} on ${formatDate(n.date)}` + (odd ? ' — looks double-counted, not averaged' : '')
+      : `No sleep logged for ${formatDate(n.date)}`;
     return `<div class="sleep-bar-col" title="${title}">
-      <div class="sleep-bar-track"><div class="sleep-bar-fill ${q}" style="height:${pct}%"></div></div>
+      <div class="sleep-bar-track"><div class="sleep-bar-fill ${q}${odd ? ' is-suspect' : ''}" style="height:${pct}%"></div></div>
       <span class="sleep-bar-day">${dow}</span>
     </div>`;
   }).join('');

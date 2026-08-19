@@ -10761,3 +10761,15 @@ body.has-update-banner .voice-fab {
   /* No bottom nav on desktop, so it can sit lower. */
   .update-banner { left: auto; right: 20px; bottom: 20px; max-width: 380px; }
 }
+
+/* A sleep reading that double-counted "In Bed" alongside the asleep stages.
+   Kept visible and hatched rather than hidden — it IS in the health record,
+   it just isn't averaged. */
+.sleep-bar-fill.is-suspect {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--text-muted) 0 3px,
+    transparent 3px 6px
+  );
+  opacity: .55;
+}
