@@ -78,7 +78,7 @@ function renderDiet() {
         const t = comboTotals(c);
         return `<button type="button" class="diet-combo-tile" data-combo-id="${esc(c.id)}" data-combo-meal="${g.meal}" title="${esc(c.items.map(i => i.food).join(', '))}">
           <span class="diet-combo-name">${esc(c.name)}</span>
-          <span class="diet-combo-meta">${c.items.length} items &middot; ${Math.round(t.calories)} cal</span>
+          <span class="diet-combo-meta">${Math.round(t.calories)}</span>
         </button>`;
       }).join('');
       const usualsHtml = (usuals.length || comboChips) ? `
