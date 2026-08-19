@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
   bindSheetDrag();
   if (typeof bindSyncStatusUI === 'function') bindSyncStatusUI();
   if (typeof bindDiagnostics === 'function') bindDiagnostics();
+  if (typeof bindTaskCapture === 'function') bindTaskCapture();
   // The date format is breakpoint-dependent, so it has to be re-derived when
   // the viewport crosses 600px (rotation, or a resized desktop window).
   window.matchMedia('(max-width: 600px)').addEventListener('change', setHeaderDate);

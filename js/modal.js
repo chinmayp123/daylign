@@ -150,7 +150,9 @@ function handleSaveTask(e) {
     subtasks: [...editingSubtasks],
   };
 
-  if (!taskData.name) return;
+  // Was a bare return: tapping Save Task with no title did nothing and said
+  // nothing at all.
+  if (!taskData.name) { flagMissingTaskName(); return; }
 
   if (id) {
     const task = state.tasks.find(t => t.id === id);
@@ -415,4 +417,107 @@ function showTaskEditPane(taskId) {
   $('#modalSubtitle').textContent = 'Update the task details';
   fillTaskForm(taskId);
   setTimeout(() => { const el = $('#taskName'); if (el) el.focus(); }, 60);
+}
+
+// ========== Capturing a pasted note ==========
+// A task usually arrives as a blob of text from an email or a chat. You paste
+// it into Description and then still have to invent a title — and until you do,
+// Save Task silently does nothing, because handleSaveTask returned on an empty
+// name without a word to anyone.
+
+const TASK_TITLE_MAX = 70;
+
+// Openers that say nothing about the task itself.
+const TASK_SALUTATION = /^\s*(hi|hey|hello|dear|good (morning|afternoon|evening)|gentlemen|ladies|folks|team|all|everyone)\b[\s,:;.!-]*/i;
+
+// A usable title out of a paragraph: drop the greeting, take the first
+// sentence, and cut on a word boundary rather than mid-word.
+function titleFromText(text) {
+  let t = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!t) return '';
+  let prev;
+  do { prev = t; t = t.replace(TASK_SALUTATION, ''); } while (t !== prev);
+  // Ellipses are not sentence ends. "For BEADComply ... can you please" was
+  // being cut at the "..." and yielding the title "For BEADComply".
+  t = t.replace(/\.{2,}|…/g, ' ').replace(/\s+/g, ' ').trim();
+  const stop = t.search(/[.?!](\s|$)/);
+  if (stop > 12) t = t.slice(0, stop);
+  t = t.replace(/[.?!,;:]+$/, '').trim();
+  if (t.length <= TASK_TITLE_MAX) return t;
+  const cut = t.lastIndexOf(' ', TASK_TITLE_MAX);
+  let out = t.slice(0, cut > 20 ? cut : TASK_TITLE_MAX).trim();
+  // A word-boundary cut can still land on a joining word, leaving
+  // "...Apollo Contact Database and". Drop it.
+  out = out.replace(/\s+(and|or|but|the|a|an|to|for|of|with|in|on|at|that|which|from|by)$/i, '');
+  return out;
+}
+
+// Long pastes should make the box grow rather than scroll a 7-line window.
+function autoGrowTaskDesc() {
+  const el = document.getElementById('taskDesc');
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 420) + 'px';
+}
+
+function flagMissingTaskName() {
+  const el = document.getElementById('taskName');
+  if (!el) return;
+  el.classList.add('is-missing');
+  el.focus();
+  suggestTitleFromDescription();
+}
+
+// Offer a title built from whatever is already in Description. Offered, never
+// applied silently: a guessed title you did not notice is worse than none.
+function suggestTitleFromDescription() {
+  const wrap = document.getElementById('taskTitleSuggest');
+  const nameEl = document.getElementById('taskName');
+  const descEl = document.getElementById('taskDesc');
+  if (!wrap || !nameEl || !descEl) return;
+  const guess = titleFromText(descEl.value);
+  if (!guess || nameEl.value.trim()) { wrap.hidden = true; wrap.innerHTML = ''; return; }
+  wrap.hidden = false;
+  wrap.innerHTML = '<button type="button" class="task-title-chip" id="taskTitleChip">Title it: ' +
+    esc(guess) + '</button>';
+  const chip = document.getElementById('taskTitleChip');
+  if (chip) chip.addEventListener('click', () => {
+    nameEl.value = guess;
+    nameEl.classList.remove('is-missing');
+    wrap.hidden = true;
+    wrap.innerHTML = '';
+    nameEl.focus();
+  });
+}
+
+function bindTaskCapture() {
+  const nameEl = document.getElementById('taskName');
+  const descEl = document.getElementById('taskDesc');
+  if (!nameEl || !descEl) return;
+
+  descEl.addEventListener('input', () => {
+    autoGrowTaskDesc();
+    if (!nameEl.value.trim()) suggestTitleFromDescription();
+  });
+
+  nameEl.addEventListener('input', () => {
+    nameEl.classList.remove('is-missing');
+    const wrap = document.getElementById('taskTitleSuggest');
+    if (wrap && nameEl.value.trim()) { wrap.hidden = true; wrap.innerHTML = ''; }
+  });
+
+  // Pasting several lines into the TITLE is really a whole note: first line is
+  // the title, the rest belongs in the description.
+  nameEl.addEventListener('paste', (e) => {
+    const cd = e.clipboardData || window.clipboardData;
+    const text = cd && cd.getData ? cd.getData('text') : '';
+    if (!text || text.trim().indexOf('\n') === -1) return;   // single line: normal paste
+    e.preventDefault();
+    const lines = text.replace(/\r/g, '').split('\n');
+    const first = (lines.shift() || '').trim();
+    nameEl.value = first.length > TASK_TITLE_MAX ? titleFromText(first) : first;
+    const rest = lines.join('\n').trim();
+    if (rest) descEl.value = descEl.value ? descEl.value + '\n' + rest : rest;
+    autoGrowTaskDesc();
+  });
 }
