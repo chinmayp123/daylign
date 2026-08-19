@@ -10789,3 +10789,16 @@ body.has-update-banner .voice-fab {
   );
   opacity: .55;
 }
+
+/* At phone width "+ Something else", "Save these N" and the camera cannot share
+   one row: the add button gets squeezed to about a third of the width and wraps
+   its own label onto two lines. It is the primary action of the three, so it
+   takes a full row and the other two sit beneath it. */
+@media (max-width: 600px) {
+  .diet-meal-addrow { flex-wrap: wrap; }
+  .diet-meal-addrow .diet-meal-add {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+  .diet-meal-addrow .diet-meal-savecombo { flex: 1 1 auto; justify-content: center; }
+}
