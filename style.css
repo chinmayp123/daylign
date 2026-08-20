@@ -10841,3 +10841,33 @@ body.has-update-banner .voice-fab {
   resize: vertical;
   line-height: 1.55;
 }
+
+/* ========== Shared-shortcut warning ========== */
+/* The prebuilt Health shortcut posts to the original account's un-namespaced
+   external/<metric>/<date>. A second person running it unchanged writes over
+   the first person's health history and sees nothing in their own app. */
+.ob-watch-warn,
+.watch-warn {
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  background: var(--yellow-bg);
+  border: 1px solid var(--yellow);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  line-height: 1.55;
+  text-align: left;
+}
+.ob-watch-warn strong,
+.watch-warn strong { color: var(--text-primary); display: block; margin-bottom: 4px; }
+.ob-watch-url,
+.watch-warn code {
+  display: block;
+  margin: 6px 0;
+  padding: 6px 8px;
+  background: var(--bg-input);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}

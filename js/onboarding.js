@@ -126,6 +126,17 @@ function renderOnboardStep() {
       </div>`;
   } else if (step === 'watch') {
     const shortcuts = (typeof HEALTH_SHORTCUTS !== 'undefined') ? HEALTH_SHORTCUTS : [];
+    // The prebuilt shortcut posts to the ORIGINAL account's un-namespaced
+    // external/<metric>/<date>. Handing it unchanged to a second person means
+    // their steps and sleep overwrite the first person's health history, while
+    // their own app — which reads external/u/<id> — stays empty. So a
+    // non-legacy profile gets its own path and a warning, not a one-tap link.
+    const prof = (typeof currentProfile === 'function') ? currentProfile() : null;
+    const shared = !prof || !prof.legacy;
+    const base = (typeof firebaseConfig !== 'undefined' && firebaseConfig.databaseURL)
+      ? firebaseConfig.databaseURL.replace(/\/$/, '') + '/' +
+        ((typeof profileExternalPath === 'function') ? profileExternalPath() : 'external')
+      : '';
     body = `
       <div class="ob-mark">⌚</div>
       <h1>Connect your Apple Watch</h1>
@@ -133,6 +144,15 @@ function renderOnboardStep() {
       <div class="ob-watch-btns">
         ${shortcuts.map(s => `<a class="btn-secondary ob-watch-add" href="${esc(s.url)}" target="_blank" rel="noopener">＋ Add “${esc(s.label)}”</a>`).join('')}
       </div>
+      ${shared ? `
+        <div class="ob-watch-warn">
+          <strong>Change the URLs before you run it.</strong>
+          The shared shortcut posts to the account it was built for. Each
+          <em>Get Contents of URL</em> step must point at your own path instead:
+          <code class="ob-watch-url">${esc(base)}/&lt;metric&gt;/&lt;date&gt;.json</code>
+          Run it unchanged and your data lands on someone else's history and
+          never reaches yours.
+        </div>` : ''}
       <p class="ob-watch-note">Add it, run it once, and allow Health access. You can always set this up later — full steps live in <strong>Settings → Connect Apple Watch</strong>.</p>`;
   } else if (step === 'done') {
     const on = TOGGLEABLE_MODULES.filter(m => obDraft.modules[m.key] !== false).map(m => m.label);

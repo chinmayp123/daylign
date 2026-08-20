@@ -366,6 +366,14 @@ function renderWatchConnect() {
   wrap.innerHTML = `
     ${status}
     <ol class="watch-steps">
+      ${(!currentProfile() || !currentProfile().legacy) ? `
+        <li class="watch-warn">
+          <strong>Point the shortcut at your own path first.</strong>
+          The shared shortcut posts to the account it was built for. Every
+          <em>Get Contents of URL</em> step must use
+          <code>${esc(base)}/&lt;metric&gt;/&lt;date&gt;.json</code> instead, or your
+          health data overwrites someone else's and never reaches your own.
+        </li>` : ''}
       <li>
         <strong>Add the shortcuts</strong> to your iPhone (tap, then “Add Shortcut”):
         <div class="watch-shortcut-btns">
