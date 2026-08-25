@@ -10871,3 +10871,49 @@ body.has-update-banner .voice-fab {
   font-size: 11px;
   overflow-wrap: anywhere;
 }
+
+/* ========== Weight trend + quick weigh-in ========== */
+/* Down is the good direction for weight — the opposite of every other tile. */
+.health-tile-note.is-good { color: var(--green); font-weight: 600; }
+.health-tile-note.is-bad  { color: var(--yellow); font-weight: 600; }
+
+.weighin-modal { max-width: 380px; }
+.weighin-body {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px;
+  padding: 26px 24px 8px;
+}
+.weighin-input {
+  width: 160px;
+  padding: 6px 4px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid var(--border);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 42px;
+  font-weight: 700;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.weighin-input:focus { outline: none; border-bottom-color: var(--accent); }
+.weighin-input.is-missing { border-bottom-color: var(--red); }
+/* The spinners are useless at this size and steal the tap area. */
+.weighin-input::-webkit-outer-spin-button,
+.weighin-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.weighin-input { -moz-appearance: textfield; }
+.weighin-unit { color: var(--text-muted); font-size: 17px; font-weight: 600; }
+
+.weighin-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 18px 24px 22px;
+}
+.weighin-actions button { min-height: 44px; padding: 0 20px; }
+@media (max-width: 600px) {
+  .weighin-actions { flex-direction: column-reverse; }
+  .weighin-actions button { width: 100%; }
+}

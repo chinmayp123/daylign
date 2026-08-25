@@ -28,6 +28,33 @@ function renderDashboardProjectFilter() {
   });
 }
 
+// How the weigh-ins are actually going. Reads from the FIRST entry rather than
+// the previous one: day-to-day weight is mostly water and says nothing, while
+// "down 2.5 lbs since Jul 14" is the fact that keeps someone logging.
+function weightTrendNote(weighIns, goalW) {
+  if (!weighIns.length) return 'Tap to log your first';
+  const val = e => (e && typeof e[1] === 'object') ? Number(e[1].lbs) : Number(e[1]);
+  const latest = val(weighIns[weighIns.length - 1]);
+  if (weighIns.length < 2) return `${Math.round(Math.abs(latest - goalW) * 10) / 10} lbs to go`;
+  const first = val(weighIns[0]);
+  const delta = Math.round((latest - first) * 10) / 10;
+  const since = formatDate(weighIns[0][0]);
+  const togo = Math.round(Math.abs(latest - goalW) * 10) / 10;
+  if (delta === 0) return `Level since ${since} · ${togo} to go`;
+  const dir = delta < 0 ? 'Down' : 'Up';
+  return `${dir} ${Math.abs(delta)} lbs since ${since} · ${togo} to go`;
+}
+
+// Losing weight is the goal, so DOWN is the good direction here — the opposite
+// of every other tile.
+function weightTrendClass(weighIns) {
+  if (weighIns.length < 2) return '';
+  const val = e => (e && typeof e[1] === 'object') ? Number(e[1].lbs) : Number(e[1]);
+  const delta = val(weighIns[weighIns.length - 1]) - val(weighIns[0]);
+  if (Math.abs(delta) < 0.05) return '';
+  return delta < 0 ? 'is-good' : 'is-bad';
+}
+
 // Today's health at a glance — the numbers that matter on a cut
 function renderHealthStrip(today) {
   const el = $('#healthGrid');
@@ -67,23 +94,38 @@ function renderHealthStrip(today) {
     ...(steps !== null ? [{ view: 'gym', label: 'Steps', value: steps.toLocaleString(), sub: `/ ${(g.steps || 8000).toLocaleString()}`, pct: Math.min(100, (steps / (g.steps || 8000)) * 100), color: '#22c55e' }] : []),
     ...(exMin !== null ? [{ view: 'gym', label: 'Exercise', value: `${exMin} min`, sub: `/ ${g.exerciseMin || 30} min`, pct: Math.min(100, (exMin / (g.exerciseMin || 30)) * 100), color: '#f59e0b' }] : []),
     ...(sleepH !== null ? [{ view: 'training', label: 'Sleep', value: `${sleepH}h`, sub: `/ ${g.sleep || 8}h`, pct: Math.min(100, (sleepH / (g.sleep || 8)) * 100), color: '#a78bfa' }] : []),
-    { view: 'gym', label: 'Weight', value: latestW !== null ? `${latestW} lbs` : '—', sub: latestW !== null ? `→ ${g.weight} lbs` : 'log a weigh-in',
-      pct: null, note: latestW !== null ? `${Math.round(Math.abs(latestW - g.weight) * 10) / 10} lbs to go` : 'Tap to log your first', color: 'var(--purple)' },
+    // Weight leads with the TRAJECTORY, not the gap to goal. Across five weeks
+    // Chinmay went 165 -> 162.5 and the app never once said so; it only ever
+    // showed "7.5 lbs to go", which is the same sentence on a good week and a
+    // bad one. Down-is-good here, so a loss is green.
+    { view: 'gym', label: 'Weight', value: latestW !== null ? `${latestW} lbs` : '—',
+      sub: latestW !== null ? `→ ${g.weight} lbs` : 'tap to log',
+      pct: null, note: weightTrendNote(weighIns, g.weight),
+      noteClass: weightTrendClass(weighIns), color: 'var(--purple)', action: 'weigh-in' },
   ];
 
   el.innerHTML = tiles.map(t => `
-    <div class="health-tile" data-view="${t.view}" title="Open ${t.view}">
+    <div class="health-tile" data-view="${t.view}" data-action="${t.action || ''}" title="${t.action === 'weigh-in' ? 'Log a weigh-in' : 'Open ' + t.view}">
       <div class="health-tile-top">
         <span class="health-tile-label">${t.label}</span>
         <span class="health-tile-value">${t.value} <small>${t.sub}</small></span>
       </div>
       ${t.pct !== null
         ? `<div class="health-bar-track"><div class="health-bar-fill" style="width:${t.pct}%;background:${t.color}"></div></div>`
-        : `<div class="health-tile-note">${t.note}</div>`}
+        : `<div class="health-tile-note ${t.noteClass || ''}">${t.note}</div>`}
     </div>`).join('');
 
   $$('.health-tile').forEach(tile => {
-    tile.addEventListener('click', () => switchView(tile.dataset.view));
+    tile.addEventListener('click', () => {
+      // Weighing in was buried in Training, and the gaps between weigh-ins were
+      // growing (7, 5, 3, 5, 8, 9 days) on the one number the whole goal is
+      // measured by. One tap from Today now.
+      if (tile.dataset.action === 'weigh-in' && typeof openWeighIn === 'function') {
+        openWeighIn();
+        return;
+      }
+      switchView(tile.dataset.view);
+    });
   });
 }
 
@@ -345,16 +387,10 @@ function renderDashboard() {
   const completed = tasks.filter(t => t.status === 'done').length;
   const overdue = tasks.filter(t => t.dueDate && t.dueDate < today && t.status !== 'done').length;
 
-  animateNumber($('#totalTasks'), total);
-  animateNumber($('#inProgressTasks'), inProgress);
-  animateNumber($('#completedTasks'), completed);
-  animateNumber($('#overdueTasks'), overdue);
-
-  // Four zeros in a row reads as failure, not information — and first thing
-  // in the morning that is exactly what it is. Read from the computed values,
-  // not the DOM: animateNumber counts up from 0, so the text is mid-flight here.
-  const statsGrid = document.querySelector('#dashboardView .stats-grid');
-  if (statsGrid) statsGrid.hidden = (total + inProgress + completed + overdue) === 0;
+  // The four task counters used to render here. They are gone from Today: 150px
+  // above the health data to say "17 total / 0 in progress / 14 completed",
+  // which All Tasks already shows and nobody opens this app to read. The
+  // figures are still computed because the brief and reminders use them.
 
   renderHealthStrip(today);
   renderWeightTrend();
@@ -974,4 +1010,71 @@ function hideEmptyDashboardCards() {
   const pair = HIDE_WHEN_EMPTY.map(({ card }) => document.querySelector(card));
   const shown = pair.filter(el => el && !el.hidden);
   pair.forEach(el => { if (el) el.classList.toggle('is-solo', shown.length === 1 && !el.hidden); });
+}
+
+// ---- Quick weigh-in ----
+// The gaps between Chinmay's weigh-ins were widening — 7, 5, 3, 5, 8, 9 days —
+// on the single number his whole goal is defined by, while he logged every meal
+// without missing a day for six weeks. The difference was friction: food logs
+// from the screen he already has open, weight needed a trip to Training.
+//
+// Reuses state.weight and saveData directly rather than driving the hidden
+// Training inputs, so it cannot break if that form moves again.
+function openWeighIn() {
+  const existing = document.getElementById('weighInSheet');
+  if (existing) existing.remove();
+
+  const today = getTodayStr();
+  const g = (typeof getGoals === 'function') ? getGoals() : {};
+  const entries = Object.entries(state.weight || {}).sort((a, b) => a[0].localeCompare(b[0]));
+  const val = e => (e && typeof e[1] === 'object') ? Number(e[1].lbs) : Number(e[1]);
+  const last = entries.length ? val(entries[entries.length - 1]) : null;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'modal-overlay active';
+  wrap.id = 'weighInSheet';
+  wrap.innerHTML = `
+    <div class="modal weighin-modal">
+      <div class="modal-header">
+        <div class="modal-header-left">
+          <div>
+            <h2>Weigh in</h2>
+            <p class="modal-subtitle">${last !== null ? `Last: ${last} lbs` : 'First weigh-in'}${g.weight ? ` · goal ${g.weight}` : ''}</p>
+          </div>
+        </div>
+        <button class="modal-close" id="weighInClose" aria-label="Close">&times;</button>
+      </div>
+      <div class="weighin-body">
+        <input type="number" id="weighInValue" class="weighin-input" inputmode="decimal"
+               step="0.1" min="50" max="500" placeholder="${last !== null ? last : '160'}"
+               autocomplete="off">
+        <span class="weighin-unit">lbs</span>
+      </div>
+      <div class="weighin-actions">
+        <button type="button" class="btn-secondary" id="weighInCancel">Cancel</button>
+        <button type="button" class="btn-primary" id="weighInSave">Save</button>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+
+  const close = () => wrap.remove();
+  document.getElementById('weighInClose').addEventListener('click', close);
+  document.getElementById('weighInCancel').addEventListener('click', close);
+  wrap.addEventListener('click', (e) => { if (e.target === wrap) close(); });
+
+  const input = document.getElementById('weighInValue');
+  setTimeout(() => input.focus(), 80);
+
+  const save = () => {
+    const v = Number(input.value);
+    if (!v || v < 50 || v > 500) { input.classList.add('is-missing'); input.focus(); return; }
+    state.weight = state.weight || {};
+    state.weight[today] = Math.round(v * 10) / 10;
+    saveData(state);
+    if (typeof haptic === 'function') haptic('success');
+    close();
+    render();
+  };
+  document.getElementById('weighInSave').addEventListener('click', save);
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
 }

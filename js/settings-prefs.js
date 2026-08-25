@@ -24,7 +24,6 @@ const ACCENTS = [
 const DASH_WIDGETS = [
   { key: 'brief',     label: 'Daily brief',     sel: '#dailyBrief' },
   { key: 'plan',      label: 'Today plan',      sel: '#todayPlan' },
-  { key: 'stats',     label: 'Task stats',      sel: '#dashboardView .stats-grid' },
   { key: 'health',    label: 'Health strip',    sel: '#healthGrid' },
   { key: 'cardio',    label: 'Daily ride',      sel: '#todayCardio' },
   { key: 'reminders', label: 'Reminders',       sel: '#remindersBar' },

@@ -146,6 +146,14 @@
       <div class="view active" id="dashboardView">
                 <div class="layout-bar"><button type="button" class="layout-edit-btn" id="layoutEditBtn">Edit layout</button></div>
 
+        <!-- Health strip FIRST. Measured on a phone, this used to start at
+             screen 1.17 - every number below 986px of brief, triage and task
+             counters. Chinmay: "not even reading the today section and
+             scrolling down everytime to see all the data". So the data leads.
+             The counters that sat here are gone entirely; 17 total / 0 in
+             progress / 14 completed said almost nothing and cost 150px. -->
+        <div class="health-grid" id="healthGrid"></div>
+
         <!-- Daily brief: the morning read across training, food and tasks (js/brief.js) -->
         <div id="dailyBrief"></div>
 
@@ -155,48 +163,6 @@
 
         <!-- Project Filter -->
         <div class="dashboard-project-filter" id="dashboardProjectFilter"></div>
-        <!-- Stats Cards -->
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-icon total">
-              <svg aria-hidden="true" focusable="false" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
-            </div>
-            <div class="stat-info">
-              <span class="stat-number" id="totalTasks">0</span>
-              <span class="stat-label">Total Tasks</span>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon progress">
-              <svg aria-hidden="true" focusable="false" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
-            </div>
-            <div class="stat-info">
-              <span class="stat-number" id="inProgressTasks">0</span>
-              <span class="stat-label">In Progress</span>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon completed">
-              <svg aria-hidden="true" focusable="false" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg>
-            </div>
-            <div class="stat-info">
-              <span class="stat-number" id="completedTasks">0</span>
-              <span class="stat-label">Completed</span>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon overdue">
-              <svg aria-hidden="true" focusable="false" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            </div>
-            <div class="stat-info">
-              <span class="stat-number" id="overdueTasks">0</span>
-              <span class="stat-label">Overdue</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Today's Health Strip -->
-        <div class="health-grid" id="healthGrid"></div>
 
         <!-- Daily cardio one-tap (js/cardio.js) — a daily habit behind a nav
              tab never gets logged, so it surfaces here too. -->
