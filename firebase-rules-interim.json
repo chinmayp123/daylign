@@ -52,6 +52,15 @@
           ".write": "newData.exists()"
         }
       },
+      // Calendar events from the GitHub Action (tools/ics-to-daylign.mjs).
+      // Written as one object at external/calendar/all, NOT metric/date, so the
+      // numeric $metric rule below would refuse it - "all" is not a date and an
+      // event list is not a number. Needs its own named rule, matched before the
+      // wildcard.
+      "calendar": {
+        ".write": "newData.exists()"
+      },
+
       "workouts": {
         "$date": { ".write": "newData.exists()" }
       },
