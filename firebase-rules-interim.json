@@ -58,7 +58,12 @@
       // event list is not a number. Needs its own named rule, matched before the
       // wildcard.
       "calendar": {
-        ".write": "newData.exists()"
+        // Deletion allowed, unlike the health metrics: this node is a mirror of
+        // an external feed, not a record. The sync PUTs the whole list each run,
+        // and a week with no meetings has to be able to empty it - a rule of
+        // "newData.exists()" alone would freeze the last non-empty list in place
+        // for ever.
+        ".write": true
       },
 
       "workouts": {
