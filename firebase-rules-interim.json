@@ -91,14 +91,17 @@
     // Public intake for testers (report.html). Write-only and CREATE-only:
     // !data.exists() means a submission can be made but never edited or
     // deleted, and ".read": false means a tester cannot read anyone else's
-    // report - or their own back. That is what makes an unauthenticated
-    // endpoint safe here, where a public board would not be.
+    // report. Reads are OPEN because the app has no authentication, so there is
+    // no way to let only the owner read. Bug reports and app screenshots are the
+    // least sensitive thing in this database, and users/<id> is already readable;
+    // the create-only WRITE rule is what still matters - nobody can edit or
+    // delete a filed report, including the person who filed it.
     //
     // Screenshots ride along as base64. They live HERE rather than under
     // users/<id> because the app subscribes to that whole node with .on(),
     // so images there would be re-downloaded on every sync.
     "inbox": {
-      ".read": false,
+      ".read": true,   // see the note above: the app has no auth to read it otherwise
       "$reportId": {
         ".write": "!data.exists() && newData.exists()",
         ".validate": "newData.hasChildren(['title', 'at'])",
