@@ -88,6 +88,34 @@
       }
     },
 
+    // Public intake for testers (report.html). Write-only and CREATE-only:
+    // !data.exists() means a submission can be made but never edited or
+    // deleted, and ".read": false means a tester cannot read anyone else's
+    // report - or their own back. That is what makes an unauthenticated
+    // endpoint safe here, where a public board would not be.
+    //
+    // Screenshots ride along as base64. They live HERE rather than under
+    // users/<id> because the app subscribes to that whole node with .on(),
+    // so images there would be re-downloaded on every sync.
+    "inbox": {
+      ".read": false,
+      "$reportId": {
+        ".write": "!data.exists() && newData.exists()",
+        ".validate": "newData.hasChildren(['title', 'at'])",
+        "title":   { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "detail":  { ".validate": "newData.isString() && newData.val().length <= 4000" },
+        "who":     { ".validate": "newData.isString() && newData.val().length <= 60" },
+        "project": { ".validate": "newData.isString() && newData.val().length <= 40" },
+        "status":  { ".validate": "newData.isString() && newData.val().length <= 20" },
+        "at":      { ".validate": "newData.isNumber()" },
+        // Three screenshots at roughly 150KB each once base64-encoded.
+        "shots": {
+          "$i": { ".validate": "newData.isString() && newData.val().length <= 900000" }
+        },
+        "$other": { ".validate": false }
+      }
+    },
+
     "lifestack": {
       ".read": true,
       ".write": false
