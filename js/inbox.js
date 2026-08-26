@@ -3,11 +3,15 @@
 // outside users/<id>, because the app subscribes to that one with .on() and a
 // few base64 screenshots there would be re-downloaded on every sync.
 //
-// Nothing here writes into /inbox except a status flip, and the rules forbid
-// even that from the public side: a filed report cannot be edited or deleted by
-// whoever sent it. Accepting one COPIES it into tasks; the original is only
-// marked handled, so there is always a record of what was actually reported
-// versus what got written on the board.
+// The rules make a filed report unEDITABLE by anyone, including whoever sent
+// it - that is the guarantee worth having. Deletion IS allowed, because with no
+// auth there is no way to permit it for the owner alone, and an inbox nothing
+// can ever leave would be re-read in full on every launch.
+//
+// Accepting COPIES a report into tasks and keeps the original, so there is
+// always a record of what was actually reported next to whatever it got
+// reworded into. Dismissing deletes outright - a rejected report has nothing
+// worth keeping.
 
 let inboxReports = [];
 let inboxBound = false;
@@ -95,12 +99,18 @@ function renderInbox() {
           <button type="button" class="btn-secondary inbox-dismiss" data-dismiss="${esc(r.id)}">Dismiss</button>
           <button type="button" class="btn-primary inbox-accept" data-accept="${esc(r.id)}">Add to board</button>
         </div>
-      </div>`).join('')}`;
+      </div>`).join('')}
+    ${inboxReports.some(r => r.status === 'accepted')
+      ? `<button type="button" class="inbox-clear" id="inboxClear">Clear ${inboxReports.filter(r => r.status === 'accepted').length} already handled</button>`
+      : ''}`;
+
+  const clear = document.getElementById('inboxClear');
+  if (clear) clear.addEventListener('click', clearHandledReports);
 
   host.querySelectorAll('[data-accept]').forEach(b =>
     b.addEventListener('click', () => acceptReport(b.dataset.accept)));
   host.querySelectorAll('[data-dismiss]').forEach(b =>
-    b.addEventListener('click', () => setReportStatus(b.dataset.dismiss, 'dismissed')));
+    b.addEventListener('click', () => deleteReport(b.dataset.dismiss)));
   // Tap a screenshot to see it full size — thumbnails are useless for a bug.
   host.querySelectorAll('[data-shot]').forEach(img =>
     img.addEventListener('click', () => openShot(img.src)));
@@ -126,6 +136,31 @@ function setReportStatus(id, status) {
   ref.child(id).child('status').set(status).catch(() => {
     if (typeof showToast === 'function') showToast('Could not update that report');
   });
+}
+
+// Dismissing removes the report outright rather than flagging it. A rejected
+// report has nothing worth keeping, and the app subscribes to this whole node -
+// leaving dismissed screenshots behind means re-reading them on every launch,
+// for ever.
+function deleteReport(id) {
+  const ref = inboxRef();
+  if (!ref) return;
+  ref.child(id).remove().catch(() => {
+    if (typeof showToast === 'function') showToast('Could not remove that report');
+  });
+}
+
+// Accepted reports are KEPT: the task holds the reworded version, the report
+// holds what was actually said, plus the screenshots the task only references.
+// They still need a way out eventually, so the panel offers one once any exist.
+function clearHandledReports() {
+  const ref = inboxRef();
+  if (!ref) return;
+  const handled = inboxReports.filter(r => r.status === 'accepted');
+  handled.forEach(r => ref.child(r.id).remove().catch(() => {}));
+  if (typeof showToast === 'function' && handled.length) {
+    showToast(`Cleared ${handled.length} handled report${handled.length === 1 ? '' : 's'}`);
+  }
 }
 
 // Copy into the board rather than move: tasks are the working surface, the

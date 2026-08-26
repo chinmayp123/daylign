@@ -101,15 +101,29 @@
     // users/<id> because the app subscribes to that whole node with .on(),
     // so images there would be re-downloaded on every sync.
     "inbox": {
-      ".read": true,   // see the note above: the app has no auth to read it otherwise
+      // Open: with no auth there is no way to admit only the owner.
+      ".read": true,
       "$reportId": {
-        ".write": "!data.exists() && newData.exists()",
+        // Create OR delete, never edit. The middle case is the one that matters:
+        // a filed report cannot be reworded by anyone, including whoever sent it.
+        // Delete has to be allowed or the inbox is immortal - the app subscribes
+        // to this whole node, so undeletable screenshots would be re-read on
+        // every launch forever. With no auth there is no way to allow deletion
+        // for the owner alone, which is the same trade already made everywhere
+        // else in this database.
+        ".write": "(!data.exists() && newData.exists()) || !newData.exists()",
         ".validate": "newData.hasChildren(['title', 'at'])",
         "title":   { ".validate": "newData.isString() && newData.val().length <= 200" },
         "detail":  { ".validate": "newData.isString() && newData.val().length <= 4000" },
         "who":     { ".validate": "newData.isString() && newData.val().length <= 60" },
         "project": { ".validate": "newData.isString() && newData.val().length <= 40" },
-        "status":  { ".validate": "newData.isString() && newData.val().length <= 20" },
+        // The create-only rule above freezes a report FOREVER, which is right for
+        // its content but wrong for its workflow state: the app has to be able to
+        // mark one accepted or dismissed. A child .write grants where the parent
+        // withholds, so status - and only status - stays writable. Title, detail
+        // and screenshots remain unalterable once filed.
+        "status":  { ".write": true,
+                     ".validate": "newData.isString() && newData.val().length <= 20" },
         "at":      { ".validate": "newData.isNumber()" },
         // Three screenshots at roughly 150KB each once base64-encoded.
         "shots": {
