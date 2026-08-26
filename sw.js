@@ -1,7 +1,7 @@
 // Daylign service worker — network-first with cache fallback.
 // Online: every request hits the network (no stale code), responses refresh the cache.
 // Offline: the cached app shell serves, and data loads from localStorage.
-const CACHE = 'daylign-v123';
+const CACHE = 'daylign-v124';
 const ASSETS = [
   '.',
   'index.html',
@@ -44,6 +44,7 @@ const ASSETS = [
   // Without this the profile gate never loads offline and startup throws.
   'js/profile.js',
   'js/inbox.js',
+  'js/import-csv.js',
   'icons/icon-180.png',
   'icons/icon-192.png',
   'icons/icon-512.png',

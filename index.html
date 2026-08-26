@@ -842,6 +842,12 @@
             <button class="btn-primary" id="exportBtn">Download backup</button>
           </section>
 
+          <section class="settings-card">
+            <h2>Import from a spreadsheet</h2>
+            <p class="settings-desc">UAT findings and bug lists usually start life in a sheet, where nothing moves through anything. Paste the rows and they become tasks on the board. Columns are matched by their headings &mdash; Title, Status, Due, Reported by &mdash; and you see exactly what will be created before anything is written.</p>
+            <button class="btn-secondary" id="csvImportBtn">Paste a spreadsheet</button>
+          </section>
+
           <!-- recordError() has been collecting the last 10 failures since it was
                written, for a diagnostics panel that never got built — so the app
                would say "Something went wrong" and then hide the one thing that
@@ -1274,6 +1280,7 @@
   <script src="js/pull-refresh.js"></script>
   <script src="js/voice.js"></script>
   <script src="js/inbox.js"></script>
+  <script src="js/import-csv.js"></script>
   <script src="js/app.js"></script>
   <script src="js/onboarding.js"></script>
   <script src="js/enhancements.js"></script>

@@ -11085,3 +11085,77 @@ body.has-update-banner .voice-fab {
   cursor: pointer;
 }
 .inbox-clear:hover { border-color: var(--accent); color: var(--text-primary); }
+
+/* ========== CSV import ========== */
+.csv-modal { max-width: 620px; }
+.csv-body { padding: 20px 24px 6px; }
+.csv-text {
+  width: 100%;
+  min-height: 150px;
+  padding: 12px 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  color: var(--text-primary);
+  /* Monospace so misaligned columns are visible before importing. */
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 12.5px;
+  line-height: 1.5;
+  resize: vertical;
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+}
+.csv-text:focus { outline: none; border-color: var(--accent); }
+
+.csv-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+.csv-row label { flex: 0 0 auto; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+.csv-row select { flex: 1; min-height: 40px; }
+
+.csv-preview {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+}
+.csv-ok { margin: 0 0 8px; color: var(--green); font-size: 13.5px; }
+.csv-warn { margin: 0 0 6px; color: var(--yellow); font-size: 13px; line-height: 1.5; }
+.csv-cols {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  line-height: 1.7;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+}
+.csv-rows { margin-top: 10px; }
+.csv-rowitem {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 0;
+  border-top: 1px solid var(--border);
+  font-size: 12.5px;
+}
+.csv-rowname { color: var(--text-primary); overflow-wrap: anywhere; }
+.csv-rowmeta { flex: 0 0 auto; color: var(--text-muted); font-size: 11.5px; }
+.csv-more { margin: 8px 0 0; color: var(--text-muted); font-size: 11.5px; }
+
+.csv-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 18px 24px 22px;
+}
+.csv-actions button { min-height: 44px; padding: 0 20px; }
+@media (max-width: 600px) {
+  .csv-actions { flex-direction: column-reverse; }
+  .csv-actions button { width: 100%; }
+  .csv-row { flex-direction: column; align-items: stretch; }
+}
