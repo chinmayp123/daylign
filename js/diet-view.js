@@ -121,8 +121,21 @@ function renderDiet() {
                   <button type="button" class="diet-serv-step" data-step="-0.5" data-idx="${idx}" aria-label="Fewer servings">−</button>
                   <span class="diet-serv-val">${servVal}</span>
                   <button type="button" class="diet-serv-step" data-step="0.5" data-idx="${idx}" aria-label="More servings">+</button>
-                  <span class="diet-serv-caption">servings</span>
-                </div>
+                  <span class="diet-serv-caption">servings</span>
+                  <button type="button" class="diet-entry-editbtn" data-idx="${idx}" title="Fix the name or the numbers">Edit</button>
+                </div>
+                <form class="diet-entry-form" data-idx="${idx}"${dietEditFormIdx === idx ? '' : ' hidden'}>
+                  <input type="text" class="dic-in def-name" name="food" value="${esc(e.food)}" placeholder="Food" maxlength="80" autocomplete="off">
+                  <div class="def-macros">
+                    <label>cal<input type="number" class="dic-in" name="calories" inputmode="decimal" min="0" step="1" value="${Math.round(e.calories || 0)}"></label>
+                    <label>protein<input type="number" class="dic-in" name="protein" inputmode="decimal" min="0" step="0.1" value="${Math.round((e.protein || 0) * 10) / 10}"></label>
+                    <label>carbs<input type="number" class="dic-in" name="carbs" inputmode="decimal" min="0" step="0.1" value="${Math.round((e.carbs || 0) * 10) / 10}"></label>
+                    <label>fat<input type="number" class="dic-in" name="fat" inputmode="decimal" min="0" step="0.1" value="${Math.round((e.fat || 0) * 10) / 10}"></label>
+                  </div>
+                  <div class="def-caption">as logged, for ${servVal}× serving${servVal === 1 ? '' : 's'}</div>
+                  <label class="def-bank"><input type="checkbox" name="fixBank" checked> Fix it in My Foods and saved meals too</label>
+                  <div class="def-actions"><button type="submit" class="def-save">Save</button><button type="button" class="def-cancel">Cancel</button></div>
+                </form>
               </div>`;
             };
             if (block.type === 'single') return renderEntry(block.entry, false);
@@ -244,6 +257,36 @@ function renderDiet() {
     });
   });
 
+  // Edit opens the row's form (name + macros); Save writes it through updateDietEntry.
+  $$('#dietMealsList .diet-entry-editbtn').forEach(btn => {
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const idx = Number(btn.dataset.idx);
+      dietEditFormIdx = (dietEditFormIdx === idx) ? null : idx;
+      dietEditOpenIdx = idx;
+      renderDiet();
+      const f = document.querySelector(`#dietMealsList .diet-entry-form[data-idx="${idx}"]`);
+      if (f && !f.hidden) { const inp = f.querySelector('input[name="calories"]'); if (inp) { inp.focus(); inp.select(); } }
+    });
+  });
+  $$('#dietMealsList .diet-entry-form').forEach(form => {
+    form.addEventListener('click', (ev) => ev.stopPropagation());
+    form.addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      const idx = Number(form.dataset.idx);
+      const fd = new FormData(form);
+      const ok = (typeof updateDietEntry === 'function') && updateDietEntry(idx, {
+        food: fd.get('food'), calories: fd.get('calories'), protein: fd.get('protein'), carbs: fd.get('carbs'), fat: fd.get('fat'),
+        fixBank: fd.get('fixBank') === 'on',
+      });
+      dietEditFormIdx = null; dietEditOpenIdx = null;
+      renderDiet();
+      if (ok && typeof showToast === 'function') showToast(fd.get('fixBank') === 'on' ? 'Fixed here, in My Foods and in your saved meals' : 'Fixed this entry');
+    });
+    const cancel = form.querySelector('.def-cancel');
+    if (cancel) cancel.addEventListener('click', () => { dietEditFormIdx = null; renderDiet(); });
+  });
+
   // Servings +/- rescales that entry's macros in proportion and re-saves.
   $$('#dietMealsList .diet-serv-step').forEach(btn => {
     btn.addEventListener('click', (ev) => {
@@ -302,7 +345,7 @@ function renderDiet() {
   $$('.diet-delete-food').forEach(btn => {
     btn.addEventListener('click', () => {
       state.diet.splice(Number(btn.dataset.dietIdx), 1);
-      dietEditOpenIdx = null; // indices shift after a splice — don't reopen the wrong row
+      dietEditOpenIdx = null; dietEditFormIdx = null; // indices shift after a splice — don't reopen the wrong row
       saveData(state);
       renderDiet();
     });

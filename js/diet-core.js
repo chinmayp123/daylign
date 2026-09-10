@@ -157,6 +157,57 @@ function mealUsuals(meal, limit) {
 
 // Which logged entry's servings stepper is expanded (survives re-render).
 let dietEditOpenIdx = null;
+// Which logged entry's full editor (name + macros) is open.
+let dietEditFormIdx = null;
+
+// Correct a logged entry: its name and the macros AS LOGGED (for its servings).
+// With fixBank, the same correction goes to My Foods (per serving, so the next
+// log is right) and to every saved meal that carries the food (scaled to the
+// servings the meal uses) — a wrong patty is wrong everywhere it was copied.
+function updateDietEntry(idx, v) {
+  const e = state.diet[idx];
+  if (!e) return false;
+  const oldName = (e.food || '').trim();
+  const name = String(v.food || '').trim().slice(0, 80) || oldName;
+  const num = (x, dp) => { const n = Math.max(0, Number(x) || 0); return dp ? Math.round(n * 10) / 10 : Math.round(n); };
+  e.food = name;
+  e.calories = num(v.calories); e.protein = num(v.protein, 1); e.carbs = num(v.carbs, 1); e.fat = num(v.fat, 1);
+  if (v.fixBank) {
+    const n = Number(e.servings) > 0 ? Number(e.servings) : 1;
+    const per = {
+      calories: Math.round(e.calories / n),
+      protein: Math.round((e.protein / n) * 10) / 10,
+      carbs: Math.round((e.carbs / n) * 10) / 10,
+      fat: Math.round((e.fat / n) * 10) / 10,
+    };
+    const lowerOld = oldName.toLowerCase(), lowerNew = name.toLowerCase();
+    // My Foods: whatever sat under either name goes; the corrected one takes its place
+    let serving = '1 serving';
+    Object.keys(state.customFoods).forEach(k => {
+      const kl = k.toLowerCase();
+      if (kl === lowerOld || kl === lowerNew) { if (state.customFoods[k] && state.customFoods[k].serving) serving = state.customFoods[k].serving; delete state.customFoods[k]; }
+    });
+    const key = (typeof safeFoodName === 'function') ? safeFoodName(name) : name;
+    if (key) {
+      state.customFoods[key] = { calories: per.calories, protein: per.protein, carbs: per.carbs, fat: per.fat, serving: serving, fiber: 0, sugar: 0 };
+      if (typeof publishFoodToBank === 'function') publishFoodToBank(key, state.customFoods[key]);
+    }
+    // a food deleted from the bank earlier is wanted again if it is being corrected
+    if (Array.isArray(state.removedFoods)) state.removedFoods = state.removedFoods.filter(r => r !== lowerOld && r !== lowerNew);
+    // saved meals that carry this food
+    comboList().forEach(c => (c.items || []).forEach(it => {
+      if ((it.food || '').trim().toLowerCase() !== lowerOld) return;
+      const s = Number(it.servings) > 0 ? Number(it.servings) : 1;
+      it.food = name;
+      it.calories = Math.round(per.calories * s);
+      it.protein = Math.round(per.protein * s * 10) / 10;
+      it.carbs = Math.round(per.carbs * s * 10) / 10;
+      it.fat = Math.round(per.fat * s * 10) / 10;
+    }));
+  }
+  saveData(state);
+  return true;
+}
 // "Skip or shrink today" advice shows expanded by default so it's actually
 // useful — just in a calm, light style rather than bold red cards. Still
 // collapsible via the chevron; remembers its state per session.

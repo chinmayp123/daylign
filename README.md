@@ -213,7 +213,7 @@ js/
   Diet (split from one 2k-line file; load order matters)
     diet-data.js      — FOOD_DATABASE + diet state vars
     diet-core.js      — Quick-add, "Your Usuals", Food Library toggle
-    diet-view.js      — renderDiet: meal log, tiles, servings steppers
+    diet-view.js      — renderDiet: meal log, tiles, servings steppers, the row editor (Edit → name + macros, fixes the bank + saved meals)
     diet-food.js      — Search, food bank, manual entry form
     diet-goals.js     — Goals, recommendations, advice, review, water
 

@@ -8088,6 +8088,31 @@ body.logfood-sheet-lock { overflow: hidden; }
   color: var(--text-muted);
   margin-left: auto;
 }
+/* Edit a logged row: the name and the numbers, right where they are wrong */
+.diet-entry-editbtn {
+  min-height: 32px; padding: 0 12px;
+  border: 1px solid var(--border); border-radius: 999px;
+  background: var(--bg-secondary); color: var(--text-secondary);
+  font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.diet-entry-editbtn:hover { border-color: var(--accent); color: var(--accent-hover); }
+.diet-entry-form {
+  display: grid; gap: 8px;
+  margin-top: 8px; padding: 10px;
+  background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm);
+}
+.diet-entry-form[hidden] { display: none; }
+.diet-entry-form .def-name { text-align: left; font-weight: 600; }
+.def-macros { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.def-macros label { display: grid; gap: 3px; font-size: 10px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase; color: var(--text-muted); text-align: center; }
+.def-caption { font-size: 11px; color: var(--text-muted); }
+.def-bank { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary); cursor: pointer; }
+.def-bank input { width: 16px; height: 16px; accent-color: var(--accent); }
+.def-actions { display: flex; gap: 6px; }
+.def-save, .def-cancel { min-height: 38px; padding: 0 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; cursor: pointer; }
+.def-save { flex: 1; border: 1px solid var(--accent); background: var(--accent); color: #fff; }
+.def-save:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.def-cancel { border: 1px solid var(--border); background: transparent; color: var(--text-secondary); }
 .diet-inline-input {
   width: 100%;
   min-height: 44px;
