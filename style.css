@@ -11410,3 +11410,60 @@ body.logbar-open .voice-fab {
   transform: translateY(6px);
 }
 .primary-fab, .voice-fab { transition: opacity 140ms ease, transform 140ms ease; }
+
+
+/* ---- A logged row should look logged ---- */
+/* It sat on --bg-secondary with no border, which against the card read as
+   background rather than as a thing that is THERE - and gave no sign it was
+   tappable, so the servings stepper and Edit behind it were never found. */
+.diet-meal-group .diet-food-entry {
+  position: relative;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0;
+  margin-bottom: 6px;
+  overflow: hidden;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+/* The stripe is what carries "this is logged" at a glance down the column. */
+.diet-meal-group .diet-food-entry::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--accent);
+  opacity: .55;
+}
+.diet-meal-group .diet-food-entry-main { padding: 0 10px 0 13px; }
+.diet-meal-group .diet-food-name { font-weight: 600; color: var(--text-primary); }
+
+@media (hover: hover) {
+  .diet-meal-group .diet-food-entry:hover {
+    border-color: var(--accent);
+    background: var(--accent-glow);
+  }
+  .diet-meal-group .diet-food-entry:hover::before { opacity: 1; }
+}
+/* A phone has no hover, so the press itself has to answer. */
+.diet-meal-group .diet-food-entry:active { border-color: var(--accent); }
+
+/* Open for editing: unmistakably the row you are working on. */
+.diet-meal-group .diet-food-entry:has(.diet-entry-edit:not([hidden])) {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+.diet-meal-group .diet-food-entry:has(.diet-entry-edit:not([hidden]))::before { opacity: 1; }
+
+/* Ingredients inside a saved meal stay subordinate to the group that owns
+   them - they are not separate logged items. */
+.diet-meal-group .diet-food-entry.is-ingredient {
+  border-color: transparent;
+  background: none;
+}
+.diet-meal-group .diet-food-entry.is-ingredient::before { opacity: .2; }
+
+/* The header has to line up with the rows' new left inset. */
+.diet-meal-group .diet-row-head { padding: 0 10px 0 13px; }
