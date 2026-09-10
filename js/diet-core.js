@@ -500,6 +500,25 @@ function openComboEditor(id) {
 // of grouping is that breakfast reads as "Bread omelette", not five lines.
 let dietGroupOpen = {};
 
+// Which meal the log opens on. null means "work it out" - the meal you are in
+// by the clock on today, or the last meal you actually logged on a past day,
+// because on Tuesday there is no 'now' and opening an empty Snack is useless.
+// Set by tapping a folded meal, and deliberately NOT persisted: tomorrow should
+// open on tomorrow's meal, not on whatever you last poked.
+let dietOpenMeal = null;
+let dietOpenMealDate = null;   // the day that choice was made for
+
+function activeDietMeal(mealGroups) {
+  // A meal picked on Tuesday means nothing on Wednesday - fall back to the
+  // clock rather than carrying yesterday's choice into a new day.
+  if (dietOpenMeal && dietOpenMealDate === dietViewDate) return dietOpenMeal;
+  if (dietViewDate === getTodayStr()) {
+    return (typeof mealForHour === 'function') ? mealForHour(new Date().getHours()) : 'breakfast';
+  }
+  const withFood = (mealGroups || []).filter(g => g.entries && g.entries.length);
+  return withFood.length ? withFood[withFood.length - 1].meal : 'breakfast';
+}
+
 function toggleDietGroup(gid) {
   dietGroupOpen[gid] = !dietGroupOpen[gid];
   renderDiet();

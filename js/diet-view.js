@@ -64,7 +64,14 @@ function renderDiet() {
 
   const usualsByMeal = {};
   {
-    $('#dietMealsList').innerHTML = mealGroups.map(g => {
+    // LOG FIRST. One meal is open - the one you are in - and it carries the
+    // input bar, the usuals and the rows. The other three fold to a line each,
+    // so the thing you came here to do sits at the top instead of underneath
+    // everything else.
+    const openMeal = activeDietMeal(mealGroups);
+
+    const renderOpenMeal = (g) => {
+      return (() => {
       const mealMacros = sumMacros(g.entries);
       const isEmpty = g.entries.length === 0;
       // Your Usuals: your most-logged foods for THIS meal — one tap to log.
@@ -100,27 +107,33 @@ function renderDiet() {
               <span class="diet-meal-macro">${Math.round(mealMacros.fat)}g F</span>`}
             </span>
           </div>
+          ${g.entries.length ? `
+            <div class="diet-row-head">
+              <span>food</span><span></span>
+              <span>cal</span><span>P</span><span>C</span><span>F</span><span></span>
+            </div>` : ''}
           ${groupMealEntries(g.entries).map(block => {
             const renderEntry = (e, isIngredient) => {
               const idx = state.diet.indexOf(e);
               const servVal = Number(e.servings) > 0 ? Number(e.servings) : 1;
-              return `
-              <div class="diet-food-entry${isIngredient ? ' is-ingredient' : ''}" data-entry-idx="${idx}">
-                <div class="diet-food-entry-main">
-                  <span class="diet-food-name">${esc(e.food)}</span>
-                  <button type="button" class="diet-serv-pill" data-idx="${idx}" title="Tap to change servings">${servVal}×</button>
-                  <button class="diet-delete-food" data-diet-idx="${idx}">&times;</button>
-                </div>
-                <div class="diet-food-macros">
-                  <span>${Math.round(e.calories || 0)} cal</span>
-                  <span>${Math.round(e.protein || 0)}g P</span>
-                  <span>${Math.round(e.carbs || 0)}g C</span>
-                  <span>${Math.round(e.fat || 0)}g F</span>
-                </div>
-                <div class="diet-entry-edit"${dietEditOpenIdx === idx ? '' : ' hidden'}>
-                  <button type="button" class="diet-serv-step" data-step="-0.5" data-idx="${idx}" aria-label="Fewer servings">−</button>
-                  <span class="diet-serv-val">${servVal}</span>
-                  <button type="button" class="diet-serv-step" data-step="0.5" data-idx="${idx}" aria-label="More servings">+</button>
+              return `
+              <div class="diet-food-entry${isIngredient ? ' is-ingredient' : ''}" data-entry-idx="${idx}">
+                <!-- One grid line: food | serving | cal | P | C | F | x. It used
+                     to be a name row with "205 cal 4g P 45g C 0g F" underneath as
+                     a run of text, which you cannot compare down a column. -->
+                <div class="diet-food-entry-main">
+                  <span class="diet-food-name">${esc(e.food)}</span>
+                  <button type="button" class="diet-serv-pill" data-idx="${idx}" title="Tap to change servings">${servVal}×</button>
+                  <span class="dfm dfm-cal">${Math.round(e.calories || 0)}</span>
+                  <span class="dfm dfm-p">${Math.round(e.protein || 0)}</span>
+                  <span class="dfm dfm-c">${Math.round(e.carbs || 0)}</span>
+                  <span class="dfm dfm-f">${Math.round(e.fat || 0)}</span>
+                  <button class="diet-delete-food" data-diet-idx="${idx}">&times;</button>
+                </div>
+                <div class="diet-entry-edit"${dietEditOpenIdx === idx ? '' : ' hidden'}>
+                  <button type="button" class="diet-serv-step" data-step="-0.5" data-idx="${idx}" aria-label="Fewer servings">−</button>
+                  <span class="diet-serv-val">${servVal}</span>
+                  <button type="button" class="diet-serv-step" data-step="0.5" data-idx="${idx}" aria-label="More servings">+</button>
                   <span class="diet-serv-caption">servings</span>
                   <button type="button" class="diet-entry-editbtn" data-idx="${idx}" title="Fix the name or the numbers">Edit</button>
                 </div>
@@ -162,12 +175,22 @@ function renderDiet() {
           }).join('')}
           ${usualsHtml}
           <div class="diet-meal-addwrap" data-meal="${g.meal}">
+            <!-- One bar, three ways in: type, say it, snap it. These were three
+                 separate controls in a row, which made logging look like three
+                 decisions instead of one. -->
+            <div class="diet-logbar" data-logbar-meal="${g.meal}">
+              <svg class="dlb-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+              <span class="dlb-label">Log to ${esc(g.label.toLowerCase())} &mdash; type it, say it, or snap it</span>
+              <button type="button" class="dlb-btn" data-logbar-voice="${g.meal}" title="Say what you ate" aria-label="Log ${esc(g.label)} by voice">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0014 0M12 17v4M8 21h8"/></svg>
+              </button>
+              <button type="button" class="dlb-btn diet-meal-snap" data-snap-meal="${g.meal}" title="Snap a photo of this meal" aria-label="Snap a photo for ${esc(g.label)}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              </button>
+            </div>
             <div class="diet-meal-addrow">
               <button type="button" class="diet-meal-add" data-add-meal="${g.meal}">${addLabel}</button>
               ${g.entries.length >= 2 ? `<button type="button" class="diet-meal-savecombo" data-savecombo-meal="${g.meal}" title="Save these ${g.entries.length} items as a named meal you can log in one tap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>Save these ${g.entries.length}</button>` : ''}
-              <button type="button" class="diet-meal-snap" data-snap-meal="${g.meal}" title="Snap a photo of this meal" aria-label="Snap a photo for ${g.label}">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
-              </button>
             </div>
             <div class="diet-inline-search" hidden>
               <input type="text" class="diet-inline-input" placeholder="Search food to add to ${g.label.toLowerCase()}…" autocomplete="off">
@@ -176,7 +199,56 @@ function renderDiet() {
             <div class="diet-inline-photo" data-photo-meal="${g.meal}"></div>
           </div>
         </div>`;
-    }).join('');
+      })();
+    };
+
+    const foldLine = (g) => {
+      const m = sumMacros(g.entries);
+      // What is IN the meal, not a macro run: at a glance you want to recognise
+      // the meal, and calories are the only number that survives being skimmed.
+      const names = groupMealEntries(g.entries)
+        .map(b => b.type === 'group' ? b.name : ((b.entry && b.entry.food) || ''))
+        .filter(Boolean);
+      const summary = names.length ? names.join(' · ') : 'nothing yet';
+      return `
+        <button type="button" class="diet-meal-fold${g.entries.length ? '' : ' is-empty'}" data-open-meal="${g.meal}">
+          <svg class="dmf-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,6 15,12 9,18"/></svg>
+          <span class="dmf-name">${esc(g.label)}</span>
+          <span class="dmf-summary">${esc(summary)}</span>
+          ${g.entries.length
+            ? `<span class="dmf-cal">${Math.round(m.calories)} <small>cal</small></span>`
+            : '<span class="dmf-add">+ Add</span>'}
+        </button>`;
+    };
+
+    const opened = mealGroups.find(g => g.meal === openMeal) || mealGroups[0];
+    const folded = mealGroups.filter(g => g !== opened);
+    $('#dietMealsList').innerHTML =
+      renderOpenMeal(opened) +
+      `<div class="diet-meal-folds">${folded.map(foldLine).join('')}</div>`;
+
+    watchLogBar();
+
+    // Tapping a folded meal opens it; the one that was open folds up.
+    // The bar is the primary way in, so tapping anywhere on it opens the search
+    // the add button opens - the icons inside handle their own clicks.
+    $$('[data-logbar-meal]').forEach(bar => bar.addEventListener('click', (ev) => {
+      if (ev.target.closest('.dlb-btn')) return;
+      const add = document.querySelector(`.diet-meal-add[data-add-meal="${bar.dataset.logbarMeal}"]`);
+      if (add) add.click();
+    }));
+
+    // Voice is the app's existing panel; it already understands "log X to dinner".
+    $$('[data-logbar-voice]').forEach(b => b.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      if (typeof openVoicePanel === 'function') openVoicePanel();
+    }));
+
+    $$('[data-open-meal]').forEach(b => b.addEventListener('click', () => {
+      dietOpenMeal = b.dataset.openMeal;
+      dietOpenMealDate = dietViewDate;
+      renderDiet();
+    }));
   }
 
   // Your Usuals: tap a tile to log that food to the meal at one serving — no
@@ -614,3 +686,26 @@ function renderDiet() {
   if (typeof restorePendingPhoto === 'function') restorePendingPhoto();
 }
 
+
+// The floating pill sits bottom-right, which on a phone is exactly where the
+// log bar's voice and camera buttons are - the one control this whole screen
+// exists for was underneath it. Rather than move the pill (it is the only way
+// into the Food Library on mobile), fade it out while the bar is actually on
+// screen and bring it back as soon as it scrolls away.
+let logBarObserver = null;
+
+function watchLogBar() {
+  const bar = document.querySelector('.diet-logbar');
+  if (!bar || typeof IntersectionObserver !== 'function') return;
+  // The bar is rebuilt on every render, so the old element is gone - re-point
+  // the observer rather than stacking up a new one per render.
+  if (!logBarObserver) {
+    logBarObserver = new IntersectionObserver((entries) => {
+      const showing = entries.some(e => e.isIntersecting);
+      document.body.classList.toggle('logbar-open', showing);
+    }, { threshold: 0.4 });
+  }
+  logBarObserver.disconnect();
+  document.body.classList.remove('logbar-open');
+  logBarObserver.observe(bar);
+}
