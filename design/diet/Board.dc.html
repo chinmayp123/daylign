@@ -1,0 +1,111 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap">
+  <style>
+    body { margin: 0; background: #0b0b10; color: #f2f2f7; font-family: "Inter", "Segoe UI", -apple-system, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }
+    a { color: #8b8afc; } a:hover { color: #f2f2f7; }
+    .disp { font-family: "Space Grotesk", "Inter", "Segoe UI", sans-serif; }
+    .tnum { font-variant-numeric: tabular-nums; }
+    .card { background: #14141d; border: 1px solid #232330; border-radius: 16px; }
+    .nav { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 10px; color: #a5a5bd; font-size: 14px; font-weight: 500; }
+    .nav.on { background: rgba(109, 106, 248, 0.16); color: #8b8afc; }
+    .nav svg { width: 20px; height: 20px; }
+    .label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #8a8aa3; }
+    .pill { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 5px 12px; border-radius: 999px; border: 1px solid #6d6af8; background: rgba(109, 106, 248, .16); color: #f2f2f7; font-size: 12.5px; font-weight: 650; white-space: nowrap; }
+    .pill .n { padding: 1px 7px; border-radius: 999px; background: rgba(109, 106, 248, .22); color: #a5a5bd; font-size: 10.5px; font-weight: 700; }
+    .pill.usual { min-height: 34px; padding: 7px 12px; background: rgba(109, 106, 248, 0.16); color: #8b8afc; font-size: 12px; font-weight: 600; }
+    .pill.ghost { background: transparent; border: 1px dashed #232330; color: #8a8aa3; font-weight: 600; }
+    .row { display: grid; grid-template-columns: minmax(0, 1fr) 56px 64px 52px 52px 52px 28px; align-items: center; gap: 8px; min-height: 42px; padding: 0 10px; border-radius: 10px; background: #0f0f16; }
+    .row .nm { font-size: 13px; font-weight: 500; color: #f2f2f7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .row .m { font-size: 12px; color: #8a8aa3; text-align: right; font-variant-numeric: tabular-nums; }
+    .row .m.cal { color: #a5a5bd; font-weight: 600; }
+    .row .sv { justify-self: end; font-size: 11px; font-weight: 700; color: #8b8afc; background: rgba(109, 106, 248, 0.16); border: 1px solid #6d6af8; border-radius: 999px; padding: 2px 9px; }
+    .row .x { text-align: right; color: #8a8aa3; font-size: 14px; }
+    .row.hd { background: transparent; min-height: 22px; }
+    .row.hd .m, .row.hd .nm { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #8a8aa3; }
+    .row.ing { background: #14141d; margin-left: 12px; }
+    .group { border: 1px solid #232330; border-left: 3px solid #6d6af8; border-radius: 10px; background: #0f0f16; overflow: hidden; }
+    .ghead { display: flex; align-items: center; gap: 9px; min-height: 48px; padding: 8px 12px; }
+    .ghead .cnt { font-size: 10.5px; font-weight: 700; color: #6d6af8; background: rgba(109, 106, 248, .16); padding: 2px 7px; border-radius: 999px; }
+    .bar { height: 7px; border-radius: 4px; background: #0b0b10; overflow: hidden; }
+    .bar i { display: block; height: 100%; border-radius: 4px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid #232330; background: transparent; color: #a5a5bd; font-size: 12px; font-weight: 600; }
+    .btn.primary { border-color: #8b8afc; background: linear-gradient(180deg, #8b8afc, #6d6af8); color: #fff; }
+    .ico { width: 16px; height: 16px; }
+    .mealline { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 16px; }
+    .chev { width: 16px; height: 16px; flex: none; color: #8a8aa3; }
+    .sketch { font-family: "Space Grotesk", sans-serif; }
+    .wire { border: 1px dashed #232330; border-radius: 10px; color: #8a8aa3; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+    .note { position: absolute; left: 28px; bottom: 22px; right: 28px; padding: 12px 14px; border-radius: 10px; background: #0f0f16; border: 1px solid #232330; color: #a5a5bd; font-size: 12.5px; line-height: 1.5; }
+    .note b { color: #f2f2f7; }
+  </style>
+</helmet>
+<div style="width: 1440px; height: 900px; background: #0b0b10; display: flex; overflow: hidden; position: relative;">
+  <aside style="width: 260px; flex: none; background: #0f0f16; border-right: 1px solid #232330; display: flex; flex-direction: column; padding: 18px 16px; gap: 6px;">
+    <div class="disp" style="display: flex; align-items: center; gap: 12px; padding: 4px 10px 18px; font-size: 20px; font-weight: 700;"><span style="width: 32px; height: 32px; border-radius: 10px; background: #6d6af8; display: inline-flex; align-items: center; justify-content: center;"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8h12M6 12h12M6 16h8"></path></svg></span>Daylign</div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin-bottom: 10px; border: 1px solid #232330; border-radius: 12px; background: #14141d;"><span style="width: 28px; height: 28px; border-radius: 50%; background: #6d6af8; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;">C</span><div><div style="font-size: 13px; font-weight: 600;">Chinmay</div><div style="font-size: 11px; color: #8a8aa3;">Signed in</div></div></div>
+    <div class="nav"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg>Today</div><div class="nav"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path></svg>All Tasks</div><div class="nav"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M9 3v18M15 3v18"></path></svg>Board</div><div class="nav"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>Calendar</div>
+    <div style="height: 1px; background: #232330; margin: 8px 6px;"></div>
+    <div class="nav"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 5v14M18 5v14M3 8v8M21 8v8M6 12h12"></path></svg>Training</div><div class="nav on"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8h1a4 4 0 010 8h-1"></path><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"></path><path d="M6 1v3M10 1v3M14 1v3"></path></svg>Diet</div>
+    <div style="height: 1px; background: #232330; margin: 8px 6px;"></div>
+    <div class="nav"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"></path><path d="M7 14l4-4 4 4 5-6"></path></svg>Insights</div><div class="nav"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"></path></svg>Settings</div><div class="nav"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"></path></svg>Light mode</div>
+  </aside>
+  <main style="flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden;">
+  <div style="display: flex; align-items: center; gap: 16px; padding: 22px 32px 14px;">
+    <div><div class="disp" style="font-size: 28px; font-weight: 700; letter-spacing: -.01em; line-height: 1.1;">Diet</div><div style="margin-top: 4px; font-size: 13px; color: #a5a5bd;">Thursday, September 10, 2026</div></div>
+    <div style="margin-left: auto; display: flex; align-items: center; gap: 14px;">
+      <div style="display: flex; align-items: center; gap: 10px; width: 260px; height: 40px; padding: 0 14px; border-radius: 999px; background: #14141d; border: 1px solid #232330; color: #8a8aa3; font-size: 13px;"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>Search tasks…</div>
+      <span style="display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: #a5a5bd;"><i style="width: 8px; height: 8px; border-radius: 50%; background: #34d399;"></i>Synced</span>
+      <span class="btn primary" style="min-height: 40px; padding: 0 18px; font-size: 13px;"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"></path></svg>Food Library</span>
+    </div>
+  </div>
+  <div style="flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 14px; padding: 6px 32px 28px;">
+    <div class="card" style="display: flex; align-items: center; gap: 28px; padding: 12px 20px;">
+      <span class="disp" style="font-size: 16px; font-weight: 700;">Today</span>
+      <span class="tnum" style="font-size: 13px; color: #a5a5bd;"><b style="color: #f2f2f7; font-size: 18px;">1,463</b> / 2,100 cal · <span style="color: #34d399; font-weight: 600;">637 left</span></span>
+      <div style="flex: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px;"><div style="display: flex; align-items: center; gap: 8px;"><span class="label" style="width: 14px;">P</span><div class="bar" style="flex: 1;"><i style="width: 60%; background: #6366f1;"></i></div><span class="tnum" style="font-size: 12px; color: #a5a5bd; width: 64px; text-align: right;">96 / 160</span></div><div style="display: flex; align-items: center; gap: 8px;"><span class="label" style="width: 14px;">C</span><div class="bar" style="flex: 1;"><i style="width: 56%; background: #eab308;"></i></div><span class="tnum" style="font-size: 12px; color: #a5a5bd; width: 64px; text-align: right;">118 / 210</span></div><div style="display: flex; align-items: center; gap: 8px;"><span class="label" style="width: 14px;">F</span><div class="bar" style="flex: 1;"><i style="width: 89%; background: #ef4444;"></i></div><span class="tnum" style="font-size: 12px; color: #a5a5bd; width: 64px; text-align: right;">62 / 70</span></div></div>
+      <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: #a5a5bd;"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.7l5.7 5.7a8 8 0 11-11.3 0z"></path></svg>32 / 66 oz</span>
+    </div>
+    <div style="flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px;">
+      
+  <div class="card" style="display: flex; flex-direction: column; gap: 10px; padding: 14px; ">
+    <div style="display: flex; align-items: baseline; gap: 8px;"><span class="disp" style="font-size: 16px; font-weight: 700;">Breakfast</span><span class="tnum" style="margin-left: auto; font-size: 13px; font-weight: 600; color: #a5a5bd;">435 cal</span></div>
+    <div style="display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border-radius: 10px; background: #0b0b10; border: 1px solid #232330; color: #8a8aa3; font-size: 12.5px;"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Add…</div>
+    <div style="display: flex; flex-wrap: wrap; gap: 5px;"><span class="pill usual" style="min-height: 30px; padding: 5px 10px; font-size: 11.5px;">Bread Omlete</span><span class="pill usual" style="min-height: 30px; padding: 5px 10px; font-size: 11.5px;">3 boiled eggs</span><span class="pill usual" style="min-height: 30px; padding: 5px 10px; font-size: 11.5px;">PB + banana shake</span></div>
+    <div style="display: flex; flex-direction: column; gap: 5px; margin-top: 6px;"><div style="display: flex; justify-content: space-between; gap: 8px; min-height: 38px; align-items: center; padding: 0 10px; border-radius: 10px; background: #0f0f16; font-size: 12.5px;"><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Bread Omlete</span><span class="tnum" style="color: #8a8aa3; flex: none;">435</span></div></div>
+  </div>
+      
+  <div class="card" style="display: flex; flex-direction: column; gap: 10px; padding: 14px; ">
+    <div style="display: flex; align-items: baseline; gap: 8px;"><span class="disp" style="font-size: 16px; font-weight: 700;">Lunch</span><span class="tnum" style="margin-left: auto; font-size: 13px; font-weight: 600; color: #a5a5bd;">486 cal</span></div>
+    <div style="display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border-radius: 10px; background: #0b0b10; border: 1px solid #232330; color: #8a8aa3; font-size: 12.5px;"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Add…</div>
+    <div style="display: flex; flex-wrap: wrap; gap: 5px;"><span class="pill usual" style="min-height: 30px; padding: 5px 10px; font-size: 11.5px;">chicken 65</span><span class="pill usual" style="min-height: 30px; padding: 5px 10px; font-size: 11.5px;">Sourdough Bread</span><span class="pill usual" style="min-height: 30px; padding: 5px 10px; font-size: 11.5px;">PB + banana shake</span></div>
+    <div style="display: flex; flex-direction: column; gap: 5px; margin-top: 6px;"><div style="display: flex; justify-content: space-between; gap: 8px; min-height: 38px; align-items: center; padding: 0 10px; border-radius: 10px; background: #0f0f16; font-size: 12.5px;"><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">PB + banana protein shake.</span><span class="tnum" style="color: #8a8aa3; flex: none;">354</span></div><div style="display: flex; justify-content: space-between; gap: 8px; min-height: 38px; align-items: center; padding: 0 10px; border-radius: 10px; background: #0f0f16; font-size: 12.5px;"><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">chicken 65</span><span class="tnum" style="color: #8a8aa3; flex: none;">132</span></div></div>
+  </div>
+      
+  <div class="card" style="display: flex; flex-direction: column; gap: 10px; padding: 14px; border-color: rgba(109, 106, 248, .45);">
+    <div style="display: flex; align-items: baseline; gap: 8px;"><span class="disp" style="font-size: 16px; font-weight: 700;">Dinner</span><span style="font-size: 11px; font-weight: 600; color: #8b8afc; background: rgba(109, 106, 248, 0.16); border-radius: 999px; padding: 2px 8px;">now</span><span class="tnum" style="margin-left: auto; font-size: 13px; font-weight: 600; color: #a5a5bd;">542 cal</span></div>
+    <div style="display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border-radius: 10px; background: #0b0b10; border: 1px solid #232330; color: #8a8aa3; font-size: 12.5px;"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Add…</div>
+    <div style="display: flex; flex-wrap: wrap; gap: 5px;"><span class="pill usual" style="min-height: 30px; padding: 5px 10px; font-size: 11.5px;">Smash Burger · 418</span><span class="pill usual" style="min-height: 30px; padding: 5px 10px; font-size: 11.5px;">Thousand Island · 124</span><span class="pill usual" style="min-height: 30px; padding: 5px 10px; font-size: 11.5px;">Soya chunk curry</span></div>
+    <div style="display: flex; flex-direction: column; gap: 5px; margin-top: 6px;"><div style="display: flex; justify-content: space-between; gap: 8px; min-height: 38px; align-items: center; padding: 0 10px; border-radius: 10px; background: #0f0f16; font-size: 12.5px;"><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Ground Chicken Smash Burger · 7</span><span class="tnum" style="color: #8a8aa3; flex: none;">418</span></div><div style="display: flex; justify-content: space-between; gap: 8px; min-height: 38px; align-items: center; padding: 0 10px; border-radius: 10px; background: #0f0f16; font-size: 12.5px;"><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Spicy Thousand Island</span><span class="tnum" style="color: #8a8aa3; flex: none;">124</span></div></div>
+  </div>
+      
+  <div class="card" style="display: flex; flex-direction: column; gap: 10px; padding: 14px; ">
+    <div style="display: flex; align-items: baseline; gap: 8px;"><span class="disp" style="font-size: 16px; font-weight: 700;">Snack</span><span class="tnum" style="margin-left: auto; font-size: 13px; font-weight: 600; color: #a5a5bd;">0 cal</span></div>
+    <div style="display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border-radius: 10px; background: #0b0b10; border: 1px solid #232330; color: #8a8aa3; font-size: 12.5px;"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Add…</div>
+    <div style="display: flex; flex-wrap: wrap; gap: 5px;"><span class="pill usual" style="min-height: 30px; padding: 5px 10px; font-size: 11.5px;">Greek yogurt</span><span class="pill usual" style="min-height: 30px; padding: 5px 10px; font-size: 11.5px;">Coke Zero</span><span class="pill usual" style="min-height: 30px; padding: 5px 10px; font-size: 11.5px;">banana</span></div>
+    <div style="display: flex; flex-direction: column; gap: 5px; margin-top: 6px;"></div>
+  </div>
+    </div>
+    <div class="note"><b>Board.</b> All four meals at once, each column its own little logger, so a whole day is planned or logged in one screen. Tradeoff: needs the width — it only works on the desktop, the phone gets one column at a time.</div>
+  </div></main>
+</div>
+</x-dc>
+</body>
+</html>
