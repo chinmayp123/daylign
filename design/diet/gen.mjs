@@ -260,16 +260,16 @@ const ledgerBody = `
     <div class="note" style="position: static;"><b>Ledger.</b> The day as one table: every number is a click from being fixed (the patty's protein is being typed here), Tab moves along the row, the meal subtotals and the day total sit in the same columns. Tradeoff: it is a spreadsheet — fast for someone who checks numbers, cold for someone who just wants to tap what they ate.</div>
   </div>`;
 
-writeFileSync(join(HERE, "Main.dc.html"), shell("Main", mainBody, 1000));
+writeFileSync(join(HERE, "Main.dc.html"), shell("Main", mainBody, 1180));
 writeFileSync(join(HERE, "Board.dc.html"), shell("Board", boardBody));
 writeFileSync(join(HERE, "Compose.dc.html"), shell("Compose", composeBody));
 writeFileSync(join(HERE, "Ledger.dc.html"), shell("Ledger", ledgerBody));
 writeFileSync(join(HERE, "canvas.json"), JSON.stringify({
   artboards: [
-    { file: "Main.dc.html", title: "Log first · the meal you are in, open at the top", x: 0, y: 0, w: 1440, h: 1000 },
+    { file: "Main.dc.html", title: "Log first · the meal you are in, open at the top", x: 0, y: 0, w: 1440, h: 1180 },
     { file: "Board.dc.html", title: "Direction · Board", x: 1540, y: 0, w: 1440, h: 900 },
-    { file: "Compose.dc.html", title: "Direction · Compose", x: 0, y: 1140, w: 1440, h: 900 },
-    { file: "Ledger.dc.html", title: "Direction · Ledger", x: 1540, y: 1140, w: 1440, h: 900 },
+    { file: "Compose.dc.html", title: "Direction · Compose", x: 0, y: 1320, w: 1440, h: 900 },
+    { file: "Ledger.dc.html", title: "Direction · Ledger", x: 1540, y: 1320, w: 1440, h: 900 },
   ],
   annotations: [
     { id: "brief", x: 0, y: -190, w: 900, text: "What is wrong today: the log is at the bottom of one tall card, under the ring, the bars, the advice and the water — logging is the reason you open the tab and it is the last thing on it. Rows say \"5 cal 1g P 1g C 0g F\" in a run of text you cannot scan, and fixing a wrong number took a detour until last night.\n\nLog first (top left): the meal you are in right now is open at the top with ONE bar that logs by typing, voice or photo, its usuals and saved meals under the bar, and the rows in columns you can scan. The other meals fold to one line each. The day's numbers move to a rail on the right so they never push the log down.\n\nThree other ways beside it: Board (all four meals at once), Compose (a message line + confirm card, the log as a timeline), Ledger (a spreadsheet). Pick one, or mix." },
