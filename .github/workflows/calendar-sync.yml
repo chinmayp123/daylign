@@ -32,20 +32,35 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    # Until the ICS_URLS secret exists there is nothing to sync. Skipping is
-    # the honest state — the job used to run and fail, which sent a failure
-    # email every hour for a feature that simply had not been set up yet.
-    if: ${{ secrets.ICS_URLS != '' }}
+    # Until the ICS_URLS secret exists there is nothing to sync, and the guard
+    # has to live in a STEP: the `secrets` context is not available in a
+    # job-level `if:`, so `if: ${{ secrets.ICS_URLS != '' }}` made the whole
+    # file invalid and every scheduled run failed in 0s with "workflow file
+    # issue" — the hourly failure email this was written to prevent.
+    env:
+      ICS_URLS: ${{ secrets.ICS_URLS }}
     steps:
+      - name: Is a feed configured?
+        id: guard
+        run: |
+          if [ -z "$ICS_URLS" ]; then
+            echo "ICS_URLS is not set — nothing to sync yet."
+            echo 'configured=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'configured=true' >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.guard.outputs.configured == 'true'
 
       - uses: actions/setup-node@v4
+        if: steps.guard.outputs.configured == 'true'
         with:
           node-version: '24'
 
       - name: Fetch calendars and write to Firebase
+        if: steps.guard.outputs.configured == 'true'
         env:
-          ICS_URLS: ${{ secrets.ICS_URLS }}
           FIREBASE_URL: https://lifestack-d5300-default-rtdb.firebaseio.com
           DAYLIGN_TZ: ${{ vars.DAYLIGN_TZ || 'America/New_York' }}
           DAYS_AHEAD: '7'
