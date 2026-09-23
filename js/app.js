@@ -46,7 +46,18 @@ document.addEventListener('DOMContentLoaded', () => {
 // 390px row. The short form carries everything you actually need — the year is
 // never in question, and the long weekday buys nothing.
 function setHeaderDate() {
-  const d = new Date();
+  // While you are browsing a past day on Diet, the header used to keep saying
+  // TODAY - so "Tue, Sep 22" sat directly above a day label reading "Monday,
+  // September 21". Two dates disagreeing on one screen. The header follows the
+  // day being viewed, from the same dietViewDate the label below it uses.
+  //
+  // Guarded on the active view because render() runs every renderer on every
+  // render: without this the Diet day would leak onto Today and Insights.
+  const dietActive = (document.getElementById('dietView') || {}).classList
+    && document.getElementById('dietView').classList.contains('active');
+  const viewing = (dietActive && typeof dietViewDate === 'string' && dietViewDate)
+    ? dietViewDate : null;
+  const d = viewing ? new Date(viewing + 'T00:00:00') : new Date();
   const narrow = window.matchMedia('(max-width: 600px)').matches;
   $('#headerDate').textContent = d.toLocaleDateString('en-US', narrow
     ? { weekday: 'short', month: 'short', day: 'numeric' }
@@ -531,6 +542,8 @@ function switchView(view) {
   if (searchBox) searchBox.hidden = TASKMETA_VIEWS.indexOf(view) === -1;
 
   render();
+  // After render, so leaving Diet on a past day puts today's date back.
+  setHeaderDate();
 }
 
 // Reflect the module on/off settings across every nav surface and the

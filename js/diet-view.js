@@ -2,6 +2,11 @@ function renderDiet() {
   const dateInput = $('#dietDate');
   if (!dateInput) return;
 
+  // The page header carries the day being viewed, not today (see setHeaderDate).
+  // Here because every way the day changes - the arrows, the week strip, the
+  // date picker, the Today button - ends in a renderDiet().
+  if (typeof setHeaderDate === 'function') setHeaderDate();
+
   // Bank any dishes from the log that aren't in the food bank yet
   // (history from before auto-remember, or entries synced from other devices)
   const backfilled = backfillRememberedFoods();
