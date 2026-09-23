@@ -9783,7 +9783,10 @@ html.layout-editing .layout-item.is-dragging {
        content scrolls through. */
     margin: 0 -16px 14px;
     padding: 8px 16px;
-    background: var(--bg);
+    /* --bg is not a token in this project (it is --bg-primary), so this
+       resolved to nothing and the sticky header was TRANSPARENT: meal rows
+       scrolled visibly through the "Diet" title and the search button. */
+    background: var(--bg-primary);
     transition: padding 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
   }
 
@@ -10072,8 +10075,15 @@ html.layout-editing .layout-item.is-dragging {
      half-hidden at rest — which just looks broken. */
   .dash-project-tabs { margin-right: 100px; }
 
-  /* The last card must clear the floating action pill, which sits 84px up. */
-  .view.active { padding-bottom: 56px; }
+  /* The last card must clear the WHOLE floating stack, not just the pill. The
+     pill sits 84px up and is 48 tall; the mic sits above it at 144px. So the
+     stack reaches ~192px, and 56px of padding left the last card on Today,
+     Insights and Training sitting underneath both of them. */
+  .view.active { padding-bottom: calc(200px + env(safe-area-inset-bottom, 0px)); }
+
+  /* Undo is display:none while hidden - stated here because .water-btn sets no
+     display of its own, and a later one would silently beat the attribute. */
+  .water-btn-undo[hidden] { display: none; }
 }
 
 /* The Training centre column now carries the full readiness card, so the rail's
@@ -11410,3 +11420,45 @@ body.logbar-open .voice-fab {
   transform: translateY(6px);
 }
 .primary-fab, .voice-fab { transition: opacity 140ms ease, transform 140ms ease; }
+
+
+/* ---- Calendar: a visible way in ---- */
+/* Creating an event was a double-click on a day cell - undiscoverable on
+   desktop and impossible on touch, where the phone agenda view has no cells to
+   double-click at all. */
+.cal-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 14px;
+  background: var(--accent);
+  border: none;
+  border-radius: 999px;
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.cal-add-btn:hover { background: var(--accent-hover); }
+.cal-add-btn:active { transform: scale(0.97); }
+
+@media (max-width: 600px) {
+  /* The month title and its arrows take the first row; the toggle and Add sit
+     together underneath, both reachable with a thumb. */
+  .calendar-header { gap: 10px; justify-content: space-between; }
+  .cal-add-btn { min-height: 40px; }
+}
+
+
+/* A saved meal's ingredient list had NO rule at all, so it fell back to the
+   16px body default and became the largest text in the card - bigger than the
+   meal's own name. It is the supporting detail; size it like the macros line
+   it sits under. */
+.combo-ingredients {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  line-height: 1.45;
+}

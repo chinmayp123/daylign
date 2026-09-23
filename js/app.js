@@ -145,6 +145,17 @@ function bindEvents() {
   // Search
   $('#searchInput').addEventListener('input', renderTasksView);
 
+  // Calendar: a visible way to create an event. Defaults to the day you are
+  // looking at (today when that month is on screen), so the date is usually
+  // already right.
+  const calAdd = $('#calAddBtn');
+  if (calAdd) calAdd.addEventListener('click', () => {
+    const today = getTodayStr();
+    const viewing = new Date(calendarDate);
+    const sameMonth = toLocalDateStr(viewing).slice(0, 7) === today.slice(0, 7);
+    openEventModal(sameMonth ? today : toLocalDateStr(new Date(viewing.getFullYear(), viewing.getMonth(), 1)));
+  });
+
   // Calendar nav
   $('#calPrev').addEventListener('click', () => {
     if (calViewMode === 'month') {

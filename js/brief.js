@@ -81,10 +81,21 @@ function briefWeek() {
   const inThis = between(thisStart, today);
   const inLast = between(lastStart, lastEnd);
 
-  const sessionDays = (pred) => new Set(
-    (state.gym || []).filter(e => e && pred(e.date)).map(e => e.date)
-      .concat((state.cardio || []).filter(c => c && pred(c.date)).map(c => c.date))
-  ).size;
+  // One set of push-ups is a standing daily habit, not a training session, and
+  // counting it here put "This week: 1 sessions" directly above the coach
+  // saying "today is a check-in so far - a couple more exercises makes it a
+  // real session". Both surfaces use isFullSession now (>= SESSION_MIN_SETS),
+  // which is the line coach.js and the calendar were already drawing.
+  //
+  // Cardio counts on its own: a logged run has no sets to measure and is
+  // never a check-in.
+  const sessionDays = (pred) => {
+    const fullDay = (typeof isFullSession === 'function') ? isFullSession : () => true;
+    const gymDays = [...new Set((state.gym || []).filter(e => e && pred(e.date)).map(e => e.date))]
+      .filter(fullDay);
+    const cardioDays = (state.cardio || []).filter(c => c && pred(c.date)).map(c => c.date);
+    return new Set(gymDays.concat(cardioDays)).size;
+  };
 
   const proteinAvg = (pred) => {
     const byDay = {};
