@@ -33,6 +33,17 @@ function mealForNow() {
 let dietBackfillNotified = false;
 let recentFoodsOpen = null; // per-meal open/collapsed state, survives re-renders
 let dietInlineOpenMeal = null; // which meal's inline quick-add is open, survives re-renders
+let dietInlineOpenDate = null; // the day it was opened for — a day switch closes it
+
+// The inline search must only ever be open because the user just tapped the
+// log bar or "+ Something else". Anything else that moves them on — deleting
+// the entry they just added, switching meals or days, leaving Diet — closes it,
+// or they come back to an empty "Search food to add to…" box under a meal that
+// shows 0 cal, and it reads as though nothing was logged.
+function closeDietInlineSearch() {
+  dietInlineOpenMeal = null;
+  dietInlineOpenDate = null;
+}
 
 // Render inline search results under a meal's quick-add.
 function renderInlineResults(wrap, query) {
@@ -87,7 +98,7 @@ function renderInlineResults(wrap, query) {
     </button>`;
   }).join('');
   box.querySelectorAll('.diet-inline-row').forEach((rowEl, i) => {
-    rowEl.addEventListener('click', () => quickAddToMeal(wrap.dataset.meal, results[i]));
+    rowEl.addEventListener('click', () => quickAddToMeal(wrap.dataset.meal, results[i], false));
   });
 }
 
@@ -105,16 +116,15 @@ function quickAddToMeal(meal, result, keepSearchOpen) {
     fat: Number(d.fat) || 0,
   });
   saveData(state);
-  // Tiles and the new-food form pass keepSearchOpen=false so a one-tap add
-  // doesn't pop the search box.
+  // Closing is the default: every caller — tiles, the new-food form and a tap
+  // on a search result — wants the box gone once the food is logged.
   //
-  // It has to CLEAR the flag, not merely skip setting it. Typing a new name
-  // means the search was already open, so the flag was already this meal - and
-  // skipping the assignment left it set. The next render dutifully re-opened
-  // the search, leaving an empty "Search food to add to <meal>..." box sitting
-  // under the log bar after the macro form had closed.
-  if (keepSearchOpen === false) dietInlineOpenMeal = null;
-  else dietInlineOpenMeal = meal;
+  // It has to CLEAR the flag, not merely skip setting it. Adding from an open
+  // search means the flag was already this meal, and skipping the assignment
+  // left it set. The next render dutifully re-opened the search, leaving an
+  // empty "Search food to add to <meal>..." box sitting under the log bar.
+  if (keepSearchOpen === true) { dietInlineOpenMeal = meal; dietInlineOpenDate = dietViewDate; }
+  else closeDietInlineSearch();
   renderDiet();
 }
 
@@ -585,6 +595,7 @@ function deleteDietGroup(gid) {
   const name = removed[0].groupName || 'Meal';
   state.diet = state.diet.filter(e => !(e && e.group === gid));
   delete dietGroupOpen[gid];
+  closeDietInlineSearch(); // same as deleting a single row — don't leave an empty search box over a meal you just emptied
   saveData(state);
   if (typeof haptic === 'function') haptic('light');
   renderDiet();

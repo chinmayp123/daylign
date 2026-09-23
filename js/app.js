@@ -509,6 +509,10 @@ function switchView(view) {
   const dv = document.getElementById('dietView');
   if (dv) dv.classList.remove('lib-open');
 
+  // Leaving Diet closes the inline food search too — coming back to an empty
+  // search box you opened an hour ago reads as a half-finished log.
+  if (view !== 'diet' && typeof closeDietInlineSearch === 'function') closeDietInlineSearch();
+
   // Guard against landing on a module the user has turned off (e.g. a saved
   // last-view, or a stale command-palette entry).
   // Gym and Cardio are now two modes of one Training view. Old saved views,

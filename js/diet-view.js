@@ -252,6 +252,7 @@ function renderDiet() {
     $$('[data-open-meal]').forEach(b => b.addEventListener('click', () => {
       dietOpenMeal = b.dataset.openMeal;
       dietOpenMealDate = dietViewDate;
+      closeDietInlineSearch(); // the search belonged to the meal that just folded up
       renderDiet();
     }));
   }
@@ -397,18 +398,23 @@ function renderDiet() {
       const search = wrap.querySelector('.diet-inline-search');
       const input = wrap.querySelector('.diet-inline-input');
       const open = !search.hidden;
-      if (open) { search.hidden = true; dietInlineOpenMeal = null; return; }
+      if (open) { search.hidden = true; closeDietInlineSearch(); return; }
       search.hidden = false;
       dietInlineOpenMeal = btn.dataset.addMeal;
+      dietInlineOpenDate = dietViewDate;
       input.focus();
     });
   });
 
-  // Re-open the inline search on whichever meal was active before a re-render
-  // (so adding one food leaves the search ready for the next).
+  // Re-open the inline search across a re-render — but only on the same day it
+  // was opened for. Every day-switch entry point (the date input, prev/next,
+  // Today, the week strip, the history list) ends in a renderDiet, so guarding
+  // here closes the box on all of them without touching each handler.
+  if (dietInlineOpenMeal && dietInlineOpenDate !== dietViewDate) closeDietInlineSearch();
   if (dietInlineOpenMeal) {
     const wrap = document.querySelector(`.diet-meal-addwrap[data-meal="${dietInlineOpenMeal}"]`);
-    if (wrap) { wrap.querySelector('.diet-inline-search').hidden = false; }
+    if (wrap) wrap.querySelector('.diet-inline-search').hidden = false;
+    else closeDietInlineSearch(); // the meal it belonged to is no longer the open one
   }
 
   $$('.diet-inline-input').forEach(input => {
@@ -423,6 +429,7 @@ function renderDiet() {
     btn.addEventListener('click', () => {
       state.diet.splice(Number(btn.dataset.dietIdx), 1);
       dietEditOpenIdx = null; dietEditFormIdx = null; // indices shift after a splice — don't reopen the wrong row
+      closeDietInlineSearch(); // don't leave an empty search box over a meal you just emptied
       saveData(state);
       renderDiet();
     });
