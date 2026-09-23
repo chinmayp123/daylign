@@ -474,6 +474,11 @@ function renderWater() {
   else if (pct >= 60) fill.className = 'water-bar-fill water-good';
   else fill.className = 'water-bar-fill';
 
+  // Undo offered itself on a day with no water logged, which is a control that
+  // cannot do anything. It appears once there is something to take back.
+  const undo = $('#waterUndoBtn');
+  if (undo) undo.hidden = !entries.length;
+
   // Log entries
   if (!entries.length) {
     $('#waterLog').innerHTML = '';

@@ -105,8 +105,16 @@ function quickAddToMeal(meal, result, keepSearchOpen) {
     fat: Number(d.fat) || 0,
   });
   saveData(state);
-  // Tiles pass keepSearchOpen=false so a one-tap add doesn't pop the search box.
-  if (keepSearchOpen !== false) dietInlineOpenMeal = meal;
+  // Tiles and the new-food form pass keepSearchOpen=false so a one-tap add
+  // doesn't pop the search box.
+  //
+  // It has to CLEAR the flag, not merely skip setting it. Typing a new name
+  // means the search was already open, so the flag was already this meal - and
+  // skipping the assignment left it set. The next render dutifully re-opened
+  // the search, leaving an empty "Search food to add to <meal>..." box sitting
+  // under the log bar after the macro form had closed.
+  if (keepSearchOpen === false) dietInlineOpenMeal = null;
+  else dietInlineOpenMeal = meal;
   renderDiet();
 }
 

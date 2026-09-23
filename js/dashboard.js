@@ -195,7 +195,11 @@ function renderWeeklyReport() {
   if (!host) return;
   const g = (typeof getGoals === 'function') ? getGoals() : { calories: 2000, protein: 150, water: 66, weight: 155 };
   const meta = $('#weeklyReportMeta');
-  if (meta) meta.textContent = 'last 7 days';
+  // "last 7 days" read as "including today", which is what the Month card
+  // below actually does - so with two logged days the two cards sat on screen
+  // saying 105 avg and 1338 avg about what looked like the same week. The diet
+  // rows run to YESTERDAY (see the window below); say so.
+  if (meta) meta.textContent = '7 days to yesterday';
 
   // Trailing 7 days: today back through 6 days ago
   const days = [];
@@ -301,16 +305,27 @@ function renderWeeklyReport() {
   const rows = [];
 
   // Calories (cutting: under budget is good)
+  // An average is only as good as the number of days under it. One logged day
+  // in the window produced "1g avg" next to a Month card reading 38g, with no
+  // way to see that one was a single sparse day - so the count rides along.
+  const over = dietDays === 1 ? ' · 1 logged day' : ` · ${dietDays} logged days`;
+
   if (dietDays) {
     const calDot = avgCal <= g.calories ? 'good' : avgCal <= g.calories * 1.1 ? 'warn' : 'bad';
-    rows.push({ label: 'Calories', val: `${avgCal} avg / ${g.calories}`, dot: calDot });
+    rows.push({ label: 'Calories', val: `${avgCal} avg / ${g.calories}${over}`, dot: calDot });
   } else {
     rows.push({ label: 'Calories', val: 'no days logged', dot: 'warn' });
   }
 
   // Protein (cutting: hitting the target protects muscle, so more is good)
-  const proteinDot = avgProtein >= g.protein * 0.9 ? 'good' : avgProtein >= g.protein * 0.7 ? 'warn' : 'bad';
-  rows.push({ label: 'Protein', val: `${avgProtein}g avg / ${g.protein}g`, dot: proteinDot });
+  if (dietDays) {
+    const proteinDot = avgProtein >= g.protein * 0.9 ? 'good' : avgProtein >= g.protein * 0.7 ? 'warn' : 'bad';
+    rows.push({ label: 'Protein', val: `${avgProtein}g avg / ${g.protein}g${over}`, dot: proteinDot });
+  } else {
+    // It used to render "0g avg / 150g" in red for someone who had simply not
+    // logged anything yet - a failing grade for a week they never ate in.
+    rows.push({ label: 'Protein', val: 'no days logged', dot: 'warn' });
+  }
 
   // Carbs & Fat (cutting: at or under budget is good, like calories)
   if (dietDays) {
@@ -350,12 +365,17 @@ function renderWeeklyReport() {
   }
 
   // One focus for the week, highest-impact issue first
+  // Three days is the floor for calling something an average. Below that the
+  // advice was quoting a single day as the week's protein habit.
+  const ENOUGH_DAYS = 3;
   let focus;
-  if (dietDays && avgProtein < g.protein * 0.8) {
+  if (dietDays && dietDays < ENOUGH_DAYS) {
+    focus = `keep logging — ${dietDays} day${dietDays === 1 ? '' : 's'} is not a week yet`;
+  } else if (dietDays >= ENOUGH_DAYS && avgProtein < g.protein * 0.8) {
     focus = `lead every meal with protein — you averaged ${avgProtein}g vs the ${g.protein}g target`;
   } else if (daysTrained < 4) {
     focus = 'train at least 4 days — short sessions count';
-  } else if (dietDays && avgCal > g.calories) {
+  } else if (dietDays >= ENOUGH_DAYS && avgCal > g.calories) {
     focus = `tighten calories back to the ~${g.calories} budget`;
   } else if (weightChange === null || weightChange > -0.3) {
     focus = 'hold the deficit steady and weigh in daily so the trend is trustworthy';
@@ -793,22 +813,28 @@ function renderReminders(today) {
 
   // --- Gym reminder ---
   const gymToday = state.gym.filter(e => e.date === today);
+  // null means "never logged one", which is NOT the same as a long gap. The
+  // sentinel used to be 99, so a brand-new profile was greeted with "No workout
+  // in 99 days" - a history it invented about someone on their first day.
+  const everTrained = [...new Set(state.gym.map(e => e.date))].length > 0;
   const daysSinceGym = (() => {
     const gymDates = [...new Set(state.gym.map(e => e.date))].sort().reverse();
-    if (!gymDates.length) return 99;
+    if (!gymDates.length) return null;
     const last = new Date(gymDates[0] + 'T00:00:00');
     const now = new Date(today + 'T00:00:00');
     return Math.round((now - last) / (1000 * 60 * 60 * 24));
   })();
 
   if (!gymToday.length) {
-    if (daysSinceGym >= 2) {
+    if (!everTrained || daysSinceGym >= 2) {
       reminders.push({
         icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6.5 6.5h-3a1 1 0 00-1 1v9a1 1 0 001 1h3"/><path d="M17.5 6.5h3a1 1 0 011 1v9a1 1 0 01-1 1h-3"/><rect x="6.5" y="4" width="4" height="16" rx="1"/><rect x="13.5" y="4" width="4" height="16" rx="1"/><line x1="10.5" y1="12" x2="13.5" y2="12"/></svg>',
         color: 'var(--red)',
         bg: 'var(--red-bg)',
-        text: `No workout in ${daysSinceGym} days`,
-        sub: 'Time to hit the gym! Consistency is what drops the weight.',
+        text: everTrained ? `No workout in ${daysSinceGym} days` : 'Log your first workout',
+        sub: everTrained
+          ? 'Time to hit the gym! Consistency is what drops the weight.'
+          : 'Anything counts to start — even one set gets the first day on the board.',
         action: `<button class="reminder-nav-btn" data-view="gym">Log Workout</button>`,
       });
     } else if (hour >= 8) {
@@ -897,7 +923,10 @@ function renderReminders(today) {
       bg: 'rgba(167, 139, 250, 0.1)',
       text: daysSinceWeighIn === null ? 'No weigh-ins logged yet' : `No weigh-in in ${daysSinceWeighIn} days`,
       sub: 'Hop on the scale — tracking weight is how the cut stays honest.',
-      action: `<button class="reminder-nav-btn" data-view="gym">Log Weight</button>`,
+      // Navigating to Training left you to find the weight control yourself -
+      // it is a small text button beside the Strength/Cardio toggle. The sheet
+      // this opens is the same one Training's own button opens.
+      action: `<button class="reminder-weight-btn">Log Weight</button>`,
     });
   }
 
@@ -949,6 +978,13 @@ function renderReminders(today) {
   // Bind nav buttons
   $$('.reminder-nav-btn').forEach(btn => {
     btn.addEventListener('click', () => switchView(btn.dataset.view));
+  });
+
+  $$('.reminder-weight-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (typeof openWeightSheet === 'function') openWeightSheet();
+      else switchView('gym');   // sheet script missing: the old behaviour still beats nothing
+    });
   });
 
   // Bind all habit done buttons
