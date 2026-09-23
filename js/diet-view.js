@@ -93,8 +93,6 @@ function renderDiet() {
             ${comboChips}
             ${usuals.map((u, i) => `<button type="button" class="diet-usual-tile" data-usual-meal="${g.meal}" data-usual-idx="${i}">${esc(u.name)}</button>`).join('')}
           </div>` : '';
-      // With usuals present, search is the fallback ("Something else"), not the default.
-      const addLabel = usuals.length ? '+ Something else' : `+ Add to ${g.label}`;
       return `
         <div class="diet-meal-group${isEmpty ? ' is-empty' : ''}">
           <div class="diet-meal-header">
@@ -180,7 +178,7 @@ function renderDiet() {
                  decisions instead of one. -->
             <div class="diet-logbar" data-logbar-meal="${g.meal}">
               <svg class="dlb-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-              <span class="dlb-label">Log to ${esc(g.label.toLowerCase())} &mdash; type it, say it, or snap it</span>
+              <input type="text" class="diet-inline-input dlb-input" data-input-meal="${g.meal}" placeholder="Log to ${esc(g.label.toLowerCase())} &mdash; type it, say it, or snap it" autocomplete="off" enterkeyhint="search">
               <button type="button" class="dlb-btn" data-logbar-voice="${g.meal}" title="Say what you ate" aria-label="Log ${esc(g.label)} by voice">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0014 0M12 17v4M8 21h8"/></svg>
               </button>
@@ -188,14 +186,12 @@ function renderDiet() {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
               </button>
             </div>
-            <div class="diet-meal-addrow">
-              <button type="button" class="diet-meal-add" data-add-meal="${g.meal}">${addLabel}</button>
-              ${g.entries.length >= 2 ? `<button type="button" class="diet-meal-savecombo" data-savecombo-meal="${g.meal}" title="Save these ${g.entries.length} items as a named meal you can log in one tap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>Save these ${g.entries.length}</button>` : ''}
-            </div>
-            <div class="diet-inline-search" hidden>
-              <input type="text" class="diet-inline-input" placeholder="Search food to add to ${g.label.toLowerCase()}…" autocomplete="off">
-              <div class="diet-inline-results"></div>
-            </div>
+            <!-- Results hang straight off the bar. There used to be a second
+                 field below it ("+ Something else" opening its own search box),
+                 so the meal carried TWO search inputs that did the same thing -
+                 and the lower one stuck open after every add. -->
+            <div class="diet-inline-results"></div>
+            ${g.entries.length >= 2 ? `<div class="diet-meal-addrow"><button type="button" class="diet-meal-savecombo" data-savecombo-meal="${g.meal}" title="Save these ${g.entries.length} items as a named meal you can log in one tap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>Save these ${g.entries.length}</button></div>` : ''}
             <div class="diet-inline-photo" data-photo-meal="${g.meal}"></div>
           </div>
         </div>`;
@@ -221,21 +217,23 @@ function renderDiet() {
         </button>`;
     };
 
+    // Breakfast, lunch, dinner, snack - in that order, always. Hoisting the
+    // open meal to the top put an EMPTY lunch above a breakfast you had already
+    // eaten, which reorders the day every time the clock moves on. The active
+    // meal expands where it sits instead.
     const opened = mealGroups.find(g => g.meal === openMeal) || mealGroups[0];
-    const folded = mealGroups.filter(g => g !== opened);
-    $('#dietMealsList').innerHTML =
-      renderOpenMeal(opened) +
-      `<div class="diet-meal-folds">${folded.map(foldLine).join('')}</div>`;
+    $('#dietMealsList').innerHTML = mealGroups
+      .map(g => (g === opened ? renderOpenMeal(g) : foldLine(g)))
+      .join('');
 
     watchLogBar();
 
-    // Tapping a folded meal opens it; the one that was open folds up.
-    // The bar is the primary way in, so tapping anywhere on it opens the search
-    // the add button opens - the icons inside handle their own clicks.
+    // The bar IS the field now, so anywhere on it puts the cursor in it. The
+    // icons inside handle their own clicks.
     $$('[data-logbar-meal]').forEach(bar => bar.addEventListener('click', (ev) => {
       if (ev.target.closest('.dlb-btn')) return;
-      const add = document.querySelector(`.diet-meal-add[data-add-meal="${bar.dataset.logbarMeal}"]`);
-      if (add) add.click();
+      const input = bar.querySelector('.dlb-input');
+      if (input && document.activeElement !== input) input.focus();
     }));
 
     // Voice is the app's existing panel; it already understands "log X to dinner".
@@ -383,35 +381,22 @@ function renderDiet() {
     });
   });
 
-  // Inline quick-add: tapping "Add to <meal>" opens a small search right under
-  // that meal — type, tap a result, it's added to THAT meal in place. No jump
-  // to the form (design_handoff §5 / ref 3b one-tap add).
-  $$('.diet-meal-add').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const wrap = btn.closest('.diet-meal-addwrap');
-      const search = wrap.querySelector('.diet-inline-search');
-      const input = wrap.querySelector('.diet-inline-input');
-      const open = !search.hidden;
-      if (open) { search.hidden = true; dietInlineOpenMeal = null; return; }
-      search.hidden = false;
-      dietInlineOpenMeal = btn.dataset.addMeal;
-      input.focus();
-    });
-  });
-
-  // Re-open the inline search on whichever meal was active before a re-render
-  // (so adding one food leaves the search ready for the next).
-  if (dietInlineOpenMeal) {
-    const wrap = document.querySelector(`.diet-meal-addwrap[data-meal="${dietInlineOpenMeal}"]`);
-    if (wrap) { wrap.querySelector('.diet-inline-search').hidden = false; }
-  }
-
+  // The bar is always there, so there is nothing to open or close. What DOES
+  // need carrying across a re-render is the cursor: adding one food rebuilds
+  // the list, and you are usually about to type the next thing.
   $$('.diet-inline-input').forEach(input => {
     input.addEventListener('input', () => {
       const wrap = input.closest('.diet-meal-addwrap');
       renderInlineResults(wrap, input.value);
     });
   });
+
+  if (dietInlineOpenMeal) {
+    const input = document.querySelector(`.dlb-input[data-input-meal="${dietInlineOpenMeal}"]`);
+    // Only when the meal is the OPEN one - a folded meal has no bar to focus.
+    if (input) input.focus();
+    dietInlineOpenMeal = null;
+  }
 
   // Delete food
   $$('.diet-delete-food').forEach(btn => {
