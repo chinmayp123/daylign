@@ -98,7 +98,11 @@ function renderInlineResults(wrap, query) {
     </button>`;
   }).join('');
   box.querySelectorAll('.diet-inline-row').forEach((rowEl, i) => {
-    rowEl.addEventListener('click', () => quickAddToMeal(wrap.dataset.meal, results[i], false));
+    // A result tapped from the log bar's OWN field keeps the cursor there: the
+    // bar is permanent furniture now, so this only re-focuses an empty field,
+    // it does not leave a box hanging open. You are usually logging the next
+    // thing. The tiles and the new-food form below still pass false.
+    rowEl.addEventListener('click', () => quickAddToMeal(wrap.dataset.meal, results[i], true));
   });
 }
 
@@ -116,13 +120,13 @@ function quickAddToMeal(meal, result, keepSearchOpen) {
     fat: Number(d.fat) || 0,
   });
   saveData(state);
-  // Closing is the default: every caller — tiles, the new-food form and a tap
-  // on a search result — wants the box gone once the food is logged.
+  // Closing is the default: a one-tap add from a tile or the new-food form
+  // wants the box gone once the food is logged.
   //
-  // It has to CLEAR the flag, not merely skip setting it. Adding from an open
-  // search means the flag was already this meal, and skipping the assignment
-  // left it set. The next render dutifully re-opened the search, leaving an
-  // empty "Search food to add to <meal>..." box sitting under the log bar.
+  // It has to CLEAR the flag, not merely skip setting it. Adding while the flag
+  // was already this meal and skipping the assignment left it set, and the next
+  // render dutifully re-opened the search — an empty "Search food to add to
+  // <meal>..." box sitting under the log bar, reading as though nothing landed.
   if (keepSearchOpen === true) { dietInlineOpenMeal = meal; dietInlineOpenDate = dietViewDate; }
   else closeDietInlineSearch();
   renderDiet();

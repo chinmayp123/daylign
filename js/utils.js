@@ -123,8 +123,10 @@ document.addEventListener('click', (e) => {
     if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
   }
   if (action === 'log-food') {
-    const el = document.querySelector('.diet-meal-add');
-    if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.click(); }
+    // The "+ Add to <meal>" button is gone; the log bar's own field is the
+    // one place food goes in now.
+    const el = document.querySelector('.dlb-input');
+    if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
   }
 });
 
