@@ -33,6 +33,17 @@ function mealForNow() {
 let dietBackfillNotified = false;
 let recentFoodsOpen = null; // per-meal open/collapsed state, survives re-renders
 let dietInlineOpenMeal = null; // which meal's inline quick-add is open, survives re-renders
+let dietInlineOpenDate = null; // the day it was opened for — a day switch closes it
+
+// The inline search must only ever be open because the user just tapped the
+// log bar or "+ Something else". Anything else that moves them on — deleting
+// the entry they just added, switching meals or days, leaving Diet — closes it,
+// or they come back to an empty "Search food to add to…" box under a meal that
+// shows 0 cal, and it reads as though nothing was logged.
+function closeDietInlineSearch() {
+  dietInlineOpenMeal = null;
+  dietInlineOpenDate = null;
+}
 
 // Render inline search results under a meal's quick-add.
 function renderInlineResults(wrap, query) {
@@ -87,7 +98,11 @@ function renderInlineResults(wrap, query) {
     </button>`;
   }).join('');
   box.querySelectorAll('.diet-inline-row').forEach((rowEl, i) => {
-    rowEl.addEventListener('click', () => quickAddToMeal(wrap.dataset.meal, results[i]));
+    // A result tapped from the log bar's OWN field keeps the cursor there: the
+    // bar is permanent furniture now, so this only re-focuses an empty field,
+    // it does not leave a box hanging open. You are usually logging the next
+    // thing. The tiles and the new-food form below still pass false.
+    rowEl.addEventListener('click', () => quickAddToMeal(wrap.dataset.meal, results[i], true));
   });
 }
 
@@ -105,8 +120,15 @@ function quickAddToMeal(meal, result, keepSearchOpen) {
     fat: Number(d.fat) || 0,
   });
   saveData(state);
-  // Tiles pass keepSearchOpen=false so a one-tap add doesn't pop the search box.
-  if (keepSearchOpen !== false) dietInlineOpenMeal = meal;
+  // Closing is the default: a one-tap add from a tile or the new-food form
+  // wants the box gone once the food is logged.
+  //
+  // It has to CLEAR the flag, not merely skip setting it. Adding while the flag
+  // was already this meal and skipping the assignment left it set, and the next
+  // render dutifully re-opened the search — an empty "Search food to add to
+  // <meal>..." box sitting under the log bar, reading as though nothing landed.
+  if (keepSearchOpen === true) { dietInlineOpenMeal = meal; dietInlineOpenDate = dietViewDate; }
+  else closeDietInlineSearch();
   renderDiet();
 }
 
@@ -577,6 +599,7 @@ function deleteDietGroup(gid) {
   const name = removed[0].groupName || 'Meal';
   state.diet = state.diet.filter(e => !(e && e.group === gid));
   delete dietGroupOpen[gid];
+  closeDietInlineSearch(); // same as deleting a single row — don't leave an empty search box over a meal you just emptied
   saveData(state);
   if (typeof haptic === 'function') haptic('light');
   renderDiet();

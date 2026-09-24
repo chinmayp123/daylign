@@ -2,6 +2,11 @@ function renderDiet() {
   const dateInput = $('#dietDate');
   if (!dateInput) return;
 
+  // The page header carries the day being viewed, not today (see setHeaderDate).
+  // Here because every way the day changes - the arrows, the week strip, the
+  // date picker, the Today button - ends in a renderDiet().
+  if (typeof setHeaderDate === 'function') setHeaderDate();
+
   // Bank any dishes from the log that aren't in the food bank yet
   // (history from before auto-remember, or entries synced from other devices)
   const backfilled = backfillRememberedFoods();
@@ -245,6 +250,7 @@ function renderDiet() {
     $$('[data-open-meal]').forEach(b => b.addEventListener('click', () => {
       dietOpenMeal = b.dataset.openMeal;
       dietOpenMealDate = dietViewDate;
+      closeDietInlineSearch(); // the search belonged to the meal that just folded up
       renderDiet();
     }));
   }
@@ -285,7 +291,7 @@ function renderDiet() {
       if (!name || !name.trim()) return;
       const per = (typeof perServingMacros === 'function') ? perServingMacros(name.trim(), null) : null;
       if (!per) {
-        showToast(`"${name.trim()}" isn't in your food bank yet — add it from + Something else first`);
+        showToast(`"${name.trim()}" isn't in your food bank yet — log it from the meal's search field first`);
         return;
       }
       addIngredientToGroup(gid, meal, name.trim(), per);
@@ -381,9 +387,18 @@ function renderDiet() {
     });
   });
 
-  // The bar is always there, so there is nothing to open or close. What DOES
-  // need carrying across a re-render is the cursor: adding one food rebuilds
-  // the list, and you are usually about to type the next thing.
+  // The "+ Add to <meal>" button and its own search box are gone: the log bar
+  // IS the field now, always present, so there is nothing to open or close.
+  // What main's #5 fix was really protecting against - coming back to an empty
+  // "Search food to add to..." box under a meal that reads as though nothing
+  // was logged - can't happen here, because the bar is the meal's permanent
+  // furniture and every render hands it a fresh, empty results list.
+  //
+  // dietInlineOpenMeal survives as the thing it now means: which meal's field
+  // should get the CURSOR back after a re-render. #5's rules still apply to it
+  // - deleting a row, switching meals, or switching days must not yank focus
+  // into a bar the user didn't ask for - so those still call
+  // closeDietInlineSearch(), and the day guard below still runs.
   $$('.diet-inline-input').forEach(input => {
     input.addEventListener('input', () => {
       const wrap = input.closest('.diet-meal-addwrap');
@@ -391,11 +406,16 @@ function renderDiet() {
     });
   });
 
+  // Only carry the cursor across a re-render on the same day it was asked for.
+  // Every day-switch entry point (the date input, prev/next, Today, the week
+  // strip, the history list) ends in a renderDiet, so guarding here covers all
+  // of them without touching each handler.
+  if (dietInlineOpenMeal && dietInlineOpenDate !== dietViewDate) closeDietInlineSearch();
   if (dietInlineOpenMeal) {
     const input = document.querySelector(`.dlb-input[data-input-meal="${dietInlineOpenMeal}"]`);
     // Only when the meal is the OPEN one - a folded meal has no bar to focus.
     if (input) input.focus();
-    dietInlineOpenMeal = null;
+    closeDietInlineSearch(); // the cursor is placed; the flag has done its job
   }
 
   // Delete food
@@ -403,6 +423,7 @@ function renderDiet() {
     btn.addEventListener('click', () => {
       state.diet.splice(Number(btn.dataset.dietIdx), 1);
       dietEditOpenIdx = null; dietEditFormIdx = null; // indices shift after a splice — don't reopen the wrong row
+      closeDietInlineSearch(); // don't leave an empty search box over a meal you just emptied
       saveData(state);
       renderDiet();
     });

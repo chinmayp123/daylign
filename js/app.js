@@ -46,7 +46,18 @@ document.addEventListener('DOMContentLoaded', () => {
 // 390px row. The short form carries everything you actually need — the year is
 // never in question, and the long weekday buys nothing.
 function setHeaderDate() {
-  const d = new Date();
+  // While you are browsing a past day on Diet, the header used to keep saying
+  // TODAY - so "Tue, Sep 22" sat directly above a day label reading "Monday,
+  // September 21". Two dates disagreeing on one screen. The header follows the
+  // day being viewed, from the same dietViewDate the label below it uses.
+  //
+  // Guarded on the active view because render() runs every renderer on every
+  // render: without this the Diet day would leak onto Today and Insights.
+  const dietActive = (document.getElementById('dietView') || {}).classList
+    && document.getElementById('dietView').classList.contains('active');
+  const viewing = (dietActive && typeof dietViewDate === 'string' && dietViewDate)
+    ? dietViewDate : null;
+  const d = viewing ? new Date(viewing + 'T00:00:00') : new Date();
   const narrow = window.matchMedia('(max-width: 600px)').matches;
   $('#headerDate').textContent = d.toLocaleDateString('en-US', narrow
     ? { weekday: 'short', month: 'short', day: 'numeric' }
@@ -144,6 +155,17 @@ function bindEvents() {
 
   // Search
   $('#searchInput').addEventListener('input', renderTasksView);
+
+  // Calendar: a visible way to create an event. Defaults to the day you are
+  // looking at (today when that month is on screen), so the date is usually
+  // already right.
+  const calAdd = $('#calAddBtn');
+  if (calAdd) calAdd.addEventListener('click', () => {
+    const today = getTodayStr();
+    const viewing = new Date(calendarDate);
+    const sameMonth = toLocalDateStr(viewing).slice(0, 7) === today.slice(0, 7);
+    openEventModal(sameMonth ? today : toLocalDateStr(new Date(viewing.getFullYear(), viewing.getMonth(), 1)));
+  });
 
   // Calendar nav
   $('#calPrev').addEventListener('click', () => {
@@ -487,6 +509,10 @@ function switchView(view) {
   const dv = document.getElementById('dietView');
   if (dv) dv.classList.remove('lib-open');
 
+  // Leaving Diet closes the inline food search too — coming back to an empty
+  // search box you opened an hour ago reads as a half-finished log.
+  if (view !== 'diet' && typeof closeDietInlineSearch === 'function') closeDietInlineSearch();
+
   // Guard against landing on a module the user has turned off (e.g. a saved
   // last-view, or a stale command-palette entry).
   // Gym and Cardio are now two modes of one Training view. Old saved views,
@@ -520,6 +546,8 @@ function switchView(view) {
   if (searchBox) searchBox.hidden = TASKMETA_VIEWS.indexOf(view) === -1;
 
   render();
+  // After render, so leaving Diet on a past day puts today's date back.
+  setHeaderDate();
 }
 
 // Reflect the module on/off settings across every nav surface and the
