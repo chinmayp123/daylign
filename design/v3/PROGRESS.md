@@ -1,9 +1,9 @@
 # v3 build progress
 
-Updated 2026-09-30, after phase 11. Nothing is pushed.
+Updated 2026-09-30, after the section 13 coverage check. Nothing is pushed.
 
-1. **Done, verified, on `v3-day-line`:** phases 1 to 11 (every screen rebuilt, the global sheets and states, then cleanup: dead renders gone, no browser dialogs left, `style.css` from 13,916 to 6,504 lines). 573 scripted checks pass at 1440 Night and the same suites at 390 Day, with no contrast failures on any screen. `CACHE` is `daylign-v139`, one bump over what is pushed.
-2. **Next: the section 13 coverage check**, `V3_COVERAGE_CHECK.md` with one line per row of `coverage.json`.
-3. **Then a README pass** (it still describes the v2 file map and the `renderDiet()` save hazard), and the owner's review of the branch before any push.
-4. **How it is verified:** a copy with the Firebase SDK stripped, demo data, scripted checks and a contrast audit, in `.claude/verify` (untracked). The sync conflict checks use fabricated snapshots only. Nothing has been run against the database.
-5. **Waiting on the owner:** an unset theme now follows the device (was always dark); `esc()` now escapes quotes app-wide; two "session" definitions still coexist (`isFullSession`, `isConsistencyDay`); Diet's caption does not net the burn; `CLAUDE.md` still describes the `renderDiet()` save hazard that phase 7 removed.
+1. **Done, verified, on `v3-day-line`:** phases 1 to 11 of `BUILD_SPEC_v3.md`, plus the section 13 check. 573 scripted checks pass at 1440 Night and at 390 Day, with no contrast failures on any screen. All 338 rows of `coverage.json` pass at 390 and 1440, in Light and Dark; see `V3_COVERAGE_CHECK.md`, which says how strong each pass is. 10 rows depend on Watch data, the Firebase SDK, tester reports or a touch gesture and need a device check.
+2. **Next: the owner reviews the branch.** Nothing goes to `main` or `origin` without the owner's OK. `CACHE` is `daylign-v139`, one bump over what is pushed, so a push of this branch ships a fresh cache.
+3. **Before merging to `main`, check on a real device:** a two-device sync (the conflict notice was only tested with fabricated snapshots), Apple Watch data, the install banner on Android Chrome, pull to refresh, and the profile gate against the live database.
+4. **How it was verified:** a copy with the Firebase SDK stripped, demo data, scripted checks and a contrast audit, in `.claude/verify` (untracked). Nothing ran against the database.
+5. **Waiting on the owner:** an unset theme now follows the device (was always dark); `esc()` now escapes quotes app-wide; the sync pill says "Offline" instead of "On this device"; waist is now a synced key (18 in all); two "session" definitions still coexist (`isFullSession`, `isConsistencyDay`); Diet's caption does not net the burn; `CLAUDE.md` still says 15 synced keys and describes the `renderDiet()` save hazard, which v3 removed. It has not been edited.
