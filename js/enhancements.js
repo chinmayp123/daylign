@@ -45,8 +45,13 @@
   };
 
   // ---------- Avatar sheet (was the More sheet) ----------
-  function openMore() { const m = $('#avatarSheet'); if (m) { fillAvatarSheet(); m.classList.add('open'); } }
-  function closeMore() { const m = $('#avatarSheet'); if (m) m.classList.remove('open'); }
+  // A standard .dl-sheet-wrap, opened and closed through the shared helpers,
+  // so it slides up, and gets Esc, backdrop tap, swipe and focus handling
+  // like every other sheet. It was a .dl-sheet-overlay: the backdrop was
+  // aliased, but the panel's reveal rule is .dl-sheet-wrap.open .dl-sheet,
+  // so the panel stayed off screen and the sheet never opened.
+  function openMore() { const m = $('#avatarSheet'); if (m) { fillAvatarSheet(); openDlSheet(m); } }
+  function closeMore() { const m = $('#avatarSheet'); if (m && m.classList.contains('open')) closeDlSheet(m); }
 
   // Name, initial and sync state are read straight off the surfaces that
   // already own them, so this sheet never becomes a second source of truth.
@@ -237,12 +242,10 @@
     initTheme();
 
     const avatarBtn = $('#headerAvatar'); if (avatarBtn) avatarBtn.addEventListener('click', openMore);
-    const sheet = $('#avatarSheet'); if (sheet) sheet.addEventListener('click', e => { if (e.target === sheet) closeMore(); });
     $$('.avatar-item[data-view]').forEach(b => b.addEventListener('click', () => {
       if (typeof switchView === 'function') switchView(b.dataset.view);
       closeMore();
     }));
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMore(); });
 
     fillSidebarDate();
     fillAvatarSheet();
@@ -267,7 +270,6 @@
         e.preventDefault();
         openPalette();
       }
-      if (e.key === 'Escape') closeMore();
     });
   }
 

@@ -436,12 +436,10 @@ function hasIllegalKeyChars(name) {
 // once, on first open, and delegate — sheets rendered later need no binding.
 let dlSheetBound = false;
 
-// Two spellings of the same component are in the markup: .dl-sheet-wrap (the
-// spec's name, used by the task and event sheets) and .dl-sheet-overlay (the
-// avatar sheet, phase 2). Both are matched so Esc and a backdrop tap work on
-// either, and style.css aliases their appearance.
-const DL_SHEET_WRAP = '.dl-sheet-wrap, .dl-sheet-overlay';
-const DL_SHEET_OPEN = '.dl-sheet-wrap.open, .dl-sheet-overlay.open';
+// Every sheet is a .dl-sheet-wrap. (The avatar sheet was a .dl-sheet-overlay,
+// whose panel never slid in; it is a .dl-sheet-wrap now too.)
+const DL_SHEET_WRAP = '.dl-sheet-wrap';
+const DL_SHEET_OPEN = '.dl-sheet-wrap.open';
 
 function openDlSheet(wrap) {
   if (!wrap) return;
@@ -501,7 +499,7 @@ function bindDlSheets() {
   // long sheet still scrolls it.
   let drag = null;
   document.addEventListener('touchstart', (e) => {
-    const sheet = e.target.closest && e.target.closest('.dl-sheet-wrap.open .dl-sheet, .dl-sheet-overlay.open .dl-sheet');
+    const sheet = e.target.closest && e.target.closest('.dl-sheet-wrap.open .dl-sheet');
     if (!sheet || sheet.scrollTop > 0) return;
     drag = { sheet, y0: e.touches[0].clientY, dy: 0 };
   }, { passive: true });

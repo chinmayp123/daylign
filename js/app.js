@@ -186,9 +186,8 @@ function bindEvents() {
   ['openSearchBtn', 'avatarSearchBtn'].forEach(id => {
     const b = document.getElementById(id);
     if (b) b.addEventListener('click', () => {
-      if (typeof closeMore === 'function') closeMore();
       const sheet = document.getElementById('avatarSheet');
-      if (sheet) sheet.classList.remove('open');
+      if (sheet && sheet.classList.contains('open')) closeDlSheet(sheet);
       if (typeof window.openPalette === 'function') window.openPalette();
     });
   });

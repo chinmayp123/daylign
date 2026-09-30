@@ -4926,31 +4926,6 @@ html.pref-reduce-motion .dl-btn:active { transform: none; }
    v3 phase 4 (Tasks) and phase 5 (Calendar)
    ========================================================================== */
 
-/* ---- sheet aliases ----
-   The avatar sheet (phase 2) was written with .dl-sheet-overlay / .dl-sheet-handle
-   while the component in section 2.4 is .dl-sheet-wrap / .dl-grab, so it had no
-   overlay styling at all and sat open in the page flow. Aliasing rather than
-   renaming, because both spellings are in the markup and in js/utils.js. */
-.dl-sheet-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 300;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  background: rgba(0, 0, 0, .5);
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity var(--dur, .22s) ease;
-}
-.dl-sheet-overlay.open { opacity: 1; visibility: visible; }
-.dl-sheet-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--border); margin: 0 auto 10px; }
-html[data-theme="light"] .dl-sheet-overlay { background: rgba(18, 20, 18, .35); }
-@media (min-width: 601px) {
-  .dl-sheet-overlay { align-items: center; padding: 24px; }
-  .dl-sheet-handle { display: none; }
-}
-
 /* ==================== Task sheet ==================== */
 .task-sheet, .event-sheet { display: flex; flex-direction: column; gap: 0; }
 .ts-head {
