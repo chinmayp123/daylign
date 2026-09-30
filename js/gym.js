@@ -1336,7 +1336,8 @@ function renderGym() {
   const todayStr = getTodayStr();
   const viewDate = new Date(gymViewDate + 'T00:00:00');
   const isToday = gymViewDate === todayStr;
-  const shortDay = viewDate.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
+  // Built by hand: asking Intl for weekday + day alone gives "30 Wed" in en-US.
+  const shortDay = viewDate.toLocaleDateString('en-US', { weekday: 'short' }) + ' ' + viewDate.getDate();
   $('#gymDateLabel').textContent = isToday ? `Today, ${shortDay}`
     : viewDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   const todayBtn = $('#gymToday');

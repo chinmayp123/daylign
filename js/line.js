@@ -68,6 +68,18 @@ function lineDayLabel(dateStr) {
   return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
+// When the usual session usually happens: the middle of the clock times logged
+// in the last 14 days, or the 7:30 slot when none carry a time yet (spec 4.3).
+function lineUsualCardioMin() {
+  const cutoff = (typeof offsetDateStr === 'function') ? offsetDateStr(getTodayStr(), -14) : '';
+  const mins = (state.cardio || [])
+    .filter(s => s && s.at && s.date >= cutoff)
+    .map(s => lineMinutesFrom(s.at, null))
+    .filter(m => m !== null && m !== undefined)
+    .sort((a, b) => a - b);
+  return mins.length ? mins[Math.floor(mins.length / 2)] : LINE_SLOT.cardio;
+}
+
 function lineItemsFor(dateStr) {
   const items = [];
   const isToday = dateStr === getTodayStr();
@@ -119,19 +131,33 @@ function lineItemsFor(dateStr) {
   }
 
   // ---- cardio ----
+  // Sessions store `duration` (minutes) and a unit that depends on the sport;
+  // this read `minutes` and wrote "mi" for everything, so a real ride showed no
+  // length and a swim showed yards as miles.
+  const CT = (typeof CARDIO_TYPES !== 'undefined') ? CARDIO_TYPES : {};
+  const cardioCfg = (t) => CT[t] || { label: 'Cardio', unit: 'mi', ms: 'directions_run' };
   const rides = (state.cardio || []).filter(e => e.date === dateStr);
   if (rides.length) {
     rides.forEach(rd => {
-      const min = lineMinutesFrom(rd.at, LINE_SLOT.cardio);
-      push({ sort: min, time: lineClock(min), c: 'move', icon: 'directions_run',
-             title: rd.type ? rd.type[0].toUpperCase() + rd.type.slice(1) : 'Cardio',
-             sub: rd.minutes ? rd.minutes + ' min' : '',
-             val: rd.distance ? rd.distance + ' mi' : '', past: true, tap: 'training' });
+      const cfg = cardioCfg(rd.type);
+      const mins = Number(rd.duration) || Number(rd.minutes) || 0;
+      const min = lineMinutesFrom(rd.at, lineUsualCardioMin());
+      push({ sort: min, time: lineClock(min), c: 'move', icon: cfg.ms,
+             title: cfg.label, sub: mins ? Math.round(mins) + ' min' : '',
+             val: Number(rd.distance) ? rd.distance + ' ' + cfg.unit : '', past: true, tap: 'cardio' });
     });
-  } else if (isToday) {
-    push({ sort: LINE_SLOT.cardio, time: lineClock(LINE_SLOT.cardio), c: 'move',
-           icon: 'directions_run', title: 'Usual ride', sub: 'not logged yet', val: '',
-           action: '<button type="button" class="dl-line-btn" data-line-cardio>Log it</button>' });
+  } else if (isToday && (typeof moduleEnabled !== 'function' || moduleEnabled('cardio'))) {
+    // Only when there IS a usual session to log: with no cardio history the
+    // row was a "Log it" button that did nothing.
+    const u = (typeof cardioUsual === 'function') ? cardioUsual() : null;
+    if (u && u.duration) {
+      const cfg = cardioCfg(u.type);
+      const min = lineUsualCardioMin();
+      push({ sort: min, time: lineClock(min), c: 'move', icon: cfg.ms,
+             title: 'Usual ' + cfg.label.toLowerCase(),
+             sub: u.duration + ' min' + (u.distance ? ' · ' + u.distance + ' ' + cfg.unit : '') + ', not logged yet', val: '',
+             action: '<button type="button" class="dl-line-btn" data-line-cardio>Log it</button>' });
+    }
   }
 
   // ---- logged workout ----
@@ -144,11 +170,11 @@ function lineItemsFor(dateStr) {
     push({ sort: min, time: lineClock(min), c: 'move', icon: 'fitness_center',
            title: full ? 'Workout' : 'Check-in',
            sub: gym.map(e => e.exercise).filter(Boolean).slice(0, 3).join(', '),
-           val: sets + (sets === 1 ? ' set' : ' sets'), past: true, tap: 'training' });
+           val: sets + (sets === 1 ? ' set' : ' sets'), past: true, tap: 'strength' });
   } else if (isToday) {
     push({ sort: LINE_SLOT.workout, time: lineClock(LINE_SLOT.workout), c: 'move',
            icon: 'fitness_center', title: 'Workout', sub: 'planned by the coach', val: '',
-           card: true, tap: 'training' });
+           card: true, tap: 'strength' });
   }
 
   // ---- calendar events, own and mirrored ----
@@ -295,8 +321,9 @@ function bindLine(hostArg) {
       return;
     }
     if (e.target.closest('[data-line-cardio]')) {
-      const btn = document.querySelector('#todayCardio button, [data-log-usual-cardio]');
-      if (btn) btn.click();
+      // The same action as the Cardio tab's "Log it" - called directly. It used
+      // to click a button in a hidden element, which only existed some days.
+      if (typeof logUsualCardio === 'function') logUsualCardio(getTodayStr());
       return;
     }
     const row = e.target.closest('[data-line-tap]');
@@ -305,6 +332,7 @@ function bindLine(hostArg) {
     if (tap === 'sleep') { switchView('training'); if (typeof setTrainingTab === 'function') setTrainingTab('sleep'); }
     else if (tap === 'water' || tap.startsWith('meal:')) switchView('diet');
     else if (tap === 'training') switchView('training');
+    else if (tap === 'strength' || tap === 'cardio') { switchView('training'); if (typeof setTrainingTab === 'function') setTrainingTab(tap); }
     else if (tap === 'calendar') switchView('calendar');
     else if (tap.startsWith('event:') && typeof openEventModal === 'function') {
       const ev = (state.events || []).find(x => x.id === tap.slice(6));

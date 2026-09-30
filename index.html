@@ -395,100 +395,99 @@
         </div><!-- /#trainingStrength -->
 
         <div class="training-pane" id="trainingCardio" hidden>
-        <div class="gym-date-bar">
-          <button class="gym-date-nav" id="cardioPrevDay" aria-label="Previous day">&lt;</button>
-          <button class="gym-date-today" id="cardioToday">Today</button>
-          <button class="gym-date-nav" id="cardioNextDay" aria-label="Next day">&gt;</button>
-          <span class="gym-date-label" id="cardioDateLabel"></span>
-          <input type="date" id="cardioDate" class="gym-date-input">
-        </div>
-
-        <!-- One-tap "same as usual" logger + streak (js/cardio.js) -->
+        <!-- Your usual session: one tap, with the streak (js/cardio.js). The
+             same action as the ride on Today's line. -->
         <div id="cardioQuick"></div>
 
-        <!-- Log a session (top, so logging never needs a scroll) -->
-        <div class="cardio-add-card">
-          <div class="cardio-type-tabs" id="cardioTypeTabs"></div>
-          <div class="cardio-watch-chip" id="cardioWatchChip" hidden></div>
+        <div class="dl-daynav">
+          <button type="button" class="dl-line-day-btn" id="cardioPrevDay" aria-label="Previous day"><span class="ms" aria-hidden="true">chevron_left</span></button>
+          <label class="dl-daynav-label"><span id="cardioDateLabel"></span><input type="date" id="cardioDate" class="dl-daynav-input" aria-label="Pick a day"></label>
+          <button type="button" class="dl-line-day-btn" id="cardioNextDay" aria-label="Next day"><span class="ms" aria-hidden="true">chevron_right</span></button>
+          <button type="button" class="dl-line-btn" id="cardioToday" hidden>Today</button>
+        </div>
 
-          <!-- Run intensity chips — runs only (populated by renderCardioRunTypes) -->
-          <div class="cardio-runtypes" id="cardioRunTypes" hidden></div>
-
-          <div class="cardio-add-grid">
-            <div class="cardio-field">
+        <!-- Log a session. Distance, time and a live pace in the sport's own
+             unit; the run-only detail folds away so a ride is three fields. -->
+        <div class="cd-form">
+          <div class="dl-seg full" id="cardioTypeTabs" role="group" aria-label="Sport"></div>
+          <div class="cd-fields">
+            <div class="dl-field">
               <label id="cardioDistanceLabel" for="cardioDistance">Distance (mi)</label>
               <input type="number" id="cardioDistance" step="0.01" min="0" inputmode="decimal" placeholder="3.1">
             </div>
-            <div class="cardio-field">
-              <label for="cardioDuration">Duration (min)</label>
+            <div class="dl-field">
+              <label for="cardioDuration">Time (min)</label>
               <input type="number" id="cardioDuration" step="0.1" min="0" inputmode="decimal" placeholder="28">
             </div>
-            <div class="cardio-field">
+            <div class="dl-field">
               <label for="cardioPace">Pace</label>
-              <input type="text" id="cardioPace" readonly placeholder="auto" class="cardio-pace-readout">
+              <input type="text" id="cardioPace" readonly placeholder="auto" tabindex="-1" class="cd-pace">
             </div>
           </div>
 
-          <!-- Run detail: HR + zone bar, elevation, RPE — runs only -->
-          <div class="cardio-rundetail" id="cardioRunDetail" hidden>
-            <div class="cardio-add-grid">
-              <div class="cardio-field">
-                <label for="cardioHr">Avg HR</label>
-                <input type="number" id="cardioHr" step="1" min="0" max="230" inputmode="numeric" placeholder="bpm">
+          <!-- Run intensity chips - runs only (renderCardioRunTypes) -->
+          <div class="cd-chips" id="cardioRunTypes" hidden></div>
+
+          <!-- Run detail - runs only -->
+          <details class="cd-more" id="cardioRunDetail" hidden>
+            <summary><span class="ms" aria-hidden="true">tune</span><span class="cd-more-t">Heart rate, elevation, effort, zones</span><span class="ms cd-more-chev" aria-hidden="true">expand_more</span></summary>
+            <div class="cd-fields">
+              <div class="dl-field">
+                <label for="cardioHr">Avg HR (bpm)</label>
+                <input type="number" id="cardioHr" step="1" min="0" max="230" inputmode="numeric" placeholder="148">
               </div>
-              <div class="cardio-field">
+              <div class="dl-field">
                 <label for="cardioElev">Elevation (ft)</label>
                 <input type="number" id="cardioElev" step="1" min="0" inputmode="numeric" placeholder="0">
               </div>
-              <div class="cardio-field">
-                <label for="cardioRpe">Effort (RPE) · <span id="cardioRpeVal">5</span></label>
-                <input type="range" id="cardioRpe" min="1" max="10" step="1" value="5" class="cardio-rpe-slider">
+              <div class="dl-field">
+                <label for="cardioRpe">Effort, RPE <span id="cardioRpeVal">5</span></label>
+                <input type="range" id="cardioRpe" min="1" max="10" step="1" value="5" class="cd-rpe">
               </div>
             </div>
-            <div class="cardio-zone-bar" id="cardioZoneBar"></div>
+            <div class="cd-zones" id="cardioZoneBar"></div>
+          </details>
+
+          <div class="dl-field">
+            <label for="cardioNotes">Notes</label>
+            <input type="text" id="cardioNotes" placeholder="easy pace, felt strong" maxlength="120">
           </div>
 
-          <div class="cardio-add-grid">
-            <div class="cardio-field cardio-field-wide">
-              <label for="cardioNotes">Notes</label>
-              <input type="text" id="cardioNotes" placeholder="easy pace, felt strong" maxlength="120">
-            </div>
-          </div>
-          <button class="btn-primary cardio-save-btn" id="cardioSaveBtn">Log session</button>
+          <!-- Watch cross-check, with Use this -->
+          <div class="cd-watch" id="cardioWatchChip" hidden></div>
+
+          <button type="button" class="dl-btn primary full" id="cardioSaveBtn">Log session</button>
         </div>
 
         <!-- Apple Watch workouts (imported from Apple Health) -->
         <div id="cardioWatchWorkouts" hidden></div>
 
         <!-- This day -->
-        <div class="cardio-day" id="cardioDayList"></div>
+        <div id="cardioDayList"></div>
 
-        <!-- This week -->
-        <div class="card cardio-card">
-          <h2>This week</h2>
-          <div class="cardio-week" id="cardioWeekStats"></div>
+        <!-- This week, and the race beside it -->
+        <div class="cd-week">
+          <div id="cardioWeekStats"></div>
+          <div class="dl-card tint c-meet cd-race" id="cardioRace"></div>
         </div>
 
-        <!-- Race -->
-        <div class="card cardio-card cardio-race" id="cardioRace"></div>
-
-        <div class="card cardio-card collapsible" data-collapse="mobile" data-collapse-key="cardioracetarget">
-          <h2>Race target</h2>
-          <div class="cardio-race-form">
-            <div class="cardio-field">
+        <details class="dl-card cd-target" data-cardio-racetarget>
+          <summary><span class="cd-more-t">Race target</span><span class="ms cd-more-chev" aria-hidden="true">expand_more</span></summary>
+          <div class="cd-fields">
+            <div class="dl-field">
               <label for="cardioRaceType">Distance</label>
               <select id="cardioRaceType"></select>
             </div>
-            <div class="cardio-field">
+            <div class="dl-field">
               <label for="cardioRaceDate">Race date</label>
               <input type="date" id="cardioRaceDate">
             </div>
-            <div class="cardio-field">
-              <label for="cardioWeeklyTarget">Weekly run target (mi)</label>
+            <div class="dl-field">
+              <label for="cardioWeeklyTarget">Weekly run (mi)</label>
               <input type="number" id="cardioWeeklyTarget" step="1" min="0" inputmode="numeric">
             </div>
           </div>
-        </div>
+        </details>
         </div><!-- /#trainingCardio -->
 
         <!-- Coach: one rule-based read on what to do next. These cards

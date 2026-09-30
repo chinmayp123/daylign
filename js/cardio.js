@@ -3,10 +3,13 @@
 // the unit of work is a session (distance + duration), not sets and reps, and
 // the interesting numbers are pace and weekly volume rather than tonnage.
 
+// `ms` is the Material Symbols name the v3 surfaces draw; `icon` is the emoji
+// the v2 Today pill still uses. `doing` is for sentences: "3.1 mi of running"
+// (it used to be label + "ning", which made "ridening" and "swimning").
 const CARDIO_TYPES = {
-  run:  { label: 'Run',   icon: '🏃', unit: 'mi', unitLong: 'miles', paceLabel: 'min/mi' },
-  ride: { label: 'Ride',  icon: '🚴', unit: 'mi', unitLong: 'miles', paceLabel: 'mph' },
-  swim: { label: 'Swim',  icon: '🏊', unit: 'yd', unitLong: 'yards', paceLabel: 'min/100yd' },
+  run:  { label: 'Run',   icon: '🏃', ms: 'directions_run',  doing: 'running',  unit: 'mi', unitLong: 'miles', paceLabel: 'min/mi' },
+  ride: { label: 'Ride',  icon: '🚴', ms: 'directions_bike', doing: 'riding',   unit: 'mi', unitLong: 'miles', paceLabel: 'mph' },
+  swim: { label: 'Swim',  icon: '🏊', ms: 'pool',            doing: 'swimming', unit: 'yd', unitLong: 'yards', paceLabel: 'min/100yd' },
 };
 
 // Races people actually train for, in miles. Half marathon is the default
@@ -285,29 +288,31 @@ function renderCardioWatchWorkouts() {
   const workouts = (typeof getExternalWorkouts === 'function') ? getExternalWorkouts(cardioDate) : [];
   if (!workouts.length) { wrap.innerHTML = ''; wrap.hidden = true; return; }
   wrap.hidden = false;
-  wrap.innerHTML = `<div class="card cardio-card">
-    <h2>⌚ Apple Watch workouts</h2>
-    <div class="ww-list">${workouts.map((w, i) => {
+  wrap.innerHTML = `<div class="dl-card cd-card">
+    <h6 class="dl-card-h"><span>From your Watch</span></h6>
+    ${workouts.map((w, i) => {
       const ctype = mapWatchWorkoutType(w.type);
-      const cfg = CARDIO_TYPES[ctype] || { icon: '🏋️', unit: '' };
+      const cfg = CARDIO_TYPES[ctype] || { ms: 'fitness_center', unit: '' };
       const importable = ['run', 'ride', 'swim'].indexOf(ctype) !== -1;
       const dist = Number(w.distance) || 0;
       const meta = [
         dist ? `${Math.round(dist * 100) / 100} ${cfg.unit || ''}` : '',
         w.minutes ? formatDuration(w.minutes) : '',
-        w.cal ? `${Math.round(w.cal)} cal` : '',
+        w.cal ? `${Math.round(w.cal)} kcal` : '',
       ].filter(Boolean).join(' · ');
+      // Already-imported workouts keep their row but lose the button, so the
+      // same run cannot be added twice.
       const action = !importable
-        ? `<span class="ww-note">strength</span>`
+        ? '<span class="cd-row-note">strength</span>'
         : watchWorkoutImported(cardioDate, w, ctype)
-          ? `<span class="ww-done">✓ in log</span>`
-          : `<button type="button" class="btn-secondary ww-import" data-ww="${i}">Add to log</button>`;
-      return `<div class="ww-row">
-        <span class="ww-icon">${cfg.icon}</span>
-        <div class="ww-main"><strong>${esc(w.type || ctype)}</strong><span class="ww-meta">${esc(meta)}</span></div>
+          ? '<span class="cd-row-note">in your log</span>'
+          : `<button type="button" class="cd-link" data-ww="${i}">Add to log</button>`;
+      return `<div class="cd-row">
+        <span class="ms cd-row-ico" aria-hidden="true">${cfg.ms}</span>
+        <span class="cd-row-main"><span class="cd-row-name">${esc(w.type || ctype)}</span><span class="cd-row-sub">${esc(meta)}</span></span>
         ${action}
       </div>`;
-    }).join('')}</div>
+    }).join('')}
   </div>`;
   wrap.querySelectorAll('[data-ww]').forEach(b =>
     b.addEventListener('click', () => importWatchWorkout(cardioDate, workouts[Number(b.dataset.ww)])));
@@ -337,7 +342,13 @@ function renderCardio() {
   if (!dateInput) return;
   dateInput.value = cardioDate;
   const label = $('#cardioDateLabel');
-  if (label) label.textContent = formatDate(cardioDate);
+  const isToday = cardioDate === getTodayStr();
+  const viewDate = new Date(cardioDate + 'T00:00:00');
+  if (label) label.textContent = isToday
+    ? 'Today, ' + viewDate.toLocaleDateString('en-US', { weekday: 'short' }) + ' ' + viewDate.getDate()
+    : viewDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const todayBtn = $('#cardioToday');
+  if (todayBtn) todayBtn.hidden = isToday;
 
   // Default the logging type to your usual sport, once, before the tabs draw.
   // Only latch once there's actually history to learn from — the first render
@@ -354,7 +365,7 @@ function renderCardio() {
   // until there's a logged run — for a rider they're pure noise.
   const hasRuns = (state.cardio || []).some(s => s && s.type === 'run');
   const raceCard = document.getElementById('cardioRace');
-  const raceTarget = document.querySelector('[data-collapse-key="cardioracetarget"]');
+  const raceTarget = document.querySelector('[data-cardio-racetarget]');
   if (raceCard) raceCard.hidden = !hasRuns;
   if (raceTarget) raceTarget.hidden = !hasRuns;
 
@@ -374,12 +385,8 @@ function renderCardio() {
 function renderCardioTypeTabs() {
   const wrap = $('#cardioTypeTabs');
   if (!wrap) return;
-  wrap.innerHTML = Object.keys(CARDIO_TYPES).map(t => {
-    const cfg = CARDIO_TYPES[t];
-    return `<button type="button" class="cardio-type-btn${t === cardioType ? ' active' : ''}" data-cardio-type="${t}">
-      <span class="cardio-type-icon">${cfg.icon}</span>${cfg.label}
-    </button>`;
-  }).join('');
+  wrap.innerHTML = Object.keys(CARDIO_TYPES).map(t =>
+    `<button type="button" data-cardio-type="${t}"${t === cardioType ? ' aria-pressed="true"' : ''}>${CARDIO_TYPES[t].label}</button>`).join('');
 
   const distLabel = $('#cardioDistanceLabel');
   if (distLabel) distLabel.textContent = `Distance (${CARDIO_TYPES[cardioType].unit})`;
@@ -399,10 +406,8 @@ function renderCardioRunTypes() {
   const wrap = $('#cardioRunTypes');
   if (!wrap) return;
   wrap.innerHTML = Object.keys(RUN_TYPES).map(k => {
-    const cfg = RUN_TYPES[k];
     const on = k === cardioRunType;
-    return `<button type="button" class="cardio-runtype${on ? ' active' : ''}" data-runtype="${k}"
-      style="${on ? `border-color:${cfg.color};color:${cfg.color}` : ''}">${cfg.label}</button>`;
+    return `<button type="button" class="cd-chip${on ? ' on' : ''}" data-runtype="${k}" aria-pressed="${on}">${RUN_TYPES[k].label}</button>`;
   }).join('');
 }
 
@@ -423,22 +428,18 @@ function updateCardioSaveLabel() {
   }
 }
 
-// Z1–Z5 bar; highlights the zone the entered avg HR lands in.
+// Z1–Z5 bar; highlights the zone the entered avg HR lands in, and names it, so
+// the bar reads as effort rather than a number.
 function renderCardioZoneBar() {
   const wrap = $('#cardioZoneBar');
   if (!wrap) return;
   const hr = parseFloat(($('#cardioHr') || {}).value) || 0;
   const active = hrZone(hr);
-  // When a zone is active, name it (e.g. "Z3 · Aerobic") so the bar reads as
-  // effort, not just a number — ref 4c.
-  const nameChip = active > 0
-    ? `<span class="cardio-zone-name" style="color:${ZONE_COLORS[active]}">Z${active} · ${ZONE_NAMES[active]}</span>`
-    : '';
-  wrap.innerHTML = `<span class="cardio-zone-label">HR zones</span>` +
-    [1, 2, 3, 4, 5].map(z => `
-      <span class="cardio-zone${z === active ? ' active' : ''}"
-        style="${z === active ? `background:${ZONE_COLORS[z]};border-color:${ZONE_COLORS[z]}` : ''}">Z${z}</span>`).join('') +
-    (hr > 0 ? `<span class="cardio-zone-hr">${Math.round(hr)} bpm</span>${nameChip}` : '');
+  wrap.innerHTML = `<span class="cd-zone-set">` +
+    [1, 2, 3, 4, 5].map(z => `<span class="cd-zone${z === active ? ' on' : ''}">Z${z}</span>`).join('') + `</span>` +
+    `<span class="cd-zone-read">${hr > 0
+      ? `${Math.round(hr)} bpm${active ? ` · Z${active} ${ZONE_NAMES[active]}` : ''}`
+      : 'Enter an average heart rate to see its zone'}</span>`;
 }
 
 // Cross-check against what the watch recorded, without ever creating a session
@@ -454,50 +455,55 @@ function renderCardioWatchChip() {
   const fn = getters[cardioType];
   const watch = fn ? fn(cardioDate) : null;
   if (watch === null) { chip.hidden = true; return; }
+  const cfg = CARDIO_TYPES[cardioType];
   const logged = cardioSessionsFor(cardioDate)
     .filter(s => s.type === cardioType)
     .reduce((sum, s) => sum + (Number(s.distance) || 0), 0);
-  const unit = CARDIO_TYPES[cardioType].unit;
   const rounded = cardioType === 'swim' ? Math.round(watch) : Math.round(watch * 100) / 100;
   chip.hidden = false;
-  chip.innerHTML = `⌚ Watch recorded <strong>${rounded} ${unit}</strong> of ${CARDIO_TYPES[cardioType].label.toLowerCase()}ning this day` +
-    (logged > 0 ? ` · you logged ${Math.round(logged * 100) / 100} ${unit}` : ` · <button type="button" class="cardio-watch-fill" data-fill="${rounded}">use this</button>`);
+  chip.innerHTML = `<span class="ms" aria-hidden="true">watch</span>
+    <span>Watch saw <b>${rounded} ${cfg.unit}</b> of ${cfg.doing} this day${logged > 0 ? `; you logged ${Math.round(logged * 100) / 100} ${cfg.unit}.` : '.'}</span>
+    ${logged > 0 ? '' : `<button type="button" class="cd-link cardio-watch-fill" data-fill="${rounded}">Use this</button>`}`;
 }
 
 function renderCardioDayList() {
   const list = $('#cardioDayList');
   if (!list) return;
   const sessions = cardioSessionsFor(cardioDate);
+  const isToday = cardioDate === getTodayStr();
+  const title = isToday ? 'Today' : formatDate(cardioDate);
   if (!sessions.length) {
-    list.innerHTML = emptyState({ icon: 'activity', title: 'Nothing logged', hint: 'Use the one-tap button above to log your usual session.' });
+    list.innerHTML = `<div class="dl-card cd-card"><h6 class="dl-card-h"><span>${esc(title)}</span></h6>
+      <p class="cd-note">Nothing logged ${isToday ? 'yet today' : 'on this day'}.</p></div>`;
     return;
   }
   const burn = cardioBurnForDate(cardioDate);
-  list.innerHTML = sessions.map((s) => {
-    const cfg = CARDIO_TYPES[s.type] || CARDIO_TYPES.run;
-    const pace = paceFor(s);
-    const rt = s.runType && RUN_TYPES[s.runType];
-    const detailBits = [
-      rt ? `<span class="cardio-session-tag" style="color:${rt.color};border-color:${rt.color}">${rt.label}</span>` : '',
-      s.avgHr ? `<span class="cardio-session-meta">♥ ${s.avgHr}</span>` : '',
-      s.elevation ? `<span class="cardio-session-meta">↑ ${s.elevation} ft</span>` : '',
-      s.rpe ? `<span class="cardio-session-meta">RPE ${s.rpe}</span>` : '',
-    ].filter(Boolean).join('');
-    return `
-      <div class="cardio-session">
-        <span class="cardio-session-icon">${cfg.icon}</span>
-        <div class="cardio-session-main">
-          <div class="cardio-session-top">
-            <strong>${Math.round((Number(s.distance) || 0) * 100) / 100} ${cfg.unit}</strong>
-            <span class="cardio-session-dur">${formatDuration(s.duration)}</span>
-            ${pace ? `<span class="cardio-session-pace">${pace.text}</span>` : ''}
-          </div>
-          ${detailBits ? `<div class="cardio-session-detail">${detailBits}</div>` : ''}
-          ${s.notes ? `<div class="cardio-session-notes">${esc(s.notes)}</div>` : ''}
-        </div>
-        <button class="cardio-session-del" data-del-cardio="${s.id}" title="Delete this session">&times;</button>
+  list.innerHTML = `<div class="dl-card cd-card"><h6 class="dl-card-h"><span>${esc(title)}</span><em>${burn} kcal</em></h6>
+    ${sessions.map(s => {
+      const cfg = CARDIO_TYPES[s.type] || CARDIO_TYPES.run;
+      const pace = paceFor(s);
+      const rt = s.runType && RUN_TYPES[s.runType];
+      const dist = Math.round((Number(s.distance) || 0) * 100) / 100;
+      const bits = [
+        formatDuration(s.duration),
+        pace ? pace.text : '',
+        rt ? rt.label : '',
+        s.avgHr ? `${s.avgHr} bpm` : '',
+        s.elevation ? `${s.elevation} ft up` : '',
+        s.rpe ? `RPE ${s.rpe}` : '',
+      ].filter(Boolean).join(' · ');
+      return `
+      <div class="cd-row">
+        <span class="ms cd-row-ico" aria-hidden="true">${cfg.ms}</span>
+        <span class="cd-row-main">
+          <span class="cd-row-name">${cfg.label}${dist ? `, ${dist} ${cfg.unit}` : ''}</span>
+          <span class="cd-row-sub">${esc(bits)}</span>
+          ${s.notes ? `<span class="cd-row-sub">${esc(s.notes)}</span>` : ''}
+        </span>
+        <button type="button" class="ss-act cd-del" data-del-cardio="${esc(s.id)}" aria-label="Delete this ${cfg.label.toLowerCase()}"><span class="ms" aria-hidden="true">close</span></button>
       </div>`;
-  }).join('') + `<div class="cardio-day-burn">≈ ${burn} cal burned</div>`;
+    }).join('')}
+  </div>`;
 }
 
 function renderCardioWeek() {
@@ -505,32 +511,48 @@ function renderCardioWeek() {
   if (!wrap) return;
   const g = cardioGoals();
   const stats = cardioWeekStats(cardioWeekStart(cardioDate));
+  const hasRuns = (state.cardio || []).some(s => s && s.type === 'run');
+  const time = formatDuration(stats.totalMinutes);
+  const days = `${stats.days} day${stats.days === 1 ? '' : 's'}`;
+
+  // The ring is RUN miles against the weekly run target. Someone who only
+  // rides has no such target, and a ring stuck at "0 of 15 mi" every week is a
+  // standing failure they never signed up for - they get plain tiles instead.
+  if (!hasRuns) {
+    wrap.innerHTML = `
+      <div class="dl-card cd-card">
+        <h6 class="dl-card-h"><span>This week</span><em>${days}</em></h6>
+        <div class="dl-tiles cd-tiles">
+          <div class="dl-tile"><b>${stats.byType.ride.distance.toFixed(1)}<small>mi</small></b><span>ride</span></div>
+          ${stats.byType.swim.distance ? `<div class="dl-tile"><b>${Math.round(stats.byType.swim.distance)}<small>yd</small></b><span>swim</span></div>` : ''}
+          <div class="dl-tile"><b>${time}</b><span>moving</span></div>
+        </div>
+      </div>`;
+    return;
+  }
+
   const pct = g.weeklyMiles > 0 ? Math.min(100, (stats.runMiles / g.weeklyMiles) * 100) : 0;
   const toGo = Math.max(0, g.weeklyMiles - stats.runMiles);
-  const deg = Math.round((pct / 100) * 360);
-  const tiles = [
-    { label: 'Longest', value: stats.longestRun.toFixed(1), sub: 'mi single run' },
-    { label: 'Ride', value: stats.byType.ride.distance.toFixed(1), sub: 'mi' },
-    { label: 'Swim', value: Math.round(stats.byType.swim.distance), sub: 'yd' },
-    { label: 'Time', value: formatDuration(stats.totalMinutes), sub: `${stats.days} day${stats.days === 1 ? '' : 's'}` },
-  ];
-  // Mileage ring leads (handoff 4b/11b), the other stats sit beside it.
+  const extra = [
+    stats.longestRun ? `longest ${stats.longestRun.toFixed(1)} mi` : '',
+    stats.byType.ride.distance ? `ride ${stats.byType.ride.distance.toFixed(1)} mi` : '',
+    stats.byType.swim.distance ? `swim ${Math.round(stats.byType.swim.distance)} yd` : '',
+    `${time} over ${days}`,
+  ].filter(Boolean).join(' · ');
+  const shown = stats.runMiles >= 10 ? Math.round(stats.runMiles) : stats.runMiles.toFixed(1);
   wrap.innerHTML = `
-    <div class="cardio-week-ring-wrap">
-      <div class="cardio-mileage-ring" style="--mile-deg:${deg}deg">
-        <span class="cardio-mileage-val">${stats.runMiles.toFixed(1)}</span>
-        <span class="cardio-mileage-goal">/ ${g.weeklyMiles} mi</span>
-      </div>
-      <div class="cardio-mileage-side">
-        <span class="cardio-mileage-lead">${toGo > 0 ? `${toGo.toFixed(1)} mi to go` : 'Target hit 🎉'}</span>
-        <div class="cardio-week-tiles">
-          ${tiles.map(t => `
-            <div class="cardio-week-tile">
-              <span class="cardio-week-label">${t.label}</span>
-              <span class="cardio-week-value">${t.value}</span>
-              <span class="cardio-week-sub">${t.sub}</span>
-            </div>`).join('')}
-        </div>
+    <div class="cd-ringrow">
+      <span class="dl-ring-wrap cd-ring">
+        <svg class="dl-ring c-move" viewBox="0 0 64 64" role="img" aria-label="${stats.runMiles.toFixed(1)} of ${g.weeklyMiles} miles run this week">
+          <circle class="dl-ring-track" cx="32" cy="32" r="28"/>
+          <circle class="dl-ring-fill" cx="32" cy="32" r="28" pathLength="100" style="--pct:${Math.round(pct)}"/>
+        </svg>
+        <span class="dl-ring-label">${shown}</span>
+      </span>
+      <div class="cd-week-side">
+        <b>${toGo > 0 ? `${toGo.toFixed(1)} mi to go` : 'Weekly target hit'}</b>
+        <span>of ${g.weeklyMiles} mi running this week</span>
+        <span class="cd-week-line">${extra}</span>
       </div>
     </div>`;
 }
@@ -543,26 +565,20 @@ function renderCardioRace() {
   const days = daysUntil(g.raceDate);
   const pred = predictRaceTime(race.miles);
 
-  const countdown = (days === null || !g.raceDate)
-    ? '<span class="cardio-race-sub">Set a race date to start the countdown</span>'
-    : days > 0
-      ? `<span class="cardio-race-count">${days}</span><span class="cardio-race-sub">day${days === 1 ? '' : 's'} to go · ${Math.floor(days / 7)} week${Math.floor(days / 7) === 1 ? '' : 's'}</span>`
-      : days === 0
-        ? '<span class="cardio-race-count">Today</span><span class="cardio-race-sub">Race day — good luck</span>'
-        : `<span class="cardio-race-sub">Race was ${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'} ago</span>`;
+  let count = '', sub;
+  if (days === null || !g.raceDate) sub = 'Set a race date below to start the countdown.';
+  else if (days > 0) { count = `${days} day${days === 1 ? '' : 's'}`; const w = Math.floor(days / 7); sub = `${w} week${w === 1 ? '' : 's'} to go.`; }
+  else if (days === 0) { count = 'Today'; sub = 'Race day. Good luck.'; }
+  else sub = `The race was ${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'} ago.`;
+
+  const proj = pred
+    ? `Projected finish ${formatRaceTime(pred.time)}, from your ${Number(pred.from.distance).toFixed(1)} mi on ${formatDate(pred.from.date)}.`
+    : 'Log a run of 3 mi or longer for a projected finish.';
 
   wrap.innerHTML = `
-    <div class="cardio-race-head">
-      <h2>${race.label}</h2>
-      <span class="cardio-race-dist">${race.miles.toFixed(1)} mi</span>
-    </div>
-    <div class="cardio-race-count-wrap">${countdown}</div>
-    <div class="cardio-race-pred">
-      ${pred
-        ? `<span class="cardio-race-time">${formatRaceTime(pred.time)}</span>
-           <span class="cardio-race-sub">projected finish, from your ${Number(pred.from.distance).toFixed(1)} mi on ${formatDate(pred.from.date)}</span>`
-        : '<span class="cardio-race-sub">Log a run of 3 mi or longer for a projected finish time</span>'}
-    </div>`;
+    <h6 class="dl-card-h"><span>${race.label}</span><em>${race.miles.toFixed(1)} mi</em></h6>
+    ${count ? `<div class="cd-race-count">${count}</div>` : ''}
+    <p class="cd-note">${sub} ${proj}</p>`;
 }
 
 function renderCardioCoach() {
@@ -597,6 +613,9 @@ function addCardioSession() {
     duration: duration,
     notes: (notesEl.value || '').trim(),
   };
+  // Logged for today means it happened about now, which is what puts it at the
+  // right point on Today's line. A back-dated session has no honest clock time.
+  if (cardioDate === getTodayStr()) session.at = Date.now();
   // Run-only detail — stored only when present, so a ride/swim stays clean and
   // an existing session without these fields is unaffected.
   if (cardioType === 'run') {
@@ -620,7 +639,10 @@ function addCardioSession() {
   const rpe = $('#cardioRpe'); if (rpe) rpe.value = 5;
   const rpeVal = $('#cardioRpeVal'); if (rpeVal) rpeVal.textContent = '5';
   const cfg = CARDIO_TYPES[cardioType];
-  showToast(`Logged ${distance} ${cfg.unit} ${cfg.label.toLowerCase()}`);
+  // Distance is optional, and an empty one used to toast "Logged NaN mi ride".
+  showToast(distance > 0
+    ? `Logged ${distance} ${cfg.unit} ${cfg.label.toLowerCase()}`
+    : `Logged ${formatDuration(duration)} ${cfg.label.toLowerCase()}`);
   render();
 }
 
@@ -636,7 +658,10 @@ function bindCardioEvents() {
   if (!view) return;
 
   const dateInput = $('#cardioDate');
-  if (dateInput) dateInput.addEventListener('change', e => { cardioDate = e.target.value; renderCardio(); });
+  if (dateInput) {
+    dateInput.addEventListener('change', e => { if (e.target.value) { cardioDate = e.target.value; renderCardio(); } });
+    dateInput.addEventListener('click', e => { try { e.target.showPicker(); } catch (err) { /* not supported: the field still works */ } });
+  }
   const prev = $('#cardioPrevDay');
   if (prev) prev.addEventListener('click', () => { cardioDate = offsetDateStr(cardioDate, -1); renderCardio(); });
   const next = $('#cardioNextDay');
@@ -777,9 +802,11 @@ function logUsualCardio(dateStr) {
     duration: u.duration || 0,
     notes: '',
   });
+  const added = state.cardio[state.cardio.length - 1];
+  if (added.date === getTodayStr()) added.at = Date.now();
   saveData(state);
   const cfg = CARDIO_TYPES[u.type] || { label: u.type };
-  showToast(`✓ ${u.duration} min ${cfg.label.toLowerCase()} logged`);
+  showToast(`${u.duration} min ${cfg.label.toLowerCase()} logged`);
   render();
 }
 
@@ -789,38 +816,19 @@ function renderCardioQuick() {
   const u = cardioUsual();
   if (!u || !u.duration) { host.innerHTML = ''; return; }
 
-  const cfg = CARDIO_TYPES[u.type] || { label: u.type, icon: '🏃', unit: '' };
-  const todays = (state.cardio || []).filter(s => s && s.date === cardioDate && s.type === u.type);
-  const done = todays.length > 0;
+  const cfg = CARDIO_TYPES[u.type] || { label: u.type, ms: 'directions_run', unit: '' };
+  const done = (state.cardio || []).some(s => s && s.date === cardioDate && s.type === u.type);
   const streak = cardioStreak();
   const isToday = cardioDate === getTodayStr();
-  const distTxt = u.distance ? ` · ${u.distance} ${cfg.unit}` : '';
 
   host.innerHTML = `
-    <div class="card cq-card">
-      <div class="cq-top">
-        <div class="cq-label">${isToday ? 'Today' : formatDate(cardioDate)}</div>
-        ${streak > 0 ? `<div class="cq-streak" title="consecutive days">🔥 ${streak} day${streak === 1 ? '' : 's'}</div>` : ''}
+    <div class="dl-card tint c-move cd-usual">
+      <h6 class="dl-card-h"><span>Your usual ${esc(cfg.label.toLowerCase())}</span>${streak > 0 ? `<em>${streak}-day streak</em>` : ''}</h6>
+      <div class="cd-usual-row">
+        <span class="cd-usual-val">${u.distance ? `${u.distance} ${cfg.unit} · ` : ''}${u.duration} min</span>
+        ${done ? `<span class="cd-usual-done"><span class="ms" aria-hidden="true">check</span>Logged ${isToday ? 'today' : 'this day'}</span>` : ''}
+        <button type="button" class="dl-btn${done ? '' : ' primary'}" id="cardioQuickBtn">${done ? 'Log another' : 'Log it'}</button>
       </div>
-      ${done ? `
-        <div class="cq-done">
-          <span class="cq-done-check">✓</span>
-          <div class="cq-done-body">
-            <div class="cq-done-title">${cfg.icon} ${todays.length > 1 ? `${todays.length} sessions` : `${Math.round(todays[0].duration)} min ${cfg.label.toLowerCase()}`} logged</div>
-            <div class="cq-done-sub">Nice — that's the habit kept.</div>
-          </div>
-        </div>
-        <button type="button" class="cq-again" id="cardioQuickBtn">+ Log another ${cfg.label.toLowerCase()}</button>
-      ` : `
-        <button type="button" class="cq-btn" id="cardioQuickBtn">
-          <span class="cq-btn-icon">${cfg.icon}</span>
-          <span class="cq-btn-text">
-            <span class="cq-btn-main">Log ${u.duration} min ${cfg.label.toLowerCase()}</span>
-            <span class="cq-btn-sub">your usual${distTxt}</span>
-          </span>
-          <span class="cq-btn-go">＋</span>
-        </button>
-      `}
     </div>`;
 
   const btn = document.getElementById('cardioQuickBtn');
