@@ -13591,3 +13591,60 @@ button.dl-line-item:focus-visible { outline: 2px solid var(--accent); outline-of
   .dt-main { grid-column: 1; grid-row: 3; }
   .dt-rail { grid-column: 2; grid-row: 3; }
 }
+
+
+/* ============================================================
+   v3 phase 8: Insights (spec 9)
+   ============================================================ */
+#insightsBody { position: relative; }
+.ins-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 4px 0 12px; }
+.ins-toolbar .dl-btn .ms { font-size: 17px; margin-right: 4px; }
+.ins-week { margin-bottom: 12px; }
+.ins-say { margin: 0 0 6px; font-family: var(--font-display); font-weight: 600; font-size: 17px; line-height: 1.2; letter-spacing: -0.02em; color: var(--text-primary); }
+.ins-say b { font-weight: 800; }
+.ins-say span { color: var(--text-secondary); }
+.ins-week-stats { margin: 0; font-size: 12px; color: var(--text-secondary); }
+.ins-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 12px; }
+.ins-tiles .dl-tile { padding: 10px 8px; }
+.ins-tiles .dl-tile b { font-size: 16px; }
+.ins-grid { display: grid; gap: 10px; }
+/* The v2 card animated in on every render, and Insights re-renders whenever
+   anything saves. The grid gap does the spacing. */
+.dl-card.ins-card { min-width: 0; margin: 0; animation: none; }
+.ins-card .ins-note, .ins-foot { margin: 8px 0 0; font-size: 11.5px; line-height: 1.4; color: var(--text-muted); }
+.ins-card .ins-note.is-warn { color: var(--text-secondary); }
+.ins-foot { margin: 12px 0 0; }
+
+/* charts: the colour comes from the c- class on the chart */
+/* No default --c here: it would override the c- class that sets the colour. */
+.ins-barwrap { position: relative; height: 70px; }
+.ins-bars { display: flex; align-items: flex-end; gap: 2px; height: 100%; }
+.ins-col { flex: 1; min-width: 0; height: 100%; display: flex; align-items: flex-end; }
+.ins-bar { display: block; width: 100%; border-radius: 3px 3px 1px 1px; background: var(--c); opacity: .9; }
+/* logged as zero: a stub on the baseline. A gap (.is-gap) draws nothing. */
+.ins-bar.is-zero { height: 2px !important; background: var(--track); opacity: 1; }
+.ins-col:hover .ins-bar { opacity: 1; }
+.ins-goal { position: absolute; left: 0; right: 0; border-top: 1.5px dashed var(--text-muted); pointer-events: none; }
+.ins-chart { display: block; width: 100%; height: 84px; }
+.ins-line { stroke: var(--c); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.ins-area { fill: color-mix(in srgb, var(--c) 14%, transparent); }
+.ins-pt { fill: var(--c); }
+.ins-pt.is-last { stroke: var(--bg-card); stroke-width: 2; }
+.ins-goal-l { stroke: var(--text-muted); stroke-width: 1.5; stroke-dasharray: 5 5; vector-effect: non-scaling-stroke; }
+.ins-axis { display: flex; justify-content: space-between; gap: 8px; margin-top: 4px; font: 500 10.5px var(--font-mono); color: var(--text-muted); }
+.ins-stats { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 6px; font-size: 11.5px; color: var(--text-muted); }
+.ins-stats b { font: 600 11.5px var(--font-mono); color: var(--text-primary); }
+.ins-growing { padding: 16px 10px; border: 1px dashed var(--border); border-radius: 12px; text-align: center; font-size: 12px; line-height: 1.45; color: var(--text-secondary); }
+.ins-growing b { display: block; font-size: 13px; color: var(--text-primary); }
+.ins-split { display: grid; grid-template-columns: 44px minmax(0, 1fr) 30px; align-items: center; gap: 8px; padding: 4px 0; font-size: 12.5px; color: var(--text-primary); }
+.ins-split .dl-meter { width: 100%; }
+.ins-split b { font: 600 12px var(--font-mono); text-align: right; }
+.ins-tip {
+  position: absolute; z-index: 5; pointer-events: none; opacity: 0; transition: opacity .12s ease;
+  padding: 5px 8px; border-radius: 8px; white-space: nowrap;
+  background: var(--text-primary); color: var(--bg-primary); font: 500 11px var(--font-mono);
+}
+.ins-tip.show { opacity: 1; }
+@media (max-width: 420px) { .ins-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 760px) { .ins-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1180px) { .ins-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
