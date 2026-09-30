@@ -532,129 +532,107 @@
       </div><!-- /#trainingView -->
 
       <div class="view" id="dietView">
-        <!-- Date navigation and the week strip are ONE control: the strip is
-             the day picker, the arrows step it, and the label says where you
-             are. Stacked as two separate rows they duplicated each other. -->
-        <div class="diet-datehead">
-          <div class="diet-date-bar">
-            <button class="gym-date-nav" id="dietPrevDay" aria-label="Previous day">&lt;</button>
-            <span class="diet-date-label" id="dietDateLabel"></span>
-            <button class="gym-date-nav" id="dietNextDay" aria-label="Next day">&gt;</button>
-            <span class="diet-datehead-spacer"></span>
-            <button class="gym-date-today" id="dietToday">Today</button>
-            <input type="date" id="dietDate" class="gym-date-input">
+        <!-- Diet (spec 8). Two screens in one view: the day, and the Food
+             library, which takes the whole view while it is open. -->
+        <div class="diet-day" id="dietDay">
+          <!-- Day stepper; the date is the picker. The book opens the library. -->
+          <div class="dl-daynav dt-nav">
+            <button type="button" class="dl-line-day-btn" id="dietPrevDay" aria-label="Previous day"><span class="ms" aria-hidden="true">chevron_left</span></button>
+            <label class="dl-daynav-label"><span id="dietDateLabel"></span><input type="date" id="dietDate" class="dl-daynav-input" aria-label="Pick a day"></label>
+            <button type="button" class="dl-line-day-btn" id="dietNextDay" aria-label="Next day"><span class="ms" aria-hidden="true">chevron_right</span></button>
+            <button type="button" class="dl-line-btn" id="dietToday" hidden>Today</button>
+            <button type="button" class="dl-line-day-btn" id="openFoodLibraryBtn" aria-label="Food library"><span class="ms" aria-hidden="true">menu_book</span></button>
           </div>
 
-          <!-- Seven rings, one per day of the week being viewed. See renderDietWeek. -->
-          <div class="diet-week" id="dietWeek"></div>
+          <!-- Seven small rings, one per day of the week being viewed. -->
+          <div class="dt-week" id="dietWeek"></div>
+
+          <!-- The columns on desktop. On a phone both are display: contents and
+               the sections stack in the order set in style.css. -->
+          <div class="dt-rail">
+            <!-- Calorie ring, macro bars, one caption (js/diet-goals.js). -->
+            <div class="dt-sum" id="dietGoals"></div>
+            <div class="dt-sum-foot"><button type="button" class="cd-link" id="editGoalsBtn">Edit goals</button></div>
+
+            <!-- Water: three quick adds, Other as an inline field, Undo. -->
+            <div class="dl-card tint c-water dt-water" id="waterTracker">
+              <h6 class="dl-card-h"><span>Water</span><em id="waterProgress">0 / 66 oz</em></h6>
+              <span class="dl-meter c-water dt-water-m"><i id="waterBarFill"></i></span>
+              <div class="dt-water-btns">
+                <button type="button" class="dl-btn water-btn" data-oz="8" aria-label="Add 8 ounces">+8</button>
+                <button type="button" class="dl-btn water-btn" data-oz="16" aria-label="Add 16 ounces">+16</button>
+                <button type="button" class="dl-btn water-btn" data-oz="24" aria-label="Add 24 ounces">+24</button>
+                <button type="button" class="dl-btn" id="waterCustomBtn" aria-expanded="false" aria-controls="waterOther">Other</button>
+                <button type="button" class="dl-btn danger dt-water-undo" id="waterUndoBtn" hidden>Undo</button>
+              </div>
+              <div class="dt-water-other" id="waterOther" hidden>
+                <input type="number" id="waterOtherInput" inputmode="numeric" min="1" max="200" placeholder="oz" aria-label="Ounces to add">
+                <button type="button" class="dl-btn primary" id="waterOtherAdd">Add</button>
+              </div>
+            </div>
+
+            <!-- Folded rows that open (renderDietRecs / renderYesterdayAdvice /
+                 renderDietReview). Each hides itself when it has nothing to say. -->
+            <div class="dt-folds">
+              <details class="dt-fold" id="dietRecs" hidden></details>
+              <details class="dt-fold" id="dietYesterday" hidden></details>
+              <details class="dt-fold" id="dietReview" hidden></details>
+            </div>
+          </div>
+
+          <div class="dt-main">
+            <!-- ONE add bar: type it, say it, or snap it. Static on purpose -
+                 rebuilding it each render threw away what was being typed. -->
+            <div class="dt-addwrap diet-meal-addwrap" id="dietAddWrap" data-meal="breakfast">
+              <div class="dt-search">
+                <span class="ms" aria-hidden="true">search</span>
+                <input type="text" id="dietAddInput" class="dt-search-input" placeholder="Add food" autocomplete="off" enterkeyhint="search" aria-label="Add food">
+                <button type="button" class="dt-search-btn" data-diet-voice aria-label="Say what you ate"><span class="ms" aria-hidden="true">mic</span></button>
+                <button type="button" class="dt-search-btn" data-diet-photo="breakfast" aria-label="Log a meal from a photo"><span class="ms" aria-hidden="true">photo_camera</span></button>
+              </div>
+              <div class="diet-inline-results"></div>
+            </div>
+            <!-- Usual foods for this meal, and saved meals (outlined). -->
+            <div class="dt-tiles" id="dietTiles" hidden></div>
+            <!-- A photo analysis that is still waiting to be confirmed. -->
+            <div id="dietPhotoPending" hidden></div>
+            <!-- The four meals as a line. Tap one for its sheet. -->
+            <div id="dietMealsList"></div>
+          </div>
         </div>
-        <div class="diet-layout">
-          <!-- Food Library page: manual log form + Snap + key (back button first) -->
-          <button type="button" class="diet-library-back diet-lib-section" id="closeFoodLibraryBtn">&larr; Back to today</button>
-          <!-- Log Food Panel -->
-          <div class="card diet-bank-card diet-lib-section">
-            <h2>Add a food to your bank</h2>
-            <p class="settings-desc">For something you want saved before you eat it. Anything you log is banked automatically.</p>
-            <div class="diet-food-form">
-              <input type="text" id="dietFoodName" placeholder="Food name" class="diet-search-input" autocomplete="off">
-              <div class="diet-serving-info" id="dietServingInfo"></div>
-              <div class="diet-macro-inputs">
-                <div class="form-group">
-                  <label for="dietCalories">Calories</label>
-                  <input type="number" id="dietCalories" placeholder="0" min="0" inputmode="numeric">
-                </div>
-                <div class="form-group">
-                  <label for="dietProtein">Protein (g)</label>
-                  <input type="number" id="dietProtein" placeholder="0" min="0" step="0.1" inputmode="decimal">
-                </div>
-                <div class="form-group">
-                  <label for="dietCarbs">Carbs (g)</label>
-                  <input type="number" id="dietCarbs" placeholder="0" min="0" step="0.1" inputmode="decimal">
-                </div>
-                <div class="form-group">
-                  <label for="dietFat">Fat (g)</label>
-                  <input type="number" id="dietFat" placeholder="0" min="0" step="0.1" inputmode="decimal">
-                </div>
-              </div>
-              <div class="diet-btn-row">
-                <button type="button" class="btn-primary diet-save-custom-btn" id="dietSaveCustomBtn" aria-label="Save this food to your bank">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
-                  <span id="dietSaveCustomLabel">Save as My Food</span>
-                </button>
-                <button type="button" class="btn-secondary diet-edit-done" id="dietEditDoneBtn">Done</button>
-              </div>
-              <!-- Read by the save path and by diet-goals; kept out of sight
-                   rather than deleted, because unpicking every reader is a
-                   separate change from removing this card. -->
-              <input type="hidden" id="dietServings" value="1">
-              <input type="hidden" id="dietMeal" value="breakfast">
-              <div id="dietSearchDropdown" hidden></div>
-            </div>
+
+        <!-- Food library: full screen inside the view (js/diet-view.js). -->
+        <div class="dt-lib" id="dietLibrary" hidden>
+          <div class="lib-head">
+            <h3>Food library</h3>
+            <button type="button" class="dl-line-day-btn" id="closeFoodLibraryBtn" aria-label="Close the food library"><span class="ms" aria-hidden="true">close</span></button>
           </div>
-
-          <!-- LOG FIRST. Everything above used to live in one tall card with the
-               log at the bottom, under the ring, the bars, the advice and the
-               water - so the reason you open this tab was the last thing on it.
-               The log is now its own column and the day's numbers sit in a rail
-               beside it, where they can never push it down again. -->
-          <div class="diet-log">
-              <div class="diet-meals-list" id="dietMealsList"></div>
+          <div class="dl-seg full" id="libTabs" role="group" aria-label="Library section">
+            <button type="button" data-lib-tab="foods" aria-pressed="true">My foods</button>
+            <button type="button" data-lib-tab="meals">Meals</button>
+            <button type="button" data-lib-tab="recent">Recent</button>
+            <button type="button" data-lib-tab="history">History</button>
           </div>
-
-          <aside class="diet-rail">
-            <div class="card diet-summary-card">
-              <div class="diet-summary-header">
-                <h2 id="dietSummaryTitle">Today's Nutrition</h2>
-                <button class="goals-edit-btn" id="editGoalsBtn" title="Edit your daily goals">
-                  <svg aria-hidden="true" focusable="false" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-                  Goals
-                </button>
-              </div>
-              <div class="diet-goals" id="dietGoals"></div>
-              <div class="diet-recs" id="dietRecs"></div>
-            </div>
-
-            <div class="card diet-water-card">
-              <div class="water-tracker" id="waterTracker">
-                <div class="water-header">
-                  <div class="water-title">
-                    <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"/></svg>
-                    Water
-                  </div>
-                  <span class="water-progress" id="waterProgress">0 / 66 oz</span>
-                </div>
-                <div class="water-bar-track">
-                  <div class="water-bar-fill" id="waterBarFill" style="width:0%"></div>
-                </div>
-                <div class="water-btns">
-                  <button class="water-btn" data-oz="8">+8 oz</button>
-                  <button class="water-btn" data-oz="12">+12 oz</button>
-                  <button class="water-btn" data-oz="16">+16 oz</button>
-                  <button class="water-btn" data-oz="20">+20 oz</button>
-                  <button class="water-btn" data-oz="40">+40 oz</button>
-                  <button class="water-btn water-btn-custom" id="waterCustomBtn">Custom</button>
-                  <button class="water-btn water-btn-undo" id="waterUndoBtn">Undo</button>
-                </div>
-                <div class="water-log" id="waterLog"></div>
-              </div>
-            </div>
-
-              <div class="diet-yesterday" id="dietYesterday"></div>
-              <div class="diet-review" id="dietReview"></div>
-          </aside>
-
-
-          <!-- Food Library page: recent foods, food bank, diet history -->
-          <div class="card diet-history-card diet-lib-section">
-            <h2>Recent Foods</h2>
-            <div class="diet-custom-list" id="dietCustomList">
-              <div class="empty-state"><svg aria-hidden="true" focusable="false" class="empty-state-icon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg><p class="empty-state-title">No saved foods yet</p><p class="empty-state-hint">Anything you log is remembered here for one-tap re-adding.</p></div>
-            </div>
-            <h2 class="diet-history-title">Diet History</h2>
-            <div class="diet-history-list" id="dietHistoryList">
-              <div class="empty-state"><svg aria-hidden="true" focusable="false" class="empty-state-icon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><p class="empty-state-title">No history yet</p><p class="empty-state-hint">Log a day of meals and it will appear here.</p></div>
-            </div>
+          <div class="dt-search" id="libSearchWrap">
+            <span class="ms" aria-hidden="true">search</span>
+            <input type="text" id="libSearch" class="dt-search-input" placeholder="Search, or look it up online" autocomplete="off" aria-label="Search the food library">
           </div>
+          <div id="libBody"></div>
+          <div class="dl-card lib-form" id="libForm">
+            <h6 class="dl-card-h"><span id="libFormTitle">Not found? Add it</span></h6>
+            <label class="dl-field"><span class="dl-field-label">Name</span>
+              <input type="text" id="libName" maxlength="80" autocomplete="off" placeholder="Ragi mudde"></label>
+            <div class="ms-macros">
+              <label class="dl-field"><span class="dl-field-label">Kcal</span><input type="number" id="libKcal" min="0" inputmode="numeric" placeholder="0"></label>
+              <label class="dl-field"><span class="dl-field-label">P</span><input type="number" id="libP" min="0" step="0.1" inputmode="decimal" placeholder="0"></label>
+              <label class="dl-field"><span class="dl-field-label">C</span><input type="number" id="libC" min="0" step="0.1" inputmode="decimal" placeholder="0"></label>
+              <label class="dl-field"><span class="dl-field-label">F</span><input type="number" id="libF" min="0" step="0.1" inputmode="decimal" placeholder="0"></label>
+            </div>
+            <div class="ts-actions"><span class="ts-spacer"></span>
+              <button type="button" class="dl-btn" id="libCancel" hidden>Cancel</button>
+              <button type="button" class="dl-btn primary" id="libSave">Add to my foods</button></div>
+          </div>
+          <p class="ts-hint">Macros are per serving. Online search uses Open Food Facts, then USDA. Foods you log are remembered automatically.</p>
         </div>
       </div>
 
@@ -944,7 +922,6 @@
        they used to live inside the Log Food card, so removing that card would
        have silently killed photo logging everywhere. -->
   <input type="file" id="photoFileInput" accept="image/*" capture="environment" hidden>
-  <div class="photo-result" id="photoResult" hidden></div>
 
   <!-- Primary action, thumb-reachable. Mobile only; the header button in
        .header-right is the same action and stays for desktop. -->
@@ -1070,6 +1047,38 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Diet sheets (spec 8): a meal, a photo, and saving a meal. -->
+  <div class="dl-sheet-wrap" id="mealSheet" role="dialog" aria-modal="true" aria-labelledby="mealSheetTitle">
+    <div class="dl-sheet task-sheet" tabindex="-1">
+      <div class="dl-grab"></div>
+      <div class="ts-head">
+        <h4 id="mealSheetTitle">Meal</h4>
+        <button type="button" class="ts-x" id="mealSheetClose" aria-label="Close"><span class="ms" aria-hidden="true">close</span></button>
+      </div>
+      <div class="ts-body" id="mealSheetBody"></div>
+    </div>
+  </div>
+  <div class="dl-sheet-wrap" id="photoSheet" role="dialog" aria-modal="true" aria-labelledby="photoSheetTitle">
+    <div class="dl-sheet task-sheet" tabindex="-1">
+      <div class="dl-grab"></div>
+      <div class="ts-head">
+        <h4 id="photoSheetTitle">From a photo</h4>
+        <button type="button" class="ts-x" id="photoSheetClose" aria-label="Close"><span class="ms" aria-hidden="true">close</span></button>
+      </div>
+      <div class="ts-body"></div>
+    </div>
+  </div>
+  <div class="dl-sheet-wrap" id="comboSheet" data-guard role="dialog" aria-modal="true" aria-labelledby="comboSheetTitle">
+    <div class="dl-sheet task-sheet" tabindex="-1">
+      <div class="dl-grab"></div>
+      <div class="ts-head">
+        <h4 id="comboSheetTitle">Save as a meal</h4>
+        <button type="button" class="ts-x" id="comboSheetClose" aria-label="Close"><span class="ms" aria-hidden="true">close</span></button>
+      </div>
+      <div class="ts-body"></div>
     </div>
   </div>
 

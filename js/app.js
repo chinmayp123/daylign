@@ -276,7 +276,7 @@ function bindEvents() {
 // ========== Views ==========
 // The header's top-right button adapts to the current view: it logs weight in
 // the Gym, logs food in Diet, and creates a task everywhere else.
-const HEADER_ACTION_LABELS = { diet: 'Food Library' };
+const HEADER_ACTION_LABELS = { diet: 'Food library' };
 
 function headerPrimaryAction() {
   if (currentView === 'training') {
@@ -454,8 +454,8 @@ function switchView(view) {
   if (typeof stopRestTimer === 'function') stopRestTimer();
 
   // Always land on the main Diet day, never mid-Food-Library, when navigating.
-  const dv = document.getElementById('dietView');
-  if (dv) dv.classList.remove('lib-open');
+  // Leaving Diet closes the Food library, so coming back lands on the day.
+  if (typeof closeFoodLibrary === 'function') closeFoodLibrary(true);
 
   // Leaving Diet closes the inline food search too — coming back to an empty
   // search box you opened an hour ago reads as a half-finished log.
