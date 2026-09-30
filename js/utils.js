@@ -82,12 +82,13 @@ window.addEventListener('unhandledrejection', (e) => {
 // re-doing their CSS and risking layout regressions across every view, so
 // instead this promotes them centrally after each render: they become
 // focusable, announce as buttons, and respond to Enter/Space.
+// The v3 rows that open something on a click. (The v2 list named rows that
+// no longer exist, and missed the task rows, the line, the agenda and the
+// week grid.)
 const KEYBOARD_CLICKABLE = [
-  '.task-row', '.task-check', '.board-card', '.board-folder-header',
-  '.archived-toggle', '.health-tile', '.my-task-card', '.my-task-check',
-  '.schedule-event', '.diet-food-entry-main', '.recent-meal-header',
-  '.diet-custom-item', '.diet-history-day', '.str-mv', '.today-sched-row',
-  '.today-sched-check', '.project-item', '.category-item', '.cal-day',
+  '.tk-row', '.board-card', '.project-item',
+  '.dl-line-item[data-line-tap]', '.ag-row[data-id]', '.ag-row[data-event-id]',
+  '.calw-ev', '.lib-row[data-lib-food]', '.lib-row[data-lib-recent]',
 ].join(', ');
 
 function enhanceKeyboardAccess() {
@@ -97,6 +98,19 @@ function enhanceKeyboardAccess() {
     if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
     if (!el.hasAttribute('role')) el.setAttribute('role', 'button');
   });
+}
+
+// render() calls the above, but most views also redraw on their own (a filter
+// chip, a day step, the library tabs), and rows drawn that way came up with
+// no tabindex until the next full render. Promote whatever is added, once
+// per frame.
+let kbPromoteQueued = false;
+if (typeof MutationObserver === 'function') {
+  new MutationObserver(() => {
+    if (kbPromoteQueued) return;
+    kbPromoteQueued = true;
+    requestAnimationFrame(() => { kbPromoteQueued = false; enhanceKeyboardAccess(); });
+  }).observe(document.documentElement, { childList: true, subtree: true });
 }
 
 // Enter/Space activate them, matching native button behaviour.
@@ -441,10 +455,49 @@ let dlSheetBound = false;
 const DL_SHEET_WRAP = '.dl-sheet-wrap';
 const DL_SHEET_OPEN = '.dl-sheet-wrap.open';
 
+// While a sheet is open, everything behind it is inert: Tab, a screen reader
+// and a click cannot reach the page underneath. Toasts and banners stay live
+// (a toast's Undo must still work). Only the attribute this code set is ever
+// removed, so something else that is inert for its own reasons stays so.
+const DL_SHEET_KEEP_LIVE = '#toastHost, .update-banner';
+function dlSheetSyncInert() {
+  const open = Array.from(document.querySelectorAll(DL_SHEET_OPEN));
+  const top = open[open.length - 1] || null;
+  Array.from(document.body.children).forEach(el => {
+    const mine = el.hasAttribute('data-dl-inert');
+    const keep = !top || el === top || el.matches(DL_SHEET_KEEP_LIVE) || el.tagName === 'SCRIPT';
+    if (!keep && !el.inert) { el.inert = true; el.setAttribute('data-dl-inert', ''); }
+    else if (keep && mine) { el.inert = false; el.removeAttribute('data-dl-inert'); }
+  });
+}
+
+// The focusable things in a sheet, in Tab order.
+function dlSheetFocusables(wrap) {
+  return Array.from(wrap.querySelectorAll('a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])'))
+    .filter(el => !el.disabled && !el.closest('[hidden]') && el.getClientRects().length > 0 &&
+      !(el.closest('details:not([open])') && !el.matches('summary')));
+}
+
 function openDlSheet(wrap) {
   if (!wrap) return;
   bindDlSheets();
+  // Remember where focus was, to put it back on close. A row is remembered by
+  // its data-id too, because saving re-renders the list and replaces it.
+  const from = document.activeElement;
+  if (!wrap.classList.contains('open')) {
+    const f = (from && from !== document.body && !wrap.contains(from)) ? from : null;
+    wrap._returnFocus = f;
+    wrap._returnKey = f && f.dataset && f.dataset.id && f.classList[0] ? '.' + f.classList[0] + '[data-id="' + CSS.escape(f.dataset.id) + '"]' : null;
+  }
+  // A sheet opened over another goes to the end of body, so it paints on top
+  // and is the one Esc, Tab and inert treat as the top. (In markup order the
+  // task sheet sits after the weigh-in sheet, and covered it.)
+  if (wrap.parentElement !== document.body || (document.querySelector(DL_SHEET_OPEN) && wrap !== document.body.lastElementChild)) {
+    document.body.appendChild(wrap);
+    void wrap.offsetWidth;   // let the slide-in run from its closed position
+  }
   wrap.classList.add('open');
+  dlSheetSyncInert();
   const sheet = wrap.querySelector('.dl-sheet');
   if (sheet) { sheet.style.removeProperty('--drag'); sheet.focus({ preventScroll: true }); }
   // A sheet marked data-guard is a form. Remember what it held when it opened,
@@ -477,8 +530,19 @@ function dismissDlSheet(wrap) {
 
 function closeDlSheet(wrap) {
   if (!wrap) return;
+  const wasOpen = wrap.classList.contains('open');
   wrap.classList.remove('open');
+  dlSheetSyncInert();
   wrap.dispatchEvent(new CustomEvent('dl-sheet-close'));
+  // Back to what opened it, if that is still on the page and reachable, unless
+  // the close handler has already moved focus somewhere on purpose.
+  let back = wrap._returnFocus;
+  if (back && !back.isConnected && wrap._returnKey) back = document.querySelector(wrap._returnKey);
+  wrap._returnFocus = null; wrap._returnKey = null;
+  if (wasOpen && back && back.isConnected && !back.closest('[inert]') &&
+      (!document.activeElement || document.activeElement === document.body || wrap.contains(document.activeElement))) {
+    try { back.focus({ preventScroll: true }); } catch (e) { /* gone */ }
+  }
 }
 
 function bindDlSheets() {
@@ -490,9 +554,20 @@ function bindDlSheets() {
     if (wrap && e.target === wrap) dismissDlSheet(wrap);
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape') return;
     const open = document.querySelectorAll(DL_SHEET_OPEN);
-    if (open.length) dismissDlSheet(open[open.length - 1]);
+    if (!open.length) return;
+    const top = open[open.length - 1];
+    if (e.key === 'Escape') { dismissDlSheet(top); return; }
+    // Tab stays inside the open sheet, wrapping at either end.
+    if (e.key !== 'Tab') return;
+    const items = dlSheetFocusables(top);
+    const sheet = top.querySelector('.dl-sheet');
+    if (!items.length) { e.preventDefault(); if (sheet) sheet.focus(); return; }
+    const first = items[0], last = items[items.length - 1];
+    const at = document.activeElement;
+    if (!top.contains(at)) { e.preventDefault(); (e.shiftKey ? last : first).focus(); return; }
+    if (e.shiftKey && (at === first || at === sheet)) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && at === last) { e.preventDefault(); first.focus(); }
   });
 
   // Swipe down: only when the sheet is scrolled to the top, so a drag inside a
