@@ -5403,8 +5403,11 @@ html.pref-reduce-motion .dl-btn:active { transform: none; }
 .calw-slot { border-top: 1px solid var(--border); border-left: 1px solid var(--border); }
 .calw-ev {
   --c: var(--c-meet);
+  --lane: 0; --lanes: 1;
   position: absolute;
-  left: 2px; right: 2px;
+  /* Overlapping blocks split the column into lanes (js/calendar.js). */
+  left: calc(var(--lane) * 100% / var(--lanes) + 2px);
+  width: calc(100% / var(--lanes) - 4px);
   display: flex; flex-direction: column;
   min-height: 16px;
   overflow: hidden;

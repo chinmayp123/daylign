@@ -240,12 +240,35 @@ function renderCalendarWeek() {
         c: taxColor(cat), name: t.name, time: taskTimeOf(t), kind: 'task', id: t.id,
       });
     });
-    blocks.sort((a, b) => a.min - b.min);
+    blocks.sort((a, b) => a.min - b.min || b.len - a.len);
+    // Blocks that overlap in time share the column side by side, each in its
+    // own lane, instead of all spanning the full width and hiding each other.
+    // A cluster is a run of blocks linked by overlap; each block takes the
+    // first lane that is free by its start, and the whole cluster is split
+    // into as many lanes as it needed.
+    let cluster = [], clusterEnd = -1;
+    const flush = () => {
+      const lanes = [];
+      cluster.forEach(b => {
+        let i = lanes.findIndex(end => end <= b.min);
+        if (i === -1) { i = lanes.length; lanes.push(0); }
+        lanes[i] = b.min + b.len;
+        b.lane = i;
+      });
+      cluster.forEach(b => { b.lanes = lanes.length; });
+      cluster = [];
+    };
+    blocks.forEach(b => {
+      if (cluster.length && b.min >= clusterEnd) flush();
+      cluster.push(b);
+      clusterEnd = Math.max(clusterEnd, b.min + b.len);
+    });
+    if (cluster.length) flush();
     return `<span class="calw-col${ds === today ? ' today' : ''}" data-date="${ds}">
       ${Array.from({ length: rows }, (_, i) => `<i class="calw-slot" data-hour="${CALW_START + i}"></i>`).join('')}
       ${blocks.map(b => `
         <span class="calw-ev" data-kind="${b.kind}" data-id="${esc(b.id)}"
-              style="--c:${b.c};top:${topPct(b.min).toFixed(2)}%;height:${((b.len / (rows * 60)) * 100).toFixed(2)}%">
+              style="--c:${b.c};--lane:${b.lane};--lanes:${b.lanes};top:${topPct(b.min).toFixed(2)}%;height:${((b.len / (rows * 60)) * 100).toFixed(2)}%">
           <b>${esc(b.name)}</b>${b.time ? `<em>${esc(b.time)}</em>` : ''}
         </span>`).join('')}
     </span>`;
