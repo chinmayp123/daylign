@@ -61,9 +61,9 @@ const TASK_STATUS_FILTERS = [
   { v: 'done', label: 'Done' },
 ];
 const TASK_SORTS = [
-  { v: 'due', label: 'By date' },
-  { v: 'created', label: 'Newest' },
-  { v: 'name', label: 'A-Z' },
+  { v: 'due', label: 'Sort: date' },
+  { v: 'created', label: 'Sort: newest' },
+  { v: 'name', label: 'Sort: A-Z' },
 ];
 
 // Monday-start week end, so "This week" means the rest of THIS week.
@@ -151,36 +151,62 @@ function renderTasksView() {
   renderArchivedRow(archived, today);
 }
 
+// One filter bar. The status is a segmented control, so it cannot be mistaken
+// for a category; sort is a small select; categories and projects each sit on
+// a line that says what they are. Clear appears only when something is
+// narrowing the list, and puts every filter (and the search) back.
+function tasksFiltered() {
+  const searchEl = document.getElementById('searchInput');
+  return taskFilterStatus !== 'open' || taskFilterCategory !== 'all' || taskSort !== 'due' ||
+    !!activeProject || !!(searchEl && searchEl.value.trim());
+}
+
+function clearTaskFilters() {
+  taskFilterStatus = 'open';
+  taskFilterCategory = 'all';
+  taskSort = 'due';
+  activeProject = null;
+  const searchEl = document.getElementById('searchInput');
+  if (searchEl) searchEl.value = '';
+  render();   // activeProject is shared with the sidebar
+}
+
 function renderTaskFilters(active) {
   const host = document.getElementById('tkFilters');
   if (!host) return;
   const cats = (state.categories || []).filter(c => active.some(t => t.category === c.id));
-  const chip = (group, v, label, count, color) => `
-    <button type="button" class="dl-chip tk-chip${v === group.cur ? ' on' : ''}"
-            data-tk-filter="${group.name}" data-v="${esc(v)}"${color ? ` style="--c:${color}"` : ''}>
+  const chip = (v, label, count, color) => `
+    <button type="button" class="dl-chip tk-chip${v === taskFilterCategory ? ' on' : ''}" aria-pressed="${v === taskFilterCategory}"
+            data-tk-filter="category" data-v="${esc(v)}"${color ? ` style="--c:${color}"` : ''}>
       ${color ? '<span class="dl-dot" style="--c:' + color + '"></span>' : ''}${esc(label)}${count != null ? `<em>${count}</em>` : ''}
     </button>`;
-  const status = { name: 'status', cur: taskFilterStatus };
-  const cat = { name: 'category', cur: taskFilterCategory };
-  const sort = { name: 'sort', cur: taskSort };
   host.innerHTML = `
-    <div class="tk-chiprow">${TASK_STATUS_FILTERS.map(f => chip(status, f.v, f.label)).join('')}</div>
-    <div class="tk-chiprow">
-      ${chip(cat, 'all', 'All', active.length)}
-      ${cats.map(c => chip(cat, c.id, c.name, active.filter(t => t.category === c.id).length, taxColor(c))).join('')}
+    <div class="tk-bar">
+      <div class="dl-seg tk-status" role="group" aria-label="Show">
+        ${TASK_STATUS_FILTERS.map(f => `<button type="button" data-tk-filter="status" data-v="${f.v}" aria-pressed="${f.v === taskFilterStatus}">${f.label}</button>`).join('')}
+      </div>
+      <label class="tk-sort">
+        <select data-tk-sort aria-label="Sort tasks">
+          ${TASK_SORTS.map(sr => `<option value="${sr.v}"${sr.v === taskSort ? ' selected' : ''}>${sr.label}</option>`).join('')}
+        </select>
+      </label>
     </div>
-    <div class="tk-chiprow tk-sortrow">
-      <span class="tk-sortlabel">Sort</span>
-      ${TASK_SORTS.map(sr => chip(sort, sr.v, sr.label)).join('')}
+    <div class="tk-chiprow" role="group" aria-labelledby="tkCatLabel">
+      <span class="tk-grouplabel" id="tkCatLabel">Category</span>
+      ${chip('all', 'All', active.length)}
+      ${cats.map(c => chip(c.id, c.name, active.filter(t => t.category === c.id).length, taxColor(c))).join('')}
+      <button type="button" class="tk-clear" data-tk-clear${tasksFiltered() ? '' : ' hidden'}><span class="ms" aria-hidden="true">close</span>Clear</button>
     </div>`;
 
   host.querySelectorAll('[data-tk-filter]').forEach(b => b.addEventListener('click', () => {
-    const which = b.dataset.tkFilter, v = b.dataset.v;
-    if (which === 'status') taskFilterStatus = v;
-    else if (which === 'category') taskFilterCategory = v;
-    else taskSort = v;
+    if (b.dataset.tkFilter === 'status') taskFilterStatus = b.dataset.v;
+    else taskFilterCategory = b.dataset.v;
     renderTasksView();
   }));
+  const sort = host.querySelector('[data-tk-sort]');
+  if (sort) sort.addEventListener('change', () => { taskSort = sort.value; renderTasksView(); });
+  const clear = host.querySelector('[data-tk-clear]');
+  if (clear) clear.addEventListener('click', clearTaskFilters);
 }
 
 // The project filter lives here now — this is where Today's and the Board's
@@ -192,10 +218,13 @@ function renderTaskProjectChips(active) {
   const projects = (state.projects || []).filter(p => active.some(t => t.project === p.id));
   if (!projects.length) { host.innerHTML = ''; host.hidden = true; return; }
   host.hidden = false;
+  host.setAttribute('role', 'group');
+  host.setAttribute('aria-labelledby', 'tkProjLabel');
   host.innerHTML = `
-    <button type="button" class="dl-chip tk-chip${activeProject ? '' : ' on'}" data-tk-proj="">All projects</button>
+    <span class="tk-grouplabel" id="tkProjLabel">Project</span>
+    <button type="button" class="dl-chip tk-chip${activeProject ? '' : ' on'}" aria-pressed="${!activeProject}" data-tk-proj="">All</button>
     ${projects.map(p => `
-      <button type="button" class="dl-chip tk-chip${activeProject === p.id ? ' on' : ''}" data-tk-proj="${esc(p.id)}" style="--c:${taxColor(p)}">
+      <button type="button" class="dl-chip tk-chip${activeProject === p.id ? ' on' : ''}" aria-pressed="${activeProject === p.id}" data-tk-proj="${esc(p.id)}" style="--c:${taxColor(p)}">
         <span class="dl-dot" style="--c:${taxColor(p)}"></span>${esc(p.name)}<em>${active.filter(t => t.project === p.id && t.status !== 'done').length}</em>
       </button>`).join('')}`;
 
