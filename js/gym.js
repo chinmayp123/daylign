@@ -1415,11 +1415,19 @@ function renderGym() {
     btn.addEventListener('click', () => {
       const dayEx = state.gym.filter(e => e.date === gymViewDate);
       const target = dayEx[btn.dataset.gymIdx];
-      if (target) {
-        state.gym = state.gym.filter(e => e !== target);
+      if (!target) return;
+      // One tap removes it, and the toast brings it back, in the same place.
+      // It used to go with no confirm and no way back.
+      const at = state.gym.indexOf(target);
+      state.gym = state.gym.filter(e => e !== target);
+      saveData(state);
+      renderGym();
+      showToast(`Deleted ${target.exercise || 'exercise'} · Undo`, () => {
+        state.gym.splice(Math.min(at, state.gym.length), 0, target);
         saveData(state);
         renderGym();
-      }
+        if (typeof renderTrainingShell === 'function') renderTrainingShell();
+      });
     });
   });
 

@@ -634,10 +634,23 @@ function addCardioSession() {
   render();
 }
 
+// Deletes at once and undoes from the toast. It used to go with no confirm
+// and no way back.
 function deleteCardioSession(id) {
-  state.cardio = (state.cardio || []).filter(s => s.id !== id);
+  const list = state.cardio || [];
+  const at = list.findIndex(s => s.id === id);
+  if (at === -1) return;
+  const gone = list[at];
+  state.cardio = list.filter(s => s !== gone);
   saveData(state);
   render();
+  const cfg = (typeof CARDIO_TYPES !== 'undefined' && CARDIO_TYPES[gone.type]) || { label: gone.type || 'session' };
+  showToast(`Deleted ${String(cfg.label).toLowerCase()} · Undo`, () => {
+    state.cardio = state.cardio || [];
+    state.cardio.splice(Math.min(at, state.cardio.length), 0, gone);
+    saveData(state);
+    render();
+  });
 }
 
 function bindCardioEvents() {
