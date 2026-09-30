@@ -1487,7 +1487,6 @@ function renderGym() {
   // the Training shell above it (week line + weight readout) has to be brought
   // along or it shows stale numbers until the next navigation.
   if (typeof renderTrainingShell === 'function') renderTrainingShell();
-  if (typeof renderWeightSheetBody === 'function') renderWeightSheetBody();
 }
 
 function bindGymEvents() {
@@ -1519,27 +1518,6 @@ function bindGymEvents() {
     renderGym();
   });
   $('#gymAddSetBtn').addEventListener('click', () => { gymSets.push({ reps: '', weight: '' }); renderGym(); });
-  $('#weightLogBtn').addEventListener('click', () => {
-    const v = Number($('#weightInput').value);
-    const waistEl = $('#waistInput');
-    const waist = waistEl ? Number(waistEl.value) : 0;
-    const hasW = v && v >= 50 && v <= 500;
-    const hasWaist = waist && waist >= 15 && waist <= 80;
-    if (!hasW && !hasWaist) { showToast('Enter your weight or waist'); return; }
-    if (hasW) { state.weight = state.weight || {}; state.weight[gymViewDate] = Math.round(v * 10) / 10; }
-    if (hasWaist) { state.waist = state.waist || {}; state.waist[gymViewDate] = Math.round(waist * 10) / 10; }
-    saveData(state);
-    $('#weightInput').value = '';
-    if (waistEl) waistEl.value = '';
-    renderGym();
-    if (typeof renderWeightSheetBody === 'function') renderWeightSheetBody();
-    const parts = [hasW ? `${Math.round(v * 10) / 10} lbs` : null, hasWaist ? `${Math.round(waist * 10) / 10}" waist` : null].filter(Boolean);
-    showToast(`Logged: ${parts.join(' · ')}`);
-  });
-  ['#weightInput', '#waistInput'].forEach(sel => {
-    const el = $(sel);
-    if (el) el.addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#weightLogBtn').click(); });
-  });
   bindGymSuggestions();
   $('#gymSaveExerciseBtn').addEventListener('click', () => {
     const name = $('#gymExerciseName').value.trim();

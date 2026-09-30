@@ -26,7 +26,8 @@ function ptrIndicator() {
   ptrEl = document.createElement('div');
   ptrEl.className = 'ptr';
   ptrEl.setAttribute('aria-hidden', 'true');
-  ptrEl.innerHTML = '<div class="ptr-spinner"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-3.6-7.2"/><polyline points="21 3 21 9 15 9"/></svg></div>';
+  // A ring that fills as you pull and turns once it is far enough (spec 10.7).
+  ptrEl.innerHTML = '<svg class="ptr-ring" viewBox="0 0 36 36" width="28" height="28"><circle class="ptr-track" cx="18" cy="18" r="14"/><circle class="ptr-arc" cx="18" cy="18" r="14" pathLength="100" stroke-dasharray="0 100"/></svg>';
   document.body.appendChild(ptrEl);
   return ptrEl;
 }
@@ -37,10 +38,9 @@ function ptrSet(dist, committed) {
   el.style.transform = 'translate(-50%, ' + d + 'px)';
   el.style.opacity = String(Math.min(1, d / (PTR_TRIGGER * 0.65)));
   el.classList.toggle('is-ready', !!committed);
-  // Rotate with the pull so it reads as direct manipulation rather than a
-  // progress bar that happens to be near your thumb.
-  const spin = el.querySelector('.ptr-spinner');
-  if (spin) spin.style.transform = 'rotate(' + Math.round(d * 2.6) + 'deg)';
+  // The arc fills with the pull, full at the point where letting go refreshes.
+  const arc = el.querySelector('.ptr-arc');
+  if (arc) arc.setAttribute('stroke-dasharray', Math.round(Math.min(1, d / PTR_TRIGGER) * 100) + ' 100');
 }
 
 function ptrReset() {
@@ -60,6 +60,8 @@ function ptrRun() {
   const el = ptrIndicator();
   el.classList.add('is-spinning');
   el.classList.add('is-settling');
+  const arc = el.querySelector('.ptr-arc');
+  if (arc) arc.setAttribute('stroke-dasharray', '28 100');
   el.style.transform = 'translate(-50%, ' + PTR_TRIGGER + 'px)';
   el.style.opacity = '1';
 

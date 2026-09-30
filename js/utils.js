@@ -59,7 +59,12 @@ function recordError(kind, detail) {
   recentErrors.push(entry);
   if (recentErrors.length > 10) recentErrors.shift();
   console.warn('[daylign]', kind, detail);
-  if (typeof showToast === 'function') showToast('Something went wrong — that action may not have saved');
+  // Tapping it opens the place the reason was just written down.
+  if (typeof showToast === 'function') {
+    showToast("Something broke. It's in Recent errors", () => {
+      if (typeof openSettingsPage === 'function') openSettingsPage('errors');
+    }, { kind: 'warn' });
+  }
   // Keep the panel live if it happens to be open, so an error that fires while
   // you are looking at Settings appears without a reload.
   if (typeof renderDiagnostics === 'function') { try { renderDiagnostics(); } catch (e) {} }
@@ -193,7 +198,10 @@ function animateNumber(el, target) {
 // onTap makes the toast the undo affordance. Added for combos, where one tap
 // writes five rows and "that wasn't what I meant" needs to be cheap — but any
 // caller can use it. Without a handler the toast behaves exactly as before.
-function showToast(message, onTap) {
+// opts.kind: 'offline' (a cloud icon) or 'warn' (on the warning colour).
+// A toast with onTap is an action: it stays six seconds instead of 2.6.
+function showToast(message, onTap, opts) {
+  const o = opts || {};
   let host = document.getElementById('toastHost');
   if (!host) {
     host = document.createElement('div');
@@ -204,8 +212,17 @@ function showToast(message, onTap) {
     document.body.appendChild(host);
   }
   const toast = document.createElement('div');
-  toast.className = 'toast' + (typeof onTap === 'function' ? ' toast-action' : '');
-  toast.textContent = message;
+  toast.className = 'toast' + (typeof onTap === 'function' ? ' toast-action' : '') + (o.kind ? ' is-' + o.kind : '');
+  const icon = o.kind === 'offline' ? 'cloud_off' : o.kind === 'warn' ? 'error' : null;
+  // "Deleted Lunch · Undo": the action word is drawn as a link, the rest as
+  // the message, so it is obvious which part is the button.
+  const m = /^(.*?)\s*·\s*(Undo|View|Tap to review)$/.exec(String(message));
+  if (icon) { const i = document.createElement('span'); i.className = 'ms'; i.setAttribute('aria-hidden', 'true'); i.textContent = icon; toast.appendChild(i); }
+  const t = document.createElement('span');
+  t.className = 'toast-t';
+  t.textContent = m && typeof onTap === 'function' ? m[1] : message;
+  toast.appendChild(t);
+  if (m && typeof onTap === 'function') { const u = document.createElement('u'); u.textContent = m[2]; toast.appendChild(u); }
   let done = false;
   const dismiss = () => {
     if (done) return;

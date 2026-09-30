@@ -13771,3 +13771,146 @@ body.onboard-open { overflow: hidden; }
 .ob-skip { min-height: 40px; padding: 8px 6px; background: none; border: 0; color: var(--text-secondary); font: 500 13px var(--font-body); cursor: pointer; }
 .ob-skip:hover { color: var(--text-primary); text-decoration: underline; }
 .ob-skip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+
+
+/* ============================================================
+   v3 phase 10: global sheets and states (spec 10.3 to 10.7)
+   ============================================================ */
+
+/* ---- + sheet ---- */
+.add-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.add-tile {
+  display: grid; justify-items: center; gap: 6px; padding: 12px 4px 10px;
+  border-radius: 14px; border: 1px solid var(--border); background: var(--bg-card);
+  color: var(--text-primary); font: 600 12px var(--font-body); text-align: center; cursor: pointer;
+}
+.add-tile:hover { background: var(--bg-hover); }
+.add-tile:active { transform: scale(0.97); }
+.add-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.add-ic {
+  width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--c) 16%, var(--bg-card)); color: var(--c-ink, var(--c));
+}
+.add-ic .ms { font-size: 22px; }
+@media (min-width: 601px) { .add-grid { grid-template-columns: repeat(4, 96px); justify-content: start; } }
+
+/* ---- weigh-in and goals sheets ---- */
+.dl-sheet h4 em.wg-when { font: 500 12px var(--font-mono); font-style: normal; color: var(--text-muted); margin-left: 6px; }
+.wg-fields { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 10px; align-items: end; margin-bottom: 10px; }
+.wg-err { margin: -2px 0 10px; font-size: 12.5px; color: var(--red-ink); }
+.wg-err[hidden] { display: none; }
+#weighTrend { margin-bottom: 12px; }
+#weighTrend .set-sub { margin-top: 6px; }
+.wg-chart .ins-chart { height: 72px; }
+.wg-empty { margin: 0; padding: 14px 8px; border: 1px dashed var(--border); border-radius: 10px; text-align: center; font-size: 12.5px; color: var(--text-secondary); }
+.wg-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.gl-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.gl-pair-in { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+/* ---- voice sheet ---- */
+.vc-sheet { text-align: center; }
+.vc-sheet h4 { text-align: left; }
+.vc-mic {
+  display: grid; place-items: center; width: 72px; height: 72px; margin: 4px auto 6px;
+  border-radius: 50%; border: 0; background: var(--accent); color: var(--accent-ink); cursor: pointer;
+}
+.vc-mic .ms { font-size: 32px; }
+.vc-mic[hidden] { display: none; }
+.vc-mic:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.vc-mic.is-listening { animation: vcPulse 1.4s ease-in-out infinite; }
+@keyframes vcPulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); }
+  50% { box-shadow: 0 0 0 14px color-mix(in srgb, var(--accent) 0%, transparent); }
+}
+.vc-hint { margin: 0; min-height: 1.2em; font-size: 12.5px; color: var(--text-secondary); }
+.vc-transcript { margin: 4px 0 8px; font: 600 16px/1.3 var(--font-display); letter-spacing: -0.01em; color: var(--text-primary); }
+.vc-transcript:empty { display: none; }
+.vc-results { display: grid; gap: 6px; text-align: left; margin-bottom: 10px; }
+.vc-results:empty { display: none; }
+.vc-res {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px;
+  background: var(--bg-card); border: 1px solid var(--border); font-size: 13px; color: var(--text-primary);
+}
+.vc-res > .ms { font-size: 18px; color: var(--c-move-ink); }
+.vc-res.is-miss { color: var(--text-secondary); }
+.vc-res.is-miss > .ms { color: var(--text-muted); }
+.vc-res.is-undone .vc-res-t { text-decoration: line-through; color: var(--text-muted); }
+.vc-res.is-undone > .ms { color: var(--text-muted); }
+.vc-res.is-pending { height: 20px; }
+.vc-res.is-pending .dl-skel { display: block; width: 80%; height: 10px; }
+.vc-res-t { flex: 1; min-width: 0; }
+.vc-undo { flex: none; min-height: 32px; padding: 0 6px; border: 0; background: none; color: var(--accent); font: 600 13px var(--font-body); text-decoration: underline; cursor: pointer; }
+.vc-undo:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 6px; }
+.vc-status { margin: 0 0 8px; font-size: 13px; line-height: 1.45; color: var(--text-secondary); }
+.vc-status.is-warn { color: var(--red-ink); }
+.vc-results > [data-voice-settings] { justify-self: start; }
+.vc-type {
+  display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 12px; margin-bottom: 8px;
+  border-radius: 12px; border: 1px solid var(--border); background: var(--bg-input); text-align: left;
+}
+.vc-type > .ms { color: var(--text-muted); font-size: 18px; }
+.vc-type input { flex: 1; min-width: 0; border: 0; background: none; color: var(--text-primary); font: 400 15px var(--font-body); padding: 8px 0; outline: none; }
+.vc-type input::placeholder { color: var(--text-muted); }
+.vc-type:focus-within { border-color: var(--accent); }
+.vc-sheet .set-note { text-align: left; }
+
+/* ---- toasts, on ink ---- */
+#toastHost { left: 16px; right: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 84px); align-items: center; }
+.toast {
+  display: inline-flex; align-items: center; gap: 10px; max-width: min(460px, 100%);
+  background: var(--text-primary); color: var(--bg-primary); border: 0;
+  font: 600 13.5px/1.35 var(--font-body); padding: 11px 16px; border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28); pointer-events: auto;
+}
+.toast .ms { font-size: 18px; flex: none; }
+.toast-t { min-width: 0; }
+.toast u { flex: none; font-weight: 700; text-underline-offset: 2px; }
+.toast-action { border: 0; }
+.toast-action:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* The same pair as the danger button, which is measured in both themes. */
+.toast.is-warn { background: var(--red-ink); color: var(--bg-card); }
+@media (min-width: 901px) { #toastHost { left: auto; right: 24px; bottom: 24px; align-items: flex-end; } }
+
+/* ---- sync pill: five states ---- */
+.sync-status .sync-dot { background: var(--text-muted); }
+.sync-status.is-saving .sync-dot { background: var(--c-habit); }
+.sync-status.is-synced .sync-dot { background: var(--c-move); }
+.sync-status.is-offline { color: var(--text-secondary); }
+.sync-status.is-offline .sync-dot { background: var(--c-sleep); }
+.sync-status.is-error .sync-dot { background: var(--red); }
+.sync-detail-actions button[hidden] { display: none; }
+
+/* ---- banners: update ready, install ---- */
+.update-banner {
+  background: var(--bg-card); color: var(--text-primary);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .22);
+}
+.update-banner > .ms { flex: none; color: var(--accent); }
+.update-banner.is-install { border-color: color-mix(in srgb, var(--c-move) 45%, var(--border)); }
+.update-banner.is-install > .ms { color: var(--c-move-ink); }
+.update-banner .dl-btn { flex: none; }
+.update-banner-x { display: grid; place-items: center; min-width: 40px; min-height: 40px; color: var(--text-secondary); border-radius: 10px; }
+.update-banner-x:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* ---- pull to refresh: a ring ---- */
+.ptr { width: 40px; height: 40px; }
+.ptr-ring { display: block; transform: rotate(-90deg); }
+.ptr-track { fill: none; stroke: var(--track); stroke-width: 3.5; }
+.ptr-arc { fill: none; stroke: var(--accent); stroke-width: 3.5; stroke-linecap: round; }
+.ptr.is-spinning .ptr-ring { animation: ptrRing 0.8s linear infinite; }
+@keyframes ptrRing { from { transform: rotate(-90deg); } to { transform: rotate(270deg); } }
+
+/* ---- the palette, in the v3 voice ---- */
+.cmd-input-row { color: var(--text-muted); }
+.cmd-input-row .ms { font-size: 20px; }
+.cmd-group { font: 600 10.5px var(--font-mono); letter-spacing: 0.08em; }
+.cmd-row { align-items: center; }
+.cmd-row > .ms { flex: none; font-size: 18px; color: var(--text-muted); }
+.cmd-row.sel { background: var(--bg-hover); }
+.cmd-row.sel .cmd-row-label { color: var(--text-primary); }
+.cmd-row.sel .cmd-row-sub { color: var(--text-secondary); }
+.cmd-row.sel > .ms { color: var(--accent); }
+.cmd-row-sub { font-family: var(--font-mono); font-size: 11px; }
+
+/* The floating mic and the thumb FAB are gone; the bottom bar's + adds. */

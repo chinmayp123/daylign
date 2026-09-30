@@ -48,6 +48,7 @@ function loadData() {
     // servings. See saveCombo in diet-food.js.
     combos: safeParse('tf_combos', []),
     weight: safeParse('tf_weight', {}),
+    waist: safeParse('tf_waist', {}),
     goals: safeParse('tf_goals', {}),
     sleep: safeParse('tf_sleep', {}),
     aiUsage: safeParse('tf_ai_usage', {}),
@@ -77,6 +78,7 @@ function writeStateToLocal(d) {
   localStorage.setItem('tf_removed_foods', JSON.stringify(d.removedFoods || []));
   localStorage.setItem('tf_combos', JSON.stringify(d.combos || []));
   localStorage.setItem('tf_weight', JSON.stringify(d.weight || {}));
+  localStorage.setItem('tf_waist', JSON.stringify(d.waist || {}));
   localStorage.setItem('tf_goals', JSON.stringify(d.goals || {}));
   localStorage.setItem('tf_sleep', JSON.stringify(d.sleep || {}));
   localStorage.setItem('tf_ai_usage', JSON.stringify(d.aiUsage || {}));
@@ -120,7 +122,7 @@ function saveData(data) {
 const CLOUD_KEYS = {
   tasks: [], categories: [], projects: [], gym: [], cardio: [], modules: {},
   diet: [], customFoods: {}, water: {}, waterAt: {}, events: [], removedFoods: [],
-  combos: [], weight: {}, goals: {}, sleep: {}, aiUsage: {},
+  combos: [], weight: {}, waist: {}, goals: {}, sleep: {}, aiUsage: {},
 };
 
 function applyFirebaseData(data) {

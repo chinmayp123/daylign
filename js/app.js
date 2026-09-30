@@ -118,11 +118,8 @@ function bindEvents() {
 
   // Header primary-action button — context-aware (see switchView for labels)
   $('#addTaskBtn').addEventListener('click', headerPrimaryAction);
-  const primaryFab = $('#primaryFab');
-  if (primaryFab) primaryFab.addEventListener('click', () => {
-    if (typeof haptic === 'function') haptic('light');
-    headerPrimaryAction();
-  });
+  // The + sheet, the bottom bar's +, the install prompt (js/global.js).
+  if (typeof bindGlobal === 'function') bindGlobal();
   // The two v3 sheets: the header x. Backdrop taps, Esc and a downward swipe
   // are handled once, for every .dl-sheet, by bindDlSheets() in js/utils.js.
   [['taskSheetClose', closeTaskSheet], ['eventSheetClose', closeEventSheet]].forEach(([id, fn]) => {
@@ -177,7 +174,7 @@ function bindEvents() {
   // Today's right column (desktop): the two things the phone reaches from the
   // + in the bottom bar. New opens the task form; Say it opens voice.
   const todayNew = $('#todayNewBtn');
-  if (todayNew) todayNew.addEventListener('click', () => openModal());
+  if (todayNew) todayNew.addEventListener('click', () => openTaskSheet());
   const todaySay = $('#todaySayBtn');
   if (todaySay) todaySay.addEventListener('click', () => {
     if (typeof openVoicePanel === 'function') openVoicePanel();
@@ -229,13 +226,10 @@ function bindEvents() {
   // Everything inside Settings itself is bound in js/settings.js.
   $$('[data-manage-taxonomy]').forEach(btn => btn.addEventListener('click', () => openSettingsPage('cats')));
 
-  // Keyboard. Escape used to close only the task modal, leaving the goals and
-  // voice overlays dismissable by mouse alone.
+  // Keyboard. Every .dl-sheet closes on Escape by itself (js/utils.js); this
+  // is for the mobile sidebar, which is not a sheet.
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    if (typeof closeGoalsModal === 'function') closeGoalsModal();
-    const voice = document.getElementById('voicePanel');
-    if (voice && !voice.hidden && typeof closeVoicePanel === 'function') closeVoicePanel();
     // Mobile sidebar is an overlay too — Escape should back out of it.
     const sb = document.querySelector('.sidebar');
     if (sb && sb.classList.contains('open')) sb.classList.remove('open');
@@ -270,7 +264,7 @@ function headerPrimaryAction() {
     // header button opens the Food Library — recent foods, history, manual entry.
     if (typeof openFoodLibrary === 'function') openFoodLibrary();
   } else {
-    openModal();
+    openTaskSheet();
   }
 }
 
@@ -406,28 +400,16 @@ function renderModuleToggles() {
 function updateHeaderActionBtn(view) {
   const btn = $('#addTaskBtn');
   if (!btn) return;
-  const setBoth = (label) => {
-    btn.textContent = label;
-    // The thumb-zone twin carries the same label without the leading "+",
-    // since it already has a plus icon of its own.
-    const fabLabel = $('#primaryFabLabel');
-    if (fabLabel) fabLabel.textContent = label.replace(/^\+\s*/, '');
-  };
-  const fab = $('#primaryFab');
-  // Settings has no primary action, so neither control should be offering one.
-  if (view === 'settings') {
-    btn.style.display = 'none';
-    if (fab) fab.hidden = true;
-    return;
-  }
+  // Settings has no primary action. On a phone this button is hidden anyway:
+  // the + in the bottom bar is the phone's way to add.
+  if (view === 'settings') { btn.style.display = 'none'; return; }
   btn.style.display = '';
-  if (fab) fab.hidden = false;
   if (view === 'training') {
     const cardio = typeof effectiveTrainingMode === 'function' && effectiveTrainingMode() === 'cardio';
-    setBoth(cardio ? 'Log session' : 'Log exercise');
+    btn.textContent = cardio ? 'Log session' : 'Log exercise';
     return;
   }
-  setBoth(HEADER_ACTION_LABELS[view] || '+ New Task');
+  btn.textContent = HEADER_ACTION_LABELS[view] || '+ New Task';
 }
 
 // Views that use the category/project sidebar sections. Everything else (the
@@ -738,19 +720,19 @@ function setupUpdateWatch(reg) {
 function showUpdateBanner() {
   if (updateBannerShown) return;
   updateBannerShown = true;
+  // One banner at a time, and this one matters more.
+  if (typeof hideInstallBanner === 'function') hideInstallBanner();
   const el = document.createElement('div');
   el.className = 'update-banner';
+  el.setAttribute('role', 'status');
   el.innerHTML = `
-    <span class="update-banner-text">A newer version of Daylign is ready.</span>
-    <button type="button" class="update-banner-btn" id="updateReloadBtn">Reload</button>
-    <button type="button" class="update-banner-x" id="updateDismissBtn" aria-label="Dismiss">&times;</button>`;
+    <span class="ms" aria-hidden="true">system_update</span>
+    <span class="update-banner-text">A new version is ready</span>
+    <button type="button" class="dl-btn primary" id="updateReloadBtn">Reload</button>
+    <button type="button" class="update-banner-x" id="updateDismissBtn" aria-label="Dismiss"><span class="ms" aria-hidden="true">close</span></button>`;
   document.body.appendChild(el);
-  document.body.classList.add('has-update-banner');
   const go = document.getElementById('updateReloadBtn');
   if (go) go.addEventListener('click', () => location.reload());
   const x = document.getElementById('updateDismissBtn');
-  if (x) x.addEventListener('click', () => {
-    el.remove();
-    document.body.classList.remove('has-update-banner');   // give the FABs back
-  });
+  if (x) x.addEventListener('click', () => el.remove());
 }

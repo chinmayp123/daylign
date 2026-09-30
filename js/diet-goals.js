@@ -431,6 +431,8 @@ function saveGoalValues(values, extra) {
   saveData(state);
 }
 
+// The one goals editor (spec 10.5). Kept under its old name: Settings, Diet
+// and the Training burn chip all call it.
 function openGoalsModal() {
   const g = getGoals();
   $('#goalCalories').value = g.calories;
@@ -440,22 +442,17 @@ function openGoalsModal() {
   $('#goalWater').value = g.water;
   $('#goalWeight').value = g.weight;
   $('#goalBurn').value = g.burn;
-  $('#goalsModal').classList.add('active');
+  openDlSheet($('#goalsSheet'));
+  setTimeout(() => $('#goalWeight').focus({ preventScroll: true }), 80);
 }
 
 function closeGoalsModal() {
-  $('#goalsModal').classList.remove('active');
+  closeDlSheet($('#goalsSheet'));
 }
 
 function bindGoalsEvents() {
   $('#editGoalsBtn').addEventListener('click', openGoalsModal);
-  const weightChip = $('#weightGoalChip');
-  if (weightChip) weightChip.addEventListener('click', openGoalsModal);
-  $('#goalsModalClose').addEventListener('click', closeGoalsModal);
   $('#goalsCancelBtn').addEventListener('click', closeGoalsModal);
-  $('#goalsModal').addEventListener('click', (e) => {
-    if (e.target === $('#goalsModal')) closeGoalsModal();
-  });
   $('#goalsSaveBtn').addEventListener('click', () => {
     saveGoalValues({
       calories: $('#goalCalories').value, protein: $('#goalProtein').value, carbs: $('#goalCarbs').value,
@@ -463,7 +460,10 @@ function bindGoalsEvents() {
     });
     closeGoalsModal();
     if (typeof render === 'function') render();
-    showToast('Goals updated');
+    showToast('Goals saved');
+  });
+  $('#goalsSheet').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.matches('input')) { e.preventDefault(); $('#goalsSaveBtn').click(); }
   });
 }
 

@@ -253,13 +253,11 @@ function applyTrainingTab() {
   const week = document.getElementById('trainingWeek');
   if (week) week.hidden = !(active === 'strength' || active === 'cardio');
 
-  // Nothing is logged from Coach or Sleep, so neither the thumb FAB nor the
-  // desktop header button should offer to log there - the header button opened
+  // Nothing is logged from Coach or Sleep, so the desktop header button
+  // should not offer to log there - the header button opened
   // the exercise sheet from the Sleep screen otherwise.
   const logs = (active === 'strength' || active === 'cardio');
   if (typeof currentView !== 'undefined' && currentView === 'training') {
-    const fab = document.getElementById('primaryFab');
-    if (fab) fab.hidden = !logs;
     const head = document.getElementById('addTaskBtn');
     if (head) head.style.display = logs ? '' : 'none';
   }
@@ -333,7 +331,9 @@ function bindTrainingEvents() {
   const weight = document.getElementById('trainingWeight');
   if (weight) {
     weight.addEventListener('click', () => {
-      if (typeof openWeightSheet === 'function') openWeightSheet();
+      // The day being viewed, so a weigh-in for yesterday lands on yesterday.
+      const day = (typeof gymViewDate !== 'undefined' && gymViewDate) || getTodayStr();
+      if (typeof openWeightSheet === 'function') openWeightSheet({ date: day });
     });
   }
 
@@ -417,7 +417,7 @@ function renderWatchSync() {
   if (!s) { host.innerHTML = ''; return; }
   if (s.none) {
     host.innerHTML = `<div class="watch-sync is-stale"><span class="watch-sync-dot"></span>
-      <span class="watch-sync-text">No Apple Watch data yet — see Settings &rsaquo; Connect Apple Watch</span></div>`;
+      <span class="watch-sync-text">No Apple Watch data yet. Set it up in Settings, Apple Watch</span></div>`;
     return;
   }
 

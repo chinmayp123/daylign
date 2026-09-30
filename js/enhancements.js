@@ -153,19 +153,21 @@
     updateAddLabel();
   }
 
-  // ---------- Command palette (\u2318K) ----------
-  const VIEWS = [['today','Today'],['tasks','Tasks'],['board','Board'],['calendar','Calendar'],['training','Training'],['diet','Diet'],['settings','Settings']];
+  // ---------- Command palette (\u2318K), spec 10.6 ----------
+  // Groups: Exercises, Tasks, Foods, Cardio, Views, then "Run as a command",
+  // which hands the text to the voice sheet so its results and undo show.
+  const VIEWS = [['today','Today','today'],['tasks','Tasks','check_circle'],['board','Board','view_kanban'],['calendar','Calendar','calendar_month'],['training','Training','fitness_center'],['diet','Diet','restaurant'],['insights','Insights','insights'],['settings','Settings','settings']];
   let cmdRows = [], cmdSel = 0;
   function ensurePalette() {
     if ($('#cmdPalette')) return;
     const wrap = document.createElement('div');
     wrap.id = 'cmdPalette'; wrap.className = 'cmd-overlay';
-    wrap.innerHTML = `<div class="cmd-box">
-        <div class="cmd-input-row"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input id="cmdInput" type="text" placeholder="Search tasks, foods, exercises \u2014 or type a command\u2026" autocomplete="off">
-          <kbd class="cmd-esc">esc</kbd></div>
-        <div id="cmdResults" class="cmd-results"></div>
-        <div class="cmd-foot"><span><b>\u2191\u2193</b> navigate</span><span><b>\u21b5</b> open</span><span><b>\u2318K</b> anytime</span></div>
+    wrap.innerHTML = `<div class="cmd-box" role="dialog" aria-modal="true" aria-label="Search and commands">
+        <div class="cmd-input-row"><span class="ms" aria-hidden="true">search</span>
+          <input id="cmdInput" type="text" placeholder="Search, or type a command" autocomplete="off" role="combobox" aria-expanded="true" aria-controls="cmdResults" aria-autocomplete="list">
+          <kbd class="cmd-esc">Esc</kbd></div>
+        <div id="cmdResults" class="cmd-results" role="listbox"></div>
+        <div class="cmd-foot"><span><b>\u2191\u2193</b> move</span><span><b>\u21b5</b> open</span><span><b>Ctrl K</b> anytime</span></div>
       </div>`;
     document.body.appendChild(wrap);
     wrap.addEventListener('click', e => { if (e.target === wrap) closePalette(); });
@@ -187,36 +189,60 @@
   // invisible on the device this app is mainly used on.
   window.openPalette = openPalette;
   window.closePalette = closePalette;
+  const go = (view) => { if (typeof switchView === 'function') switchView(view); };
+  function logFood(name) {
+    const meal = (typeof defaultMealForNow === 'function') ? defaultMealForNow() : 'snack';
+    go('diet');
+    if (typeof dietViewDate !== 'undefined') dietViewDate = getTodayStr();
+    const before = state.diet.length;
+    quickAddToMeal(meal, { name: name, data: state.customFoods[name] }, false);
+    const entry = state.diet.length > before ? state.diet[state.diet.length - 1] : null;
+    if (!entry) return;
+    showToast(`${name} added to ${meal} \u00b7 Undo`, () => {
+      state.diet = state.diet.filter(e => e !== entry);
+      saveData(state); render();
+    });
+  }
   function renderPaletteResults(q) {
     const query = (q || '').trim().toLowerCase();
     const rows = [];
-    VIEWS.filter(v => !query || v[1].toLowerCase().includes(query))
-      .forEach(v => rows.push({ group: 'Go to', label: v[1], run: () => { closePalette(); if (typeof switchView === 'function') switchView(v[0]); } }));
     if (query && typeof state !== 'undefined') {
-      (state.tasks || []).filter(t => t.name && t.name.toLowerCase().includes(query)).slice(0, 6)
-        .forEach(t => rows.push({ group: 'Tasks', label: t.name, sub: (t.status || '').replace('-', ' '), run: () => { closePalette(); if (typeof openModal === 'function') openModal(t.id); } }));
-      Object.keys(state.customFoods || {}).filter(f => f.toLowerCase().includes(query)).slice(0, 5)
-        .forEach(f => rows.push({ group: 'Foods', label: f, sub: 'log in Diet', run: () => { closePalette(); if (typeof switchView === 'function') switchView('diet'); const inp = $('#dietAddInput'); if (inp) { inp.value = f; inp.dispatchEvent(new Event('input', { bubbles: true })); inp.focus(); } } }));
       [...new Set((state.gym || []).map(e => e.exercise))].filter(x => x && x.toLowerCase().includes(query)).slice(0, 5)
-        .forEach(x => rows.push({ group: 'Exercises', label: x, sub: 'open Training', run: () => { closePalette(); if (typeof switchView === 'function') switchView('gym'); const inp = $('#gymExerciseName'); if (inp) { inp.value = x; inp.focus(); } } }));
-      // Cardio was searchable nowhere \u2014 "ride" or "run" now finds the log.
+        .forEach(x => rows.push({ group: 'Exercises', icon: 'fitness_center', label: x, sub: 'log a set', run: () => {
+          closePalette(); go('training');
+          if (typeof setTrainingTab === 'function') setTrainingTab('strength');
+          if (typeof openGymLogSheet === 'function') openGymLogSheet(x);
+        } }));
+      (state.tasks || []).filter(t => t.name && t.name.toLowerCase().includes(query)).slice(0, 6)
+        .forEach(t => {
+          const cat = (state.categories || []).find(c => c.id === t.category);
+          rows.push({ group: 'Tasks', icon: t.status === 'done' ? 'task_alt' : 'check_circle', label: t.name, sub: cat ? cat.name : (t.status || '').replace('-', ' '), run: () => { closePalette(); if (typeof openTaskSheet === 'function') openTaskSheet(t.id); } });
+        });
+      const meal = (typeof defaultMealForNow === 'function') ? defaultMealForNow() : 'snack';
+      Object.keys(state.customFoods || {}).filter(f => f.toLowerCase().includes(query)).slice(0, 5)
+        .forEach(f => rows.push({ group: 'Foods', icon: 'restaurant', label: f, sub: 'add to ' + meal, run: () => { closePalette(); logFood(f); } }));
+      // Cardio was searchable nowhere — "ride" or "run" now finds the log.
       [...new Set((state.cardio || []).map(c => c && c.type).filter(Boolean))]
         .filter(t => t.toLowerCase().includes(query)).slice(0, 3)
         .forEach(t => rows.push({
-          group: 'Cardio', label: t.charAt(0).toUpperCase() + t.slice(1), sub: 'open Training',
-          run: () => { closePalette(); if (typeof switchView === 'function') switchView('cardio'); },
+          group: 'Cardio', icon: 'directions_run', label: t.charAt(0).toUpperCase() + t.slice(1), sub: 'open Cardio',
+          run: () => { closePalette(); go('cardio'); },
         }));
-      rows.push({ group: 'Command', label: `Run \u201c${q.trim()}\u201d as a command`, sub: 'e.g. log 40 oz water, add task pay rent tomorrow', cmd: true, run: () => { closePalette(); if (typeof runVoiceCommand === 'function') runVoiceCommand(q.trim()); } });
+    }
+    VIEWS.filter(v => !query || v[1].toLowerCase().includes(query))
+      .forEach(v => rows.push({ group: 'Views', icon: v[2], label: v[1], run: () => { closePalette(); go(v[0]); } }));
+    if (query) {
+      rows.push({ group: 'Run as a command', icon: 'mic', label: `\u201c${q.trim()}\u201d`, sub: 'Enter', cmd: true, run: () => { closePalette(); if (typeof openVoicePanel === 'function') openVoicePanel(q.trim()); } });
     }
     cmdRows = rows; cmdSel = 0;
     const host = $('#cmdResults');
     if (!rows.length) { host.innerHTML = '<div class="cmd-empty">No matches</div>'; return; }
     let lastGroup = '';
     host.innerHTML = rows.map((r, i) => {
-      const head = r.group !== lastGroup ? `<div class="cmd-group">${r.group}</div>` : '';
+      const head = r.group !== lastGroup ? `<div class="cmd-group" role="presentation">${r.group}</div>` : '';
       lastGroup = r.group;
-      return head + `<div class="cmd-row${i === 0 ? ' sel' : ''}${r.cmd ? ' cmd-run' : ''}" data-idx="${i}">
-          <span class="cmd-row-label">${escLabel(r.label)}</span>${r.sub ? `<span class="cmd-row-sub">${escLabel(r.sub)}</span>` : ''}</div>`;
+      return head + `<div class="cmd-row${i === 0 ? ' sel' : ''}${r.cmd ? ' cmd-run' : ''}" data-idx="${i}" role="option" aria-selected="${i === 0}">
+          <span class="ms" aria-hidden="true">${r.icon}</span><span class="cmd-row-label">${escLabel(r.label)}</span>${r.sub ? `<span class="cmd-row-sub">${escLabel(r.sub)}</span>` : ''}</div>`;
     }).join('');
     $$('.cmd-row', host).forEach(el => {
       el.addEventListener('mouseenter', () => setPaletteSel(Number(el.dataset.idx)));
@@ -225,7 +251,11 @@
   }
   function setPaletteSel(i) {
     cmdSel = Math.max(0, Math.min(cmdRows.length - 1, i));
-    $$('.cmd-row').forEach(el => el.classList.toggle('sel', Number(el.dataset.idx) === cmdSel));
+    $$('.cmd-row').forEach(el => {
+      const on = Number(el.dataset.idx) === cmdSel;
+      el.classList.toggle('sel', on);
+      el.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
     const sel = $('.cmd-row.sel'); if (sel) sel.scrollIntoView({ block: 'nearest' });
   }
   function paletteKeydown(e) {
@@ -263,12 +293,6 @@
     fillAvatarSheet();
     refreshReportBadges();
 
-    // The centre + is the same primary action as the FAB and the header button.
-    const addBtn = $('#bottomNavAdd');
-    if (addBtn) addBtn.addEventListener('click', () => {
-      const primary = document.getElementById('primaryFab') || document.getElementById('addTaskBtn');
-      if (primary) primary.click();
-    });
 
     // Sidebar search and its Ctrl K hint both open the command palette.
     const sideSearch = $('#sidebarSearch');

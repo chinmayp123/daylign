@@ -69,6 +69,7 @@ const ASSETS = [
   'js/inbox.js',
   'js/import-csv.js',
   'js/settings.js',
+  'js/global.js',
   'icons/icon-180.png',
   'icons/icon-192.png',
   'icons/icon-512.png',

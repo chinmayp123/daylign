@@ -871,21 +871,35 @@
     </button>
   </nav>
 
-  <!-- Weight-trend sheet (ref 5b): opened from the Training shell's weight
-       readout. 30-day mini bars + delta + goal + inline Log. See js/weight-sheet.js -->
-  <div class="weight-sheet-overlay" id="weightSheet" role="dialog" aria-modal="true" hidden>
-    <div class="weight-sheet">
-      <div class="weight-sheet-head">
-        <span class="weight-sheet-title">Body progress</span>
-        <button type="button" class="weight-sheet-close" id="weightSheetClose" aria-label="Close">&times;</button>
+  <!-- + sheet (spec 10.3). Tiles are built on open by js/global.js. -->
+  <div class="dl-sheet-wrap" id="addSheet">
+    <div class="dl-sheet" role="dialog" aria-modal="true" aria-labelledby="addTitle" tabindex="-1">
+      <div class="dl-grab"></div>
+      <h4 id="addTitle">Add</h4>
+      <div class="add-grid" id="addGrid"></div>
+    </div>
+  </div>
+
+  <!-- Weigh in (spec 10.4): the only weigh-in UI. js/weight-sheet.js -->
+  <div class="dl-sheet-wrap" id="weighSheet" data-guard>
+    <div class="dl-sheet" role="dialog" aria-modal="true" aria-labelledby="weighTitle" tabindex="-1">
+      <div class="dl-grab"></div>
+      <h4><span id="weighTitle">Weigh in</span> <em class="wg-when" id="weighWhen"></em></h4>
+      <div class="wg-fields">
+        <div class="dl-field">
+          <label for="weighWeight">Weight, lb</label>
+          <input type="number" id="weighWeight" class="big" inputmode="decimal" step="0.1" min="50" max="500" autocomplete="off">
+        </div>
+        <div class="dl-field">
+          <label for="weighWaist">Waist, in (optional)</label>
+          <input type="number" id="weighWaist" inputmode="decimal" step="0.1" min="15" max="80" autocomplete="off">
+        </div>
       </div>
-      <div class="weight-sheet-body" id="weightSheetBody"></div>
-      <!-- Log weight and/or waist. Weekly is plenty — the trend matters, not the
-           single day. Either field alone is a valid entry. -->
-      <div class="weight-sheet-log">
-        <input type="number" id="weightInput" placeholder="lbs" step="0.1" min="50" max="500" inputmode="decimal">
-        <input type="number" id="waistInput" placeholder="waist in" step="0.1" min="15" max="80" inputmode="decimal">
-        <button class="btn-primary" id="weightLogBtn">Log</button>
+      <p class="wg-err" id="weighErr" role="alert" hidden></p>
+      <div class="dl-card" id="weighTrend"></div>
+      <div class="wg-actions">
+        <button type="button" class="dl-btn" data-weigh-cancel>Cancel</button>
+        <button type="button" class="dl-btn primary" id="weighSave">Save</button>
       </div>
     </div>
   </div>
@@ -948,108 +962,48 @@
        have silently killed photo logging everywhere. -->
   <input type="file" id="photoFileInput" accept="image/*" capture="environment" hidden>
 
-  <!-- Primary action, thumb-reachable. Mobile only; the header button in
-       .header-right is the same action and stays for desktop. -->
-  <button class="primary-fab" id="primaryFab" type="button">
-    <svg aria-hidden="true" focusable="false" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    <span id="primaryFabLabel">New Task</span>
-  </button>
-
-  <!-- Voice command FAB + panel -->
-  <button class="voice-fab" id="voiceFab" title="Voice command" aria-label="Voice command">
-    <svg aria-hidden="true" focusable="false" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-  </button>
-  <div class="modal-overlay voice-overlay" id="voicePanel" role="dialog" aria-modal="true">
-    <div class="modal voice-modal">
-      <div class="modal-header">
-        <div class="modal-header-left">
-          <div class="modal-icon">
-            <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-          </div>
-          <div>
-            <h2>Voice command</h2>
-            <p class="modal-subtitle">Speak or type — e.g. "log 40 oz water", "add a task to pay rent tomorrow", "I weighed 163", "go to gym"</p>
-          </div>
-        </div>
-        <button class="modal-close" id="voicePanelClose" aria-label="Close">
-          <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
+  <!-- Voice (spec 10.6). Opened from the + sheet, Diet's add bar, Today's
+       "Say it" and the palette. The floating mic is gone. js/voice.js -->
+  <div class="dl-sheet-wrap" id="voiceSheet">
+    <div class="dl-sheet vc-sheet" role="dialog" aria-modal="true" aria-labelledby="voiceTitle" tabindex="-1">
+      <div class="dl-grab"></div>
+      <h4 id="voiceTitle">Say it</h4>
+      <button type="button" class="vc-mic" id="voiceMicBtn" aria-pressed="false" aria-label="Start listening"><span class="ms fill" aria-hidden="true">mic</span></button>
+      <p class="vc-hint" id="voiceHint" aria-live="polite"></p>
+      <p class="vc-transcript" id="voiceTranscript"></p>
+      <div class="vc-results" id="voiceResult" aria-live="polite"></div>
+      <div class="vc-type">
+        <span class="ms" aria-hidden="true">keyboard</span>
+        <input type="text" id="voiceInput" placeholder="Or type a command" autocomplete="off" aria-label="Type a command">
+        <button type="button" class="dl-btn primary" id="voiceRunBtn">Run</button>
       </div>
-      <div class="voice-body">
-        <div class="voice-input-row">
-          <button type="button" class="voice-mic-btn" id="voiceMicBtn" title="Tap to talk">
-            <svg aria-hidden="true" focusable="false" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-          </button>
-          <input type="text" id="voiceInput" placeholder="Say or type a command…" autocomplete="off">
-          <button type="button" class="btn-primary" id="voiceRunBtn">Run</button>
-        </div>
-        <div class="voice-hint" id="voiceHint"></div>
-        <div class="voice-result" id="voiceResult"></div>
-      </div>
+      <p class="set-note">Tasks, water, weight, food and “go to”, several at once. Undo stays for six seconds.</p>
     </div>
   </div>
 
-  <!-- Goals Modal -->
-  <div class="modal-overlay" id="goalsModal" role="dialog" aria-modal="true">
-    <div class="modal goals-modal">
-      <div class="modal-header">
-        <div class="modal-header-left">
-          <div class="modal-icon">
-            <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
-          </div>
-          <div>
-            <h2>Your Goals</h2>
-            <p class="modal-subtitle">Daily targets — synced to all your devices</p>
+  <!-- Goals (spec 10.5): the only goals editor. Opened from Settings, Diet
+       and the Training burn chip; setup saves through the same function. -->
+  <div class="dl-sheet-wrap" id="goalsSheet" data-guard>
+    <div class="dl-sheet" role="dialog" aria-modal="true" aria-labelledby="goalsTitle" tabindex="-1">
+      <div class="dl-grab"></div>
+      <h4 id="goalsTitle">Goals</h4>
+      <div class="gl-grid">
+        <div class="dl-field"><label for="goalWeight">Goal weight, lb</label><input type="number" id="goalWeight" inputmode="decimal" min="50" max="500" step="1"></div>
+        <div class="dl-field"><label for="goalCalories">Calories</label><input type="number" id="goalCalories" inputmode="numeric" min="800" max="10000" step="50"></div>
+        <div class="dl-field"><label for="goalProtein">Protein, g</label><input type="number" id="goalProtein" inputmode="numeric" min="20" max="400" step="5"></div>
+        <div class="dl-field"><label for="goalWater">Water, oz</label><input type="number" id="goalWater" inputmode="numeric" min="8" max="300" step="2"></div>
+        <div class="dl-field"><label for="goalBurn">Burn, kcal</label><input type="number" id="goalBurn" inputmode="numeric" min="50" max="3000" step="25"></div>
+        <div class="dl-field gl-pair">
+          <span class="dl-field-label" id="goalCfLabel">Carbs / fat, g</span>
+          <div class="gl-pair-in" role="group" aria-labelledby="goalCfLabel">
+            <input type="number" id="goalCarbs" inputmode="numeric" min="20" max="800" step="5" aria-label="Carbs, g">
+            <input type="number" id="goalFat" inputmode="numeric" min="10" max="300" step="5" aria-label="Fat, g">
           </div>
         </div>
-        <button class="modal-close" id="goalsModalClose" aria-label="Close">
-          <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
       </div>
-      <div class="goals-form">
-        <div class="form-row">
-          <div class="form-group">
-            <label>Daily Calories</label>
-            <input type="number" id="goalCalories" min="800" max="10000" step="50">
-          </div>
-          <div class="form-group">
-            <label>Protein (g)</label>
-            <input type="number" id="goalProtein" min="20" max="400" step="5">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Carbs (g)</label>
-            <input type="number" id="goalCarbs" min="20" max="800" step="5">
-          </div>
-          <div class="form-group">
-            <label>Fat (g)</label>
-            <input type="number" id="goalFat" min="10" max="300" step="5">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Water (oz/day)</label>
-            <input type="number" id="goalWater" min="8" max="300" step="2">
-          </div>
-          <div class="form-group">
-            <label>Goal Weight (lbs)</label>
-            <input type="number" id="goalWeight" min="50" max="500" step="1">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Exercise Burn (cal/day)</label>
-            <input type="number" id="goalBurn" min="50" max="3000" step="25">
-          </div>
-          <div class="form-group"></div>
-        </div>
-        <div class="form-actions">
-          <div class="form-actions-right">
-            <button type="button" class="btn-secondary" id="goalsCancelBtn">Cancel</button>
-            <button type="button" class="btn-primary" id="goalsSaveBtn">Save Goals</button>
-          </div>
-        </div>
+      <div class="wg-actions">
+        <button type="button" class="dl-btn" id="goalsCancelBtn">Cancel</button>
+        <button type="button" class="dl-btn primary" id="goalsSaveBtn">Save</button>
       </div>
     </div>
   </div>
@@ -1217,6 +1171,7 @@
   <script src="js/inbox.js"></script>
   <script src="js/import-csv.js"></script>
   <script src="js/settings.js"></script>
+  <script src="js/global.js"></script>
   <script src="js/app.js"></script>
   <script src="js/onboarding.js"></script>
   <script src="js/enhancements.js"></script>

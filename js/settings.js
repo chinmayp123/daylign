@@ -210,7 +210,7 @@ function onSyncStatusChanged() {
 const SYNC_KEY_LABELS = {
   tasks: 'Tasks', categories: 'Categories', projects: 'Projects', gym: 'Strength', cardio: 'Cardio',
   modules: 'Modules', diet: 'Food', customFoods: 'My foods', water: 'Water', events: 'Events',
-  weight: 'Weigh-ins', goals: 'Goals', sleep: 'Sleep', aiUsage: 'AI usage', combos: 'Saved meals',
+  weight: 'Weigh-ins', waist: 'Waist', goals: 'Goals', sleep: 'Sleep', aiUsage: 'AI usage', combos: 'Saved meals',
 };
 const SYNC_KEY_NOUNS = {
   tasks: ['task', 'tasks'], diet: ['food entry', 'food entries'], gym: ['exercise', 'exercises'],

@@ -422,7 +422,7 @@ let syncRetryTimer = null;
 let syncState = 'connecting';
 let lastSyncedAt = 0;
 
-const SYNC_STATE_LABELS = { connecting: 'Connecting…', saving: 'Saving…', synced: 'Synced', error: 'Not saving', offline: 'On this device' };
+const SYNC_STATE_LABELS = { connecting: 'Connecting…', saving: 'Saving…', synced: 'Synced', error: 'Not saving', offline: 'Offline' };
 
 function syncStatusInfo() {
   return { state: syncState, label: SYNC_STATE_LABELS[syncState] || SYNC_STATE_LABELS.connecting, message: lastSyncError, at: lastSyncedAt };
@@ -440,7 +440,7 @@ function setSyncStatus(state, message) {
   const detail = document.getElementById('syncDetail');
   if (detail && state !== 'error') detail.hidden = true;
   if (!el) return;
-  el.classList.remove('is-synced', 'is-saving', 'is-error');
+  el.classList.remove('is-synced', 'is-saving', 'is-error', 'is-offline');
   const txt = el.querySelector('.sync-text');
   switch (state) {
     case 'saving':
@@ -459,11 +459,11 @@ function setSyncStatus(state, message) {
       el.title = message || 'Cloud sync failed — your changes are only on this device. Use Backup to be safe.';
       break;
     case 'offline':
-      // No SDK at all this session. Distinct from 'error', which means the
-      // cloud is reachable but a write failed and is worth retrying.
-      el.classList.add('is-error');
-      if (txt) txt.textContent = 'On this device';
-      el.title = 'Cloud sync is unavailable this session — changes are saved on this device only.';
+      // No network, or no SDK at all this session. Distinct from 'error',
+      // which means the cloud is reachable but a write failed.
+      el.classList.add('is-offline');
+      if (txt) txt.textContent = 'Offline';
+      el.title = 'Offline. Changes are saved on this device.';
       break;
     default:
       if (txt) txt.textContent = 'Connecting…';
@@ -478,7 +478,7 @@ function setSyncStatus(state, message) {
 const SYNC_KEYS = {
   tasks: [], categories: [], projects: [], gym: [], cardio: [], modules: {},
   diet: [], customFoods: {}, water: {}, waterAt: {}, events: [], removedFoods: {},
-  weight: {}, goals: {}, sleep: {}, aiUsage: {}, combos: [],
+  weight: {}, waist: {}, goals: {}, sleep: {}, aiUsage: {}, combos: [],
 };
 
 // What we last successfully sent, serialized per key. Anything unchanged is
@@ -534,10 +534,12 @@ function saveToFirebase(data) {
   // plainly that it is stalled instead. The write is NOT cancelled — Firebase
   // keeps retrying and will flip this to Synced if it lands.
   const stallTimer = setTimeout(() => {
+    // With no network at all this is not an error, it is simply offline.
+    if (!navigator.onLine) { setSyncStatus('offline'); return; }
     setSyncStatus('error', 'Still trying to reach the cloud — your data is saved on this device and will sync when the connection recovers.');
   }, 12000);
 
-  setSyncStatus('saving');
+  setSyncStatus(navigator.onLine ? 'saving' : 'offline');
 
   // Last line of defence on key names. customFoods is keyed by the food's
   // display name, and the photo/voice analysis invents those names — one called
@@ -746,6 +748,21 @@ function retrySync() {
   catch (e) { setSyncStatus('error', 'Retry failed: ' + (e && e.message ? e.message : 'unknown error')); }
 }
 
+// What the pill's detail says: the state in a sentence, and when this device
+// last heard the cloud confirm a save.
+function syncDetailText() {
+  const info = syncStatusInfo();
+  let msg;
+  if (info.state === 'error') msg = lastSyncError || 'Cloud sync failed. Your changes are saved on this device.';
+  else if (info.state === 'offline') msg = db ? 'Offline. Changes are saved on this device and sync when the connection is back.'
+    : 'Cloud sync is unavailable this session. Changes are saved on this device.';
+  else if (info.state === 'saving') msg = 'Saving to the cloud…';
+  else if (info.state === 'connecting') msg = 'Connecting to the cloud…';
+  else msg = 'Everything on this device is saved to the cloud.';
+  if (info.at && typeof relativeTime === 'function') msg += ' Last saved ' + relativeTime(info.at) + '.';
+  return msg;
+}
+
 function bindSyncStatusUI() {
   const btn = document.getElementById('syncStatus');
   const detail = document.getElementById('syncDetail');
@@ -754,19 +771,26 @@ function bindSyncStatusUI() {
   const close = document.getElementById('syncDetailClose');
 
   if (btn && detail && msg) {
+    btn.setAttribute('aria-expanded', 'false');
+    btn.setAttribute('aria-controls', 'syncDetail');
     btn.addEventListener('click', () => {
-      msg.textContent = lastSyncError
-        ? lastSyncError
-        : 'Everything on this device is saved to the cloud.';
+      msg.textContent = syncDetailText();
+      // Retry only means something when a write failed.
+      if (retry) retry.hidden = syncState !== 'error';
       detail.hidden = !detail.hidden;
+      btn.setAttribute('aria-expanded', detail.hidden ? 'false' : 'true');
     });
   }
-  if (close && detail) close.addEventListener('click', () => { detail.hidden = true; });
+  if (close && detail) close.addEventListener('click', () => { detail.hidden = true; if (btn) btn.setAttribute('aria-expanded', 'false'); });
   if (retry) retry.addEventListener('click', () => {
     if (detail) detail.hidden = true;
     retrySync();
   });
 
   // Coming back online is the single best moment to try again.
-  window.addEventListener('online', () => { if (lastSyncError) retrySync(); });
+  window.addEventListener('online', () => {
+    if (lastSyncError) { retrySync(); return; }
+    if (syncState === 'offline' && db) setSyncStatus(pendingWrites > 0 ? 'saving' : 'synced');
+  });
+  window.addEventListener('offline', () => { if (db) setSyncStatus('offline'); });
 }
