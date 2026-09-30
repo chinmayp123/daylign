@@ -207,8 +207,9 @@ function executeVoiceCommands(commands) {
         // line puts this drink where it was drunk.
         state.waterAt = state.waterAt || {};
         state.waterAt[today] = state.waterAt[today] || [];
-        const at = state.water[today].length - 1;
-        state.waterAt[today][at] = Date.now();
+        // push(), as the Diet buttons do: assigning by index on a shorter
+        // (older) array would leave holes.
+        state.waterAt[today].push(Date.now());
         done.push({
           icon: 'water_drop',
           label: `Water: <b>+${oz} oz</b>`,

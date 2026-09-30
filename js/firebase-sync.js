@@ -513,7 +513,11 @@ function saveToFirebase(data) {
     try { ser = JSON.stringify(v); } catch (e) { ser = null; }
     serialized[k] = ser;
     if (!lastSentByKey || ser === null || lastSentByKey[k] !== ser) {
-      payload[k] = v;
+      // The serialized copy, not the live value: JSON drops every undefined,
+      // which Firebase would reject outright (a food logged for yesterday once
+      // carried at: undefined and stopped all syncing). It is also exactly
+      // what lastSentByKey compares against.
+      payload[k] = ser !== null ? JSON.parse(ser) : v;
       changed.push(k);
     }
   });
@@ -625,6 +629,11 @@ function initFirebaseSync(onDataReceived) {
   // apply here; state.js has already loaded localStorage, so the right move is
   // to leave it alone and just render.
   if (!db) {
+    // Saves must still advance this device's clock, or an edit made in a
+    // session with no SDK looks older than the cloud and is overwritten on the
+    // next online load. Same trade-off as a failed first read (below): what was
+    // done on this device wins.
+    appReconciled = true;
     setSyncStatus('offline');
     document.body.classList.remove('app-loading');
     if (typeof render === 'function') render();
@@ -689,7 +698,10 @@ function startFirebaseSync(onDataReceived) {
       // are recognized as newer and preserved on the next successful load.
       firebaseReady = false;
       appReconciled = true;
-      if (typeof migrateTaxonomyColors === 'function') migrateTaxonomyColors();
+      // No colour migration here: it would save a state that never met the
+      // cloud with a fresh stamp, and the next load would push it over newer
+      // cloud data. taxColor() still draws an old hex colour meanwhile, and the
+      // migration runs after the next successful load.
       // A stuck progress bar is worse than none — clear it on failure too.
       document.body.classList.remove('app-loading');
       setSyncStatus('error', 'Could not reach the cloud: ' + (err && err.message ? err.message : 'unknown error') + '. Changes save on this device only — reopen when online to sync.');

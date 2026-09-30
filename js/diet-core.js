@@ -120,7 +120,9 @@ function quickAddToMeal(meal, result, keepSearchOpen) {
     food: result.name,
     // v3: when it was eaten, so the line can place it. Only a food logged for
     // today has an honest clock time; a back-dated one takes the meal's slot.
-    at: dietViewDate === getTodayStr() ? Date.now() : undefined,
+    // The key is left out, not set to undefined: Firebase rejects undefined
+    // anywhere in a write, which stalled this save and every one after it.
+    ...(dietViewDate === getTodayStr() ? { at: Date.now() } : {}),
     servings: 1,
     calories: Number(d.calories) || 0,
     protein: Number(d.protein) || 0,
@@ -369,7 +371,7 @@ function addComboToMeal(comboId, meal) {
       // Ingredients stay separate entries so every total, chart and analytic
       // keeps working untouched — the grouping is purely how the log DRAWS
       // them. One row that expands, rather than five loose ones.
-      group: gid, groupName: combo.name, at: dietViewDate === getTodayStr() ? Date.now() : undefined,
+      group: gid, groupName: combo.name, ...(dietViewDate === getTodayStr() ? { at: Date.now() } : {}),
     };
     state.diet.push(entry);
     added.push(entry);
@@ -537,7 +539,7 @@ function groupMealEntries(entries) {
 // is in the fridge, so a logged group must not be frozen.
 function addIngredientToGroup(gid, meal, name, per) {
   state.diet.push({
-    date: dietViewDate, meal: meal, food: name, servings: 1, at: dietViewDate === getTodayStr() ? Date.now() : undefined,
+    date: dietViewDate, meal: meal, food: name, servings: 1, ...(dietViewDate === getTodayStr() ? { at: Date.now() } : {}),
     calories: Number(per.calories) || 0, protein: Number(per.protein) || 0,
     carbs: Number(per.carbs) || 0, fat: Number(per.fat) || 0,
     group: gid, groupName: (state.diet.find(e => e.group === gid) || {}).groupName || 'Meal',
