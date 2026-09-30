@@ -190,7 +190,7 @@ function lineItemsFor(dateStr) {
     const dur = len > 0 ? (len >= 60 ? Math.round(len / 6) / 10 + 'h' : len + 'm') : '';
     const key = (typeof CATEGORY_COLOR_KEYS !== 'undefined' && CATEGORY_COLOR_KEYS.indexOf(ev.color) !== -1) ? ev.color : 'meet';
     push({ sort: min, time: lineClock(min), c: key, icon: 'event',
-           title: ev.name || 'Event', sub: ev.location || '', val: dur,
+           title: ev.name || 'Event', sub: ev.location || '', val: dur, keep: true,
            past: isToday && min <= lineMinutesNow(), tap: 'event:' + ev.id });
   });
   if (typeof getExternalCalendar === 'function') {
@@ -198,7 +198,7 @@ function lineItemsFor(dateStr) {
       const m = String(ev.start || '').match(/(\d{1,2}):(\d{2})/);
       const min = m ? Number(m[1]) * 60 + Number(m[2]) : 9 * 60;
       push({ sort: min, time: lineClock(min), c: 'meet', icon: 'groups',
-             title: ev.title, sub: ev.location || 'from your calendar', val: '',
+             title: ev.title, sub: ev.location || 'from your calendar', val: '', keep: true,
              past: isToday && min <= lineMinutesNow(), tap: 'gcal:' + dateStr + ':' + gi });
     });
   }
@@ -215,7 +215,7 @@ function lineItemsFor(dateStr) {
     const min = Number(m[1]) * 60 + Number(m[2]);
     const cat = (state.categories || []).find(c => c.id === t.category);
     push({ sort: min, time: lineClock(min), c: (cat && cat.color) || '', icon: 'check_circle',
-           title: t.name, sub: '', val: (typeof taskEstimateText === 'function' ? taskEstimateText(t) : ''),
+           title: t.name, sub: '', val: (typeof taskEstimateText === 'function' ? taskEstimateText(t) : ''), keep: true,
            past: t.status === 'done', card: t.priority === 'high', tap: 'task:' + t.id });
   });
 
@@ -236,8 +236,12 @@ function renderLine(dateStr, hostId, opts) {
   // `logged`: drop the unfilled placeholders (a meal with nothing in it, a
   // habit not ticked). Today wants them — they are the prompt to log. Calendar
   // does not: on some other day they are seven rows saying nothing happened.
-  if (opts && opts.logged) items = items.filter(it => it.past || it.val || it.action);
+  // Events and timed tasks are never placeholders (`keep`); an event with no
+  // end time or a task with no length used to vanish from Calendar here.
+  if (opts && opts.logged) items = items.filter(it => it.keep || it.past || it.val || it.action);
 
+  // The day these rows belong to, for taps that open another screen on it.
+  host.dataset.lineDate = date;
   if (!items.length) { host.innerHTML = ''; host.hidden = true; return; }
   host.hidden = false;
 
@@ -333,7 +337,20 @@ function bindLine(hostArg) {
     if (!row) return;
     const tap = row.dataset.lineTap;
     if (tap === 'sleep') { switchView('training'); if (typeof setTrainingTab === 'function') setTrainingTab('sleep'); }
-    else if (tap === 'water' || tap.startsWith('meal:')) switchView('diet');
+    else if (tap === 'water' || tap.startsWith('meal:')) {
+      // Diet opens on the day of the row, at the thing tapped. Read the date
+      // first: leaving Today puts the Today line back on today.
+      const day = host.dataset.lineDate || getTodayStr();
+      if (typeof dietViewDate !== 'undefined') dietViewDate = day;
+      switchView('diet');
+      if (typeof render === 'function') render();
+      if (tap === 'water') {
+        const card = document.getElementById('waterTracker');
+        if (card) card.scrollIntoView({ block: 'center' });
+      } else if (typeof openMealSheet === 'function') {
+        openMealSheet(tap.slice(5));
+      }
+    }
     else if (tap === 'training') switchView('training');
     else if (tap === 'strength' || tap === 'cardio') { switchView('training'); if (typeof setTrainingTab === 'function') setTrainingTab(tap); }
     else if (tap === 'calendar') switchView('calendar');

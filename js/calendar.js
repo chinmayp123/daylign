@@ -135,8 +135,35 @@ function renderCalDayPanel(dateStr) {
   const isToday = dateStr === getTodayStr();
   if (typeof renderLine === 'function') renderLine(dateStr, 'calDayLine', { logged: !isToday });
   const lineHost = document.getElementById('calDayLine');
+
+  // Tasks due this day with no time are not on the line (it is a timeline),
+  // but the month grid shows their dots, so the day has to show them too.
+  const clockOf = (t) => (typeof taskClockTime === 'function' ? taskClockTime(t) : t.time);
+  const untimed = (state.tasks || []).filter(t => t && t.dueDate === dateStr && !clockOf(t) &&
+    !(typeof isArchived === 'function' && isArchived(t)));
+  const dueHost = document.getElementById('calDayDue');
+  if (dueHost) {
+    dueHost.hidden = !untimed.length;
+    dueHost.innerHTML = untimed.length ? `
+      <h4 class="cal-due-h">Due, no time</h4>
+      ${untimed.map(t => {
+        const cat = (state.categories || []).find(c => c.id === t.category);
+        return `<button type="button" class="cal-due-row${t.status === 'done' ? ' is-done' : ''}" data-cal-task="${esc(t.id)}">
+          <span class="dl-dot" style="--c:${taxColor(cat)}"></span>
+          <span class="cal-due-name">${esc(t.name)}</span>
+          ${t.status === 'done' ? '<span class="cal-due-state">done</span>' : ''}
+        </button>`;
+      }).join('')}` : '';
+    if (!dueHost._bound) {
+      dueHost._bound = true;
+      dueHost.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-cal-task]');
+        if (b && typeof openTaskSheet === 'function') openTaskSheet(b.dataset.calTask);
+      });
+    }
+  }
   const empty = document.getElementById('calDayEmpty');
-  if (empty) empty.hidden = !!(lineHost && lineHost.innerHTML.trim());
+  if (empty) empty.hidden = !!(lineHost && lineHost.innerHTML.trim()) || untimed.length > 0;
 }
 
 // ---------- Week: desktop hour grid ----------
