@@ -15,7 +15,7 @@ function renderDashboardProjectFilter() {
       </button>
       ${projects.map(p => `
         <button class="dash-project-tab ${dashboardProjectFilter === p.id ? 'active' : ''}" data-proj="${p.id}">
-          <span class="category-dot" style="background:${p.color}"></span>${esc(p.name)}
+          <span class="category-dot" style="background:${taxColor(p)}"></span>${esc(p.name)}
         </button>
       `).join('')}
     </div>`;
@@ -429,7 +429,7 @@ function renderDashboard() {
     const dateStr = formatDate(t.dueDate);
     const proj = t.project ? state.projects.find(p => p.id === t.project) : null;
     const cat = state.categories.find(c => c.id === t.category);
-    const itemColor = proj ? proj.color : (cat ? cat.color : null);
+    const itemColor = proj ? taxColor(proj) : (cat ? taxColor(cat) : null);
     return `
       <div class="deadline-item">
         <span class="deadline-date ${isOverdue ? 'overdue' : ''}" ${!isOverdue && itemColor ? `style="color:${itemColor}"` : ''}>${dateStr}</span>
@@ -452,7 +452,7 @@ function renderMyTasksBoard(taskPool) {
     <button class="my-tasks-tab ${activeTaskTab === null ? 'active' : ''}" data-cat="all">All</button>
     ${cats.map(c => `
       <button class="my-tasks-tab ${activeTaskTab === c.id ? 'active' : ''}" data-cat="${c.id}">
-        <span class="category-dot" style="background:${c.color}"></span>${c.name}
+        <span class="category-dot" style="background:${taxColor(c)}"></span>${c.name}
       </button>
     `).join('')}`;
   $('#myTasksTabs').innerHTML = tabsHtml;
@@ -495,7 +495,7 @@ function renderMyTasksBoard(taskPool) {
           <span class="my-task-card-name">${esc(t.name)}</span>
         </div>
         <div class="my-task-card-bottom">
-          ${cat ? `<span class="my-task-card-cat" style="color:${cat.color}"><span class="category-dot" style="background:${cat.color}"></span>${cat.name}</span>` : '<span></span>'}
+          ${cat ? `<span class="my-task-card-cat" style="color:${taxColor(cat)}"><span class="category-dot" style="background:${taxColor(cat)}"></span>${cat.name}</span>` : '<span></span>'}
           <div class="my-task-card-tags">
             ${isOverdue ? '<span class="my-task-tag overdue">Overdue</span>' : t.dueDate ? `<span class="my-task-tag">${formatDate(t.dueDate)}</span>` : ''}
           </div>
@@ -605,7 +605,7 @@ function renderSchedule() {
             </div>
             <div class="schedule-event-meta">
               <span class="schedule-event-priority ${t.priority}">${t.priority}</span>
-              ${cat ? `<span class="schedule-event-category"><span class="category-dot" style="background:${cat.color}"></span>${cat.name}</span>` : ''}
+              ${cat ? `<span class="schedule-event-category"><span class="category-dot" style="background:${taxColor(cat)}"></span>${cat.name}</span>` : ''}
             </div>
           </div>`;
         }).join('')}
@@ -675,7 +675,7 @@ function renderSchedule() {
             <div class="schedule-event priority-${t.priority} draggable-event" draggable="true" data-id="${t.id}">
               <div class="schedule-event-header">
                 <div class="schedule-event-name">${esc(t.name)}</div>
-                ${cat ? `<span class="schedule-event-category"><span class="category-dot" style="background:${cat.color}"></span>${cat.name}</span>` : ''}
+                ${cat ? `<span class="schedule-event-category"><span class="category-dot" style="background:${taxColor(cat)}"></span>${cat.name}</span>` : ''}
               </div>
               <div class="schedule-event-meta">
                 <span class="schedule-event-priority ${t.priority}">${t.priority}</span>

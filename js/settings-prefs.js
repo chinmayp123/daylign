@@ -7,14 +7,23 @@
 
 const PREFS_KEY = 'daylign_prefs';
 
+// One hue per accent, in a Day (light) and a Night (dark) shade. Text on the
+// accent is --accent-ink: white on every Day shade, near-black on every Night
+// shade, and each pair clears 4.5:1 against its ink. Hover and glow are derived
+// in style.css, so an accent is just these two colours.
 const ACCENTS = [
-  { key: 'indigo', label: 'Indigo', hex: '#6d6af8', hover: '#8b8afc' },
-  { key: 'violet', label: 'Violet', hex: '#a78bfa', hover: '#c4b5fd' },
-  { key: 'blue',   label: 'Blue',   hex: '#5aa5f9', hover: '#84c0fb' },
-  { key: 'green',  label: 'Green',  hex: '#34d399', hover: '#6ee7b7' },
-  { key: 'amber',  label: 'Amber',  hex: '#fbbf24', hover: '#fcd34d' },
-  { key: 'rose',   label: 'Rose',   hex: '#f26d6d', hover: '#f79b9b' },
+  { key: 'cobalt', label: 'Cobalt', day: '#2446f0', night: '#6c86ff' },
+  { key: 'green',  label: 'Green',  day: '#15803d', night: '#3ddc7a' },
+  { key: 'rose',   label: 'Rose',   day: '#be185d', night: '#ff6b9d' },
+  { key: 'orange', label: 'Orange', day: '#c2410c', night: '#fb923c' },
+  { key: 'teal',   label: 'Teal',   day: '#0f766e', night: '#2dd4bf' },
+  { key: 'indigo', label: 'Indigo', day: '#4f46e5', night: '#8b8afc' },
 ];
+
+// v2 accent keys that no longer exist. 'indigo' was the v2 default, so a
+// device that never touched the picker has it stored — it becomes cobalt, the
+// v3 default. The rest map to their nearest surviving hue.
+const ACCENT_RENAMES = { indigo: 'cobalt', violet: 'indigo', blue: 'cobalt', amber: 'orange' };
 
 // Dashboard cards the user can hide. Each maps to a real element, so a toggle
 // can never point at something that no longer exists without showing up here.
@@ -33,7 +42,7 @@ const DASH_WIDGETS = [
 ];
 
 const PREF_DEFAULTS = {
-  accent: 'indigo',
+  accent: 'cobalt',
   hidden: [],          // dashboard widget keys to hide
   restSeconds: 60,     // default rest timer
   defaultSets: 3,      // set rows the gym form opens with — most lifts are 3
@@ -41,6 +50,7 @@ const PREF_DEFAULTS = {
   largeText: false,
   alwaysShowActions: false, // reveal hover-only delete buttons permanently
   haptics: true,       // tactile feedback where the platform allows it
+  accentV3: true,      // accent key is already a v3 key (see migrateAccentPref)
 };
 
 function readPrefs() {
@@ -51,6 +61,21 @@ function readPrefs() {
   } catch (e) {
     return Object.assign({}, PREF_DEFAULTS);
   }
+}
+
+// Runs once per device, at load, before the first applyPrefs(). Keyed on the
+// STORED blob lacking accentV3, so a v3 'indigo' picked later is never
+// mistaken for the v2 one; a device with no prefs yet already has v3 defaults.
+function migrateAccentPref() {
+  try {
+    const raw = localStorage.getItem(PREFS_KEY);
+    if (!raw) return;
+    const stored = JSON.parse(raw) || {};
+    if (stored.accentV3) return;
+    if (ACCENT_RENAMES[stored.accent]) stored.accent = ACCENT_RENAMES[stored.accent];
+    stored.accentV3 = true;
+    writePrefs(stored);
+  } catch (e) { /* unreadable prefs: readPrefs() already falls back to defaults */ }
 }
 
 function writePrefs(p) {
@@ -73,9 +98,10 @@ function applyPrefs() {
   const root = document.documentElement;
 
   const accent = ACCENTS.find(a => a.key === p.accent) || ACCENTS[0];
-  root.style.setProperty('--accent', accent.hex);
-  root.style.setProperty('--accent-hover', accent.hover);
-  root.style.setProperty('--accent-glow', hexToGlow(accent.hex));
+  // style.css picks the Day or Night shade for the current theme, so a theme
+  // switch needs no call back into here.
+  root.style.setProperty('--accent-day', accent.day);
+  root.style.setProperty('--accent-night', accent.night);
 
   root.classList.toggle('pref-reduce-motion', !!p.reduceMotion);
   root.classList.toggle('pref-large-text', !!p.largeText);
@@ -103,11 +129,6 @@ function applyPrefs() {
   }
 }
 
-function hexToGlow(hex) {
-  const n = parseInt(hex.slice(1), 16);
-  return 'rgba(' + ((n >> 16) & 255) + ', ' + ((n >> 8) & 255) + ', ' + (n & 255) + ', 0.16)';
-}
-
 // ---------- UI ----------
 function renderSettingsPrefsPanel() {
   const p = readPrefs();
@@ -117,7 +138,7 @@ function renderSettingsPrefsPanel() {
     accentHost.innerHTML = ACCENTS.map(a =>
       '<button type="button" class="accent-dot' + (a.key === p.accent ? ' active' : '') + '"' +
       ' data-accent="' + a.key + '" title="' + a.label + '" aria-label="' + a.label + ' accent"' +
-      ' style="background:' + a.hex + '"></button>'
+      ' style="--sw-day:' + a.day + ';--sw-night:' + a.night + '"></button>'
     ).join('');
   }
 
@@ -180,4 +201,5 @@ function bindSettingsPrefs() {
 }
 
 // Applied as early as possible so the accent doesn't flash on load.
+migrateAccentPref();
 applyPrefs();

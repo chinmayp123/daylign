@@ -1,7 +1,14 @@
 // Daylign service worker — network-first with cache fallback.
 // Online: every request hits the network (no stale code), responses refresh the cache.
 // Offline: the cached app shell serves, and data loads from localStorage.
-const CACHE = 'daylign-v133';
+const CACHE = 'daylign-v134';
+// Google Fonts (Bricolage Grotesque, Geist, JetBrains Mono, Material Symbols)
+// live in their own cache so a CACHE bump doesn't throw away ~1MB of font
+// files that never change. The stylesheet is network-first like the app shell;
+// the font files are immutable per URL, so they are cache-first.
+const FONT_CACHE = 'daylign-fonts-v1';
+const FONT_CSS_HOST = 'fonts.googleapis.com';
+const FONT_FILE_HOST = 'fonts.gstatic.com';
 const ASSETS = [
   '.',
   'index.html',
@@ -80,15 +87,47 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE && k !== FONT_CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
 
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
-  // Only handle same-origin GETs — Firebase/API traffic passes straight through
-  if (e.request.method !== 'GET' || url.origin !== location.origin) return;
+  if (e.request.method !== 'GET') return;
+
+  // Fonts are the one cross-origin thing worth keeping offline: without them
+  // the app falls back to system fonts, and icons set in Material Symbols
+  // would show as their ligature names.
+  if (url.hostname === FONT_FILE_HOST) {
+    e.respondWith(
+      caches.open(FONT_CACHE).then((c) => c.match(e.request).then((hit) =>
+        hit || fetch(e.request).then((res) => {
+          if (res.ok || res.type === 'opaque') c.put(e.request, res.clone());
+          return res;
+        })
+      ))
+    );
+    return;
+  }
+  if (url.hostname === FONT_CSS_HOST) {
+    e.respondWith(
+      fetch(e.request)
+        .then((res) => {
+          if (res.ok || res.type === 'opaque') {
+            const copy = res.clone();
+            caches.open(FONT_CACHE).then((c) => c.put(e.request, copy));
+          }
+          return res;
+        })
+        .catch(() => caches.open(FONT_CACHE).then((c) => c.match(e.request)))
+        .then((res) => res || Response.error())
+    );
+    return;
+  }
+
+  // Everything else must be same-origin — Firebase/API traffic passes straight through
+  if (url.origin !== location.origin) return;
 
   // `fetch(e.request)` uses the DEFAULT cache mode, which consults the browser
   // HTTP cache first. GitHub Pages serves these assets with max-age=600, so for

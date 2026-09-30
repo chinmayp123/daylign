@@ -5,10 +5,10 @@
 // were never theirs. Only the default categories remain, because creating a
 // task needs at least one category to file under.
 const DEFAULT_CATEGORIES = [
-  { id: 'work', name: 'Work', color: '#6366f1' },
-  { id: 'personal', name: 'Personal', color: '#22c55e' },
-  { id: 'health', name: 'Health', color: '#ef4444' },
-  { id: 'learning', name: 'Learning', color: '#eab308' },
+  { id: 'work', name: 'Work', color: 'meet' },
+  { id: 'personal', name: 'Personal', color: 'move' },
+  { id: 'health', name: 'Health', color: 'food' },
+  { id: 'learning', name: 'Learning', color: 'habit' },
 ];
 
 // Parse one localStorage key defensively. A single corrupt/truncated value

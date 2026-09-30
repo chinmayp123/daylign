@@ -16,23 +16,25 @@ Everything visual lives in **one file: `style.css`** (~6,300 lines). There is no
 
 **The entire theme is driven by CSS variables** defined at `:root` in `style.css`. Change these and the whole app reskins:
 
-| Token | Value | Role |
+| Token | Night (dark) / Day (light) | Role |
 |---|---|---|
-| `--bg-primary` / `--bg-secondary` | `#0b0b10` / `#0f0f16` | Page + panel backgrounds (dark) |
-| `--bg-card` / `--bg-hover` | `#14141d` / `#1e1e2a` | Card surface / hover |
-| `--border` | `#232330` | Hairline borders |
-| `--text-primary` / `--secondary` / `--muted` | `#f2f2f7` / `#a5a5bd` / `#73738c` | Text hierarchy |
-| `--accent` / `--accent-hover` / `--accent-glow` | `#6d6af8` (indigo) | Primary brand color, buttons, active states |
-| `--green` / `--yellow` / `--red` / `--blue` / `--purple` | status colors | Progress dots, deltas, alerts |
-| `--radius` / `--radius-sm` | `16px` / `10px` | Corner rounding |
-| `--font-display` / `--font-body` | Space Grotesk / Inter | Headings vs body |
+| `--bg-primary` | `#0e0f0e` / `#eceee9` | Page background (flat, no gradients) |
+| `--bg-card` / `--bg-secondary` / `--bg-input` | `#171917` / `#f7f8f5` | Surfaces |
+| `--bg-hover` | `#1f221f` / `#e3e6e0` | Hover |
+| `--border` / `--track` | `#262925` / `#d5d8d1` | Hairlines, unfilled progress |
+| `--text-primary` / `--secondary` / `--muted` | `#eeefeb` `#aeb2ab` `#8a8f88` / `#121412` `#4f544e` `#686d66` | Text hierarchy (muted clears 4.5:1 on cards) |
+| `--accent` / `--accent-ink` | cobalt `#6c86ff` on `#0e0f0e` / `#2446f0` on `#fff` | The one accent: now line, primary button, focus, selected. Picked in Settings; `--accent-hover` / `--accent-glow` derive from it |
+| `--c-sleep` `--c-food` `--c-water` `--c-move` `--c-meet` `--c-habit` | see `:root` | Category colours; `--green/--yellow/--blue/--purple` alias move/habit/water/sleep; macros are `--macro-protein/carbs/fat` |
+| `--red` | `#fb923c` / `#c2410c` | Warn: overdue, danger |
+| `--radius` / `--radius-sm` / `--radius-chip` / `--radius-now` / `--radius-sheet` | `16` / `10` / `6` / `18` / `24px` | Corner rounding |
+| `--font-display` / `--font-body` / `--font-mono` | Bricolage Grotesque / Geist / JetBrains Mono | Display, UI, every number |
 | `--shadow`, `--sidebar-width` | — | Elevation + layout |
 
 **Structure:** `index.html` holds all markup. Each screen is a `<div class="view" id="...View">` (dashboard, tasks, board, calendar, gym, cardio, diet, settings) toggled by `switchView()` in `js/app.js`. Content is grouped into `.card` blocks. The layout is a fixed left `.sidebar` + main content on desktop, collapsing to a top bar + bottom `.bottom-nav` on mobile (`@media (max-width: 900px)`).
 
 **It's fully responsive and theme-token-driven, so most redesigns are CSS-only** — recolor by editing the `:root` tokens, restyle components by editing their classes, no JS required. To preview changes, see *Running locally* below and open the app in a browser (or resize to phone width / use device-emulation).
 
-**Current aesthetic:** dark, indigo-accented, rounded cards, Space Grotesk display type, generous spacing, subtle glows and micro-animations. A light theme also exists (`:root[data-theme="light"]`) — style both when touching colors.
+**Current aesthetic:** v3 "Day Line" (`design/v3/BUILD_SPEC_v3.md`): flat warm-grey surfaces, one cobalt accent, six category colours, Bricolage Grotesque display type and mono numbers. Day (`html[data-theme="light"]`) and Night (`:root`) — style both when touching colors. Base components are the `.dl-*` classes at the end of `style.css`; preview them in `design/v3/components.html`.
 
 ### Redesigning the Gym, Cardio & Diet pages
 

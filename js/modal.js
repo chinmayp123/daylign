@@ -199,8 +199,7 @@ function toggleTaskDone(id) {
 function handleAddCategory() {
   const name = prompt('Category name:');
   if (!name || !name.trim()) return;
-  const colors = ['#6366f1', '#22c55e', '#ef4444', '#eab308', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
-  const color = colors[state.categories.length % colors.length];
+  const color = nextCategoryColor(state.categories);
   state.categories.push({ id: name.trim().toLowerCase().replace(/\s+/g, '-'), name: name.trim(), color });
   saveData(state);
   render();
@@ -318,7 +317,7 @@ function taskViewMeta(task) {
   rows.push(['Status', STATUS_LABEL[task.status] || task.status]);
 
   const cat = state.categories.find(c => c.id === task.category);
-  if (cat) rows.push(['Category', `<span class="category-dot" style="background:${cat.color}"></span>${esc(cat.name)}`, true]);
+  if (cat) rows.push(['Category', `<span class="category-dot" style="background:${taxColor(cat)}"></span>${esc(cat.name)}`, true]);
 
   const proj = task.project && state.projects.find(p => p.id === task.project);
   if (proj) rows.push(['Project', esc(proj.name), true]);

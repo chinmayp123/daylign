@@ -44,11 +44,12 @@ function renderDietGoals(totals) {
     ? `${burn} cal ${burnInfo.watch ? 'burned (Apple Watch)' : 'estimated burned'}`
     : '';
 
-  // README run/domain palette: protein green, carbs blue, fat amber.
+  // v3 macro palette (style.css --macro-*): protein food-orange, carbs
+  // habit-yellow, fat meet-pink.
   const macros = [
-    { label: 'Protein', current: Math.round(totals.protein), goal: goals.protein, color: '#34d399' },
-    { label: 'Carbs', current: Math.round(totals.carbs), goal: goals.carbs, color: '#5aa5f9' },
-    { label: 'Fat', current: Math.round(totals.fat), goal: goals.fat, color: '#fbbf24' },
+    { label: 'Protein', current: Math.round(totals.protein), goal: goals.protein, color: 'var(--macro-protein)' },
+    { label: 'Carbs', current: Math.round(totals.carbs), goal: goals.carbs, color: 'var(--macro-carbs)' },
+    { label: 'Fat', current: Math.round(totals.fat), goal: goals.fat, color: 'var(--macro-fat)' },
   ];
 
   const macroHTML = macros.map(m => {
@@ -369,8 +370,8 @@ function renderDietReview(totals, dayEntries) {
   const goals = getGoals();
   const LIMITING = [
     { key: 'calories', label: 'Calories', unit: '', color: 'var(--accent)' },
-    { key: 'carbs', label: 'Carbs', unit: 'g', color: '#eab308' },
-    { key: 'fat', label: 'Fat', unit: 'g', color: '#ef4444' },
+    { key: 'carbs', label: 'Carbs', unit: 'g', color: 'var(--macro-carbs)' },
+    { key: 'fat', label: 'Fat', unit: 'g', color: 'var(--macro-fat)' },
   ];
 
   const over = LIMITING

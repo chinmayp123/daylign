@@ -2,6 +2,27 @@
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
+// ========== Category colours (v3) ==========
+// Categories and projects carry `color`: one of these six keys, each a
+// --c-* token in style.css, so it follows Day / Night. The order is the auto
+// palette order: new items take the next key, and migrateTaxonomyColors()
+// (js/app.js) maps the v2 hex palette onto it index for index.
+const CATEGORY_COLOR_KEYS = ['meet', 'move', 'food', 'habit', 'water', 'sleep'];
+
+function nextCategoryColor(list) {
+  return CATEGORY_COLOR_KEYS[(list || []).length % CATEGORY_COLOR_KEYS.length];
+}
+
+// The CSS colour for a category or project. A v2 hex still renders as itself
+// (data synced from an older build before the migration has run); no item or
+// no colour is muted.
+function taxColor(item) {
+  const c = item && item.color;
+  if (CATEGORY_COLOR_KEYS.indexOf(c) !== -1) return 'var(--c-' + c + ')';
+  if (typeof c === 'string' && /^#[0-9a-f]{3,8}$/i.test(c)) return c;
+  return 'var(--text-muted)';
+}
+
 // ========== Utility Functions ==========
 function toLocalDateStr(d) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -382,4 +403,62 @@ function safeFoodName(name) {
 function hasIllegalKeyChars(name) {
   FIREBASE_ILLEGAL_KEY_CHARS.lastIndex = 0;
   return FIREBASE_ILLEGAL_KEY_CHARS.test(String(name == null ? '' : name));
+}
+
+// ========== v3 sheet (.dl-sheet) ==========
+// One behaviour for every v3 bottom sheet: closes on a backdrop tap, Esc and a
+// downward swipe from the top of the sheet. The document listeners are bound
+// once, on first open, and delegate — sheets rendered later need no binding.
+let dlSheetBound = false;
+
+function openDlSheet(wrap) {
+  if (!wrap) return;
+  bindDlSheets();
+  wrap.classList.add('open');
+  const sheet = wrap.querySelector('.dl-sheet');
+  if (sheet) { sheet.style.removeProperty('--drag'); sheet.focus({ preventScroll: true }); }
+}
+
+function closeDlSheet(wrap) {
+  if (!wrap) return;
+  wrap.classList.remove('open');
+  wrap.dispatchEvent(new CustomEvent('dl-sheet-close'));
+}
+
+function bindDlSheets() {
+  if (dlSheetBound) return;
+  dlSheetBound = true;
+
+  document.addEventListener('click', (e) => {
+    const wrap = e.target.closest && e.target.closest('.dl-sheet-wrap.open');
+    if (wrap && e.target === wrap) closeDlSheet(wrap);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const open = document.querySelectorAll('.dl-sheet-wrap.open');
+    if (open.length) closeDlSheet(open[open.length - 1]);
+  });
+
+  // Swipe down: only when the sheet is scrolled to the top, so a drag inside a
+  // long sheet still scrolls it.
+  let drag = null;
+  document.addEventListener('touchstart', (e) => {
+    const sheet = e.target.closest && e.target.closest('.dl-sheet-wrap.open .dl-sheet');
+    if (!sheet || sheet.scrollTop > 0) return;
+    drag = { sheet, y0: e.touches[0].clientY, dy: 0 };
+  }, { passive: true });
+  document.addEventListener('touchmove', (e) => {
+    if (!drag) return;
+    drag.dy = Math.max(0, e.touches[0].clientY - drag.y0);
+    drag.sheet.classList.add('dragging');
+    drag.sheet.style.setProperty('--drag', drag.dy + 'px');
+  }, { passive: true });
+  document.addEventListener('touchend', () => {
+    if (!drag) return;
+    const { sheet, dy } = drag;
+    drag = null;
+    sheet.classList.remove('dragging');
+    sheet.style.removeProperty('--drag');
+    if (dy > 90) closeDlSheet(sheet.closest('.dl-sheet-wrap'));
+  });
 }

@@ -503,6 +503,9 @@ function startFirebaseSync(onDataReceived) {
       appReconciled = true;
       document.body.classList.remove('app-loading');
       setSyncStatus('synced');
+      // One-time data migrations run here, after reconciliation, so their save
+      // advances the clock and reaches the cloud rather than losing to it.
+      if (typeof migrateTaxonomyColors === 'function') migrateTaxonomyColors();
       // Now that cloud state (if any) has loaded, decide whether a freshly
       // created profile still needs onboarding. Runs after sync so a returning
       // person whose cloud data carries _onboarded is never re-onboarded.
@@ -516,6 +519,7 @@ function startFirebaseSync(onDataReceived) {
       // are recognized as newer and preserved on the next successful load.
       firebaseReady = false;
       appReconciled = true;
+      if (typeof migrateTaxonomyColors === 'function') migrateTaxonomyColors();
       // A stuck progress bar is worse than none — clear it on failure too.
       document.body.classList.remove('app-loading');
       setSyncStatus('error', 'Could not reach the cloud: ' + (err && err.message ? err.message : 'unknown error') + '. Changes save on this device only — reopen when online to sync.');

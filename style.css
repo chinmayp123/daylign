@@ -6,52 +6,75 @@
 }
 
 :root {
-  --bg-primary: #0b0b10;
-  --bg-secondary: #0f0f16;
-  --bg-card: #14141d;
-  --bg-hover: #1e1e2a;
-  --bg-input: #0b0b10;
+  /* v3 "Day Line" tokens (design/v3/BUILD_SPEC_v3.md §2.1). The variable names
+     are the old ones on purpose, so the rest of this file re-skins without
+     edits. This block is Night (dark); html[data-theme="light"] is Day. */
+  --bg-primary: #0e0f0e;
+  --bg-secondary: #171917;
+  --bg-card: #171917;
+  --bg-hover: #1f221f;
+  --bg-input: #171917;
 
   /* The unfilled part of a progress bar. Needs to read against --bg-card, which
-     is what every one of these sits on. Tracks used to borrow --bg-input, and in
-     light mode BOTH are #ffffff — so the bars lost their tracks entirely and you
-     could not see how much of the goal was left. Same value as before in dark,
-     so nothing there changes. */
-  --track: #0b0b10;
-  --border: #232330;
-  --text-primary: #f2f2f7;
-  --text-secondary: #a5a5bd;
-  /* Lifted from #73738c (3.97:1 on --bg-card, below WCAG AA 4.5:1). This token
-     is used 229 times, 118 of them at 10-12px, so it is small text and must
-     clear the body threshold — #8a8aa3 is ~5.0:1. */
-  --text-muted: #8a8aa3;
-  --accent: #6d6af8;
-  --accent-hover: #8b8afc;
-  --accent-glow: rgba(109, 106, 248, 0.16);
-  --green: #34d399;
-  --green-bg: rgba(52, 211, 153, 0.12);
-  --yellow: #fbbf24;
-  --yellow-bg: rgba(251, 191, 36, 0.12);
-  --red: #f26d6d;
-  --red-bg: rgba(242, 109, 109, 0.12);
-  --blue: #5aa5f9;
-  --blue-bg: rgba(90, 165, 249, 0.12);
-  --purple: #a78bfa;
+     is what every one of these sits on — the same value as --border (mockup
+     --line), never --bg-input, which equals --bg-card. */
+  --track: #262925;
+  --border: #262925;
+  --text-primary: #eeefeb;
+  --text-secondary: #aeb2ab;
+  /* Small text (used 229 times, most at 10-12px), so it must clear 4.5:1 on
+     --bg-card: #8a8f88 is 5.4:1 here. */
+  --text-muted: #8a8f88;
+
+  /* One accent. applyPrefs() (js/settings-prefs.js) may set --accent-night /
+     --accent-day inline to swap the hue; hover and glow derive from it, so a
+     picked accent needs no second colour. */
+  --accent: var(--accent-night, #6c86ff);
+  --accent-ink: #0e0f0e;   /* text on accent */
+  --accent-hover: color-mix(in srgb, var(--accent) 84%, var(--text-primary));
+  --accent-glow: color-mix(in srgb, var(--accent) 13%, transparent);
+
+  /* Six category colours. Everything that shows a category, a metric family
+     or a macro reads one of these. */
+  --c-sleep: #8f93ff;   /* sleep, weight */
+  --c-food: #ff9a3d;    /* food, calories, protein */
+  --c-water: #35c6e6;   /* water */
+  --c-move: #3ddc7a;    /* workouts, rides, steps, burn */
+  --c-meet: #ff6b9d;    /* meetings, events, default work */
+  --c-habit: #f2bd2c;   /* habits, home */
+
+  /* The old status colours alias the category ones, so every existing use
+     picks up the new palette. */
+  --green: var(--c-move);
+  --green-bg: color-mix(in srgb, var(--c-move) 12%, transparent);
+  --yellow: var(--c-habit);
+  --yellow-bg: color-mix(in srgb, var(--c-habit) 12%, transparent);
+  --red: #fb923c;       /* warn: overdue, danger */
+  --red-bg: color-mix(in srgb, var(--red) 12%, transparent);
+  --blue: var(--c-water);
+  --blue-bg: color-mix(in srgb, var(--c-water) 12%, transparent);
+  --purple: var(--c-sleep);
+  /* Macros: protein / carbs / fat. */
+  --macro-protein: var(--c-food);
+  --macro-carbs: var(--c-habit);
+  --macro-fat: var(--c-meet);
+
   --sidebar-width: 260px;
-  --radius: 16px;
-  --radius-sm: 10px;
+  --radius: 16px;       /* cards */
+  --radius-sm: 10px;    /* rows, inputs */
+  --radius-chip: 6px;
+  --radius-now: 18px;   /* the now block, phone bottom bar */
+  --radius-sheet: 24px; /* sheet top corners */
   --shadow: 0 8px 32px rgba(0,0,0,0.35);
-  --font-display: 'Space Grotesk', 'Inter', 'Segoe UI', sans-serif;
-  --font-body: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'Bricolage Grotesque', 'Segoe UI', sans-serif;
+  --font-body: 'Geist', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace;
 }
 
 body {
   font-family: var(--font-body);
-  background:
-    radial-gradient(1100px 600px at 85% -10%, rgba(109, 106, 248, 0.08), transparent 60%),
-    radial-gradient(900px 500px at -10% 25%, rgba(56, 189, 248, 0.05), transparent 55%),
-    var(--bg-primary);
-  background-attachment: fixed;
+  /* Flat page: the v2 purple/blue radial glows are gone. */
+  background: var(--bg-primary);
   color: var(--text-primary);
   min-height: 100vh;
   overflow-x: hidden;
@@ -99,7 +122,7 @@ body {
   justify-content: center;
   font-weight: 800;
   font-size: 18px;
-  color: white;
+  color: var(--accent-ink);
 }
 
 .logo span {
@@ -335,7 +358,7 @@ body {
 
 .btn-primary {
   background: var(--accent);
-  color: white;
+  color: var(--accent-ink);
   border: none;
   padding: 10px 20px;
   border-radius: 999px;
@@ -349,7 +372,7 @@ body {
 .btn-primary:hover {
   background: var(--accent-hover);
   transform: translateY(-1px);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 4px 20px rgba(109, 106, 248, 0.45);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 4px 20px color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
 .btn-secondary {
@@ -386,10 +409,10 @@ body {
   transition: background 0.2s;
 }
 .sync-status.is-synced { color: var(--text-secondary); }
-.sync-status.is-synced .sync-dot { background: #22c55e; }
-.sync-status.is-saving .sync-dot { background: #eab308; }
-.sync-status.is-error { color: #ef4444; }
-.sync-status.is-error .sync-dot { background: #ef4444; }
+.sync-status.is-synced .sync-dot { background: var(--green); }
+.sync-status.is-saving .sync-dot { background: var(--yellow); }
+.sync-status.is-error { color: var(--red); }
+.sync-status.is-error .sync-dot { background: var(--red); }
 
 .btn-danger {
   background: var(--red-bg);
@@ -442,7 +465,7 @@ body {
 
 .dash-project-tab.active {
   background: var(--accent);
-  color: white;
+  color: var(--accent-ink);
   border-color: var(--accent);
 }
 
@@ -696,7 +719,7 @@ body {
 
 .mini-cal-cell.today {
   background: var(--accent);
-  color: white;
+  color: var(--accent-ink);
   font-weight: 700;
 }
 
@@ -1716,7 +1739,7 @@ body {
 
 .cal-toggle-btn.active {
   background: var(--accent);
-  color: white;
+  color: var(--accent-ink);
 }
 
 .cal-nav {
@@ -1953,7 +1976,7 @@ body {
 
 .week-col-num.today {
   background: var(--accent);
-  color: white;
+  color: var(--accent-ink);
 }
 
 .week-col .cal-holiday {
@@ -2102,11 +2125,11 @@ body {
   height: 42px;
   border-radius: 12px;
   background: var(--accent);
-  box-shadow: 0 4px 16px rgba(109, 106, 248, 0.35);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 35%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: var(--accent-ink);
   flex-shrink: 0;
 }
 
@@ -2395,7 +2418,7 @@ body {
 
 .subtask-add button:hover {
   background: var(--accent);
-  color: white;
+  color: var(--accent-ink);
 }
 
 /* ========== Empty States ========== */
@@ -2670,7 +2693,7 @@ body {
   gap: 6px;
   align-items: baseline;
 }
-.gym-focus-chip b { font-variant-numeric: tabular-nums; font-weight: 700; }
+.gym-focus-chip b { font-variant-numeric: tabular-nums; font-weight: 700; font-family: var(--font-mono); }
 .gym-focus-chip[data-group="push"] { color: var(--accent); }
 .gym-focus-chip[data-group="pull"] { color: var(--blue); }
 .gym-focus-chip[data-group="legs"] { color: var(--green); }
@@ -2785,7 +2808,7 @@ body {
   justify-content: center;
   border-radius: 50%;
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-ink);
   font-size: 10px;
   font-weight: 700;
   flex-shrink: 0;
@@ -3643,7 +3666,7 @@ body {
   font-weight: 700;
   color: var(--text-primary);
   flex-shrink: 0;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums; font-family: var(--font-mono);
 }
 
 .diet-review-tip {
@@ -3735,9 +3758,9 @@ body {
   color: var(--text-primary);
 }
 
-.diet-macro-ring.protein .diet-macro-value { color: #6366f1; }
-.diet-macro-ring.carbs .diet-macro-value { color: #eab308; }
-.diet-macro-ring.fat .diet-macro-value { color: #ef4444; }
+.diet-macro-ring.protein .diet-macro-value { color: var(--macro-protein); }
+.diet-macro-ring.carbs .diet-macro-value { color: var(--macro-carbs); }
+.diet-macro-ring.fat .diet-macro-value { color: var(--macro-fat); }
 
 .diet-macro-label {
   font-size: 11px;
@@ -3785,7 +3808,7 @@ body {
 
 .diet-meal-macro {
   font-size: 11px;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums; font-family: var(--font-mono);
 }
 
 .diet-food-entry {
@@ -3965,19 +3988,22 @@ body {
 /* ---- Typography ---- */
 .header h1,
 .logo span,
+#calMonth {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
 .stat-number,
-#calMonth,
 .gym-stat-val,
 .diet-macro-value,
 .week-col-num {
-  font-family: var(--font-display);
-  letter-spacing: -0.02em;
+  font-family: var(--font-mono);
+  letter-spacing: -0.03em;
 }
 
 .stat-number,
 .gym-stat-val,
 .diet-macro-value {
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums; font-family: var(--font-mono);
 }
 
 /* ---- Global focus, selection, scrollbar ---- */
@@ -3987,7 +4013,7 @@ body {
 }
 
 ::selection {
-  background: rgba(109, 106, 248, 0.35);
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -4002,7 +4028,7 @@ body {
 .logo-icon {
   background: linear-gradient(135deg, var(--accent), var(--purple));
   border-radius: 12px;
-  box-shadow: 0 4px 18px rgba(109, 106, 248, 0.4);
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 .nav-btn {
@@ -4102,7 +4128,7 @@ body {
 
 /* ---- Board ---- */
 .board-column {
-  background: rgba(20, 20, 29, 0.6);
+  background: color-mix(in srgb, var(--bg-card) 60%, transparent);
 }
 
 .board-card {
@@ -4112,7 +4138,7 @@ body {
 /* ---- Calendar ---- */
 .cal-day.today {
   background: var(--accent-glow);
-  box-shadow: inset 0 0 0 1px rgba(109, 106, 248, 0.45);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
 /* ---- Modal ---- */
@@ -4450,7 +4476,7 @@ button:not(:disabled):active {
   font-size: 16px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  white-space: nowrap; font-family: var(--font-mono);
 }
 
 .health-tile-value small {
@@ -4524,7 +4550,7 @@ button:not(:disabled):active {
   font-size: 11px;
   color: var(--text-muted);
   padding: 6px 4px 0;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums; font-family: var(--font-mono);
 }
 
 /* ---- Mobile bottom navigation ---- */
@@ -4540,7 +4566,7 @@ button:not(:disabled):active {
     right: 0;
     bottom: 0;
     z-index: 90;
-    background: rgba(11, 11, 16, 0.82);
+    background: color-mix(in srgb, var(--bg-primary) 85%, transparent);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border-top: 1px solid rgba(255, 255, 255, 0.06);
@@ -4620,10 +4646,10 @@ button:not(:disabled):active {
 }
 
 .weight-goal-chip:hover {
-  background: rgba(109, 106, 248, 0.28);
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
 }
 
-.diet-review-culprit-protein { color: #6366f1; font-weight: 600; }
+.diet-review-culprit-protein { color: var(--macro-protein); font-weight: 600; }
 
 /* ---- Diet history: over/under budget at a glance ---- */
 .diet-history-cal.under-budget { color: var(--green); }
@@ -4669,7 +4695,7 @@ button:not(:disabled):active {
 }
 
 .weight-num {
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-size: 30px;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -4738,7 +4764,7 @@ button:not(:disabled):active {
 }
 
 .coach-target-val {
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-size: 24px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -4988,7 +5014,7 @@ button:not(:disabled):active {
 
 .diet-custom-edit:hover {
   color: var(--accent);
-  background: var(--accent-bg, rgba(109, 106, 248, 0.12));
+  background: var(--accent-bg, color-mix(in srgb, var(--accent) 12%, transparent));
 }
 
 /* ========== Yesterday's skip-list ========== */
@@ -5085,8 +5111,8 @@ button:not(:disabled):active {
   border: 1px solid var(--border);
 }
 
-.streak-cell.lvl1 { background: rgba(109, 106, 248, 0.35); border-color: transparent; }
-.streak-cell.lvl2 { background: rgba(109, 106, 248, 0.65); border-color: transparent; }
+.streak-cell.lvl1 { background: color-mix(in srgb, var(--accent) 35%, transparent); border-color: transparent; }
+.streak-cell.lvl2 { background: color-mix(in srgb, var(--accent) 65%, transparent); border-color: transparent; }
 .streak-cell.lvl3 { background: var(--accent); border-color: transparent; }
 .streak-cell.future { background: transparent; border-color: transparent; }
 
@@ -5237,7 +5263,7 @@ button:not(:disabled):active {
   border-color: var(--accent);
   color: var(--accent-hover);
   background: var(--accent-glow);
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums; font-family: var(--font-mono);
 }
 
 /* ---- Weekly Report card (dashboard) ---- */
@@ -5274,7 +5300,7 @@ button:not(:disabled):active {
 .weekly-row-val {
   font-size: 13px;
   color: var(--text-primary);
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums; font-family: var(--font-mono);
 }
 
 .weekly-focus {
@@ -5296,12 +5322,12 @@ button:not(:disabled):active {
 .photo-log-row { display: flex; gap: 8px; align-items: center; }
 .photo-snap-btn {
   display: inline-flex; align-items: center; gap: 7px;
-  background: rgba(109, 106, 248, 0.12); color: var(--accent);
-  border: 1px solid rgba(109, 106, 248, 0.35); border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); border-radius: 8px;
   padding: 9px 14px; font-size: 0.85rem; font-weight: 600; cursor: pointer;
   transition: background 0.15s;
 }
-.photo-snap-btn:hover { background: rgba(109, 106, 248, 0.2); }
+.photo-snap-btn:hover { background: color-mix(in srgb, var(--accent) 20%, transparent); }
 .photo-key-btn {
   background: none; border: 1px solid var(--border); border-radius: 8px;
   color: var(--text-muted); padding: 8px 9px; cursor: pointer; display: inline-flex;
@@ -5317,7 +5343,7 @@ button:not(:disabled):active {
 .photo-status { margin-top: 12px; font-size: 0.85rem; color: var(--text-muted); display: flex; align-items: center; gap: 8px; }
 .photo-status.error { color: var(--red); }
 .photo-spinner {
-  width: 14px; height: 14px; border: 2px solid rgba(109,106,248,0.25);
+  width: 14px; height: 14px; border: 2px solid color-mix(in srgb, var(--accent) 25%, transparent);
   border-top-color: var(--accent); border-radius: 50%; flex-shrink: 0;
   animation: photo-spin 0.8s linear infinite;
 }
@@ -5363,12 +5389,12 @@ button:not(:disabled):active {
 .voice-fab {
   position: fixed; right: 22px; bottom: 22px; z-index: 900;
   width: 56px; height: 56px; border-radius: 50%;
-  background: var(--accent); color: #fff; border: none; cursor: pointer;
+  background: var(--accent); color: var(--accent-ink); border: none; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 6px 20px rgba(109, 106, 248, 0.45);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--accent) 45%, transparent);
   transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.18s ease, box-shadow 0.15s;
 }
-.voice-fab:hover { transform: scale(1.06); box-shadow: 0 8px 26px rgba(109, 106, 248, 0.55); }
+.voice-fab:hover { transform: scale(1.06); box-shadow: 0 8px 26px color-mix(in srgb, var(--accent) 55%, transparent); }
 .voice-fab:active { transform: scale(0.96); }
 /* Tucked away while scrolling down so it stops covering content. Translated
    rather than hidden, so it animates back in and stays keyboard-reachable. */
@@ -5394,11 +5420,11 @@ button:not(:disabled):active {
 .voice-input-row { display: flex; gap: 8px; align-items: center; }
 .voice-mic-btn {
   flex-shrink: 0; width: 46px; height: 46px; border-radius: 50%;
-  background: rgba(109, 106, 248, 0.12); color: var(--accent);
-  border: 1px solid rgba(109, 106, 248, 0.4); cursor: pointer;
+  background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); cursor: pointer;
   display: flex; align-items: center; justify-content: center; transition: background 0.15s;
 }
-.voice-mic-btn:hover { background: rgba(109, 106, 248, 0.22); }
+.voice-mic-btn:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
 .voice-mic-btn.listening {
   background: var(--red, #ef4444); color: #fff; border-color: var(--red, #ef4444);
   animation: voice-pulse 1.3s ease-in-out infinite;
@@ -5561,7 +5587,7 @@ button:not(:disabled):active {
        them now; the space in the HTML never survived layout. */
     gap: 6px;
   }
-  .bms-btn.active { background: var(--accent); color: #fff; }
+  .bms-btn.active { background: var(--accent); color: var(--accent-ink); }
 
   /* A count, not another syllable of the label: its own pill, dimmer and a
      size down, so the eye reads "To Do" first and the tally second. */
@@ -5579,7 +5605,7 @@ button:not(:disabled):active {
     font-weight: 700;
     line-height: 1;
     /* Digits keep the same width, so the pills don't twitch as counts change. */
-    font-variant-numeric: tabular-nums;
+    font-variant-numeric: tabular-nums; font-family: var(--font-mono);
   }
   .bms-btn.active .bms-count {
     background: rgba(255, 255, 255, .22);
@@ -5640,35 +5666,40 @@ button:not(:disabled):active {
    localStorage('daylign_theme'); default stays dark.
    ========================================================================== */
 html[data-theme="light"] {
-  --bg-primary: #f5f5fa;
-  --bg-secondary: #ececf3;
-  --bg-card: #ffffff;
-  --bg-hover: #e7e7f0;
-  --bg-input: #ffffff;
-  --track: #e7e7f0;
-  --border: #e2e2ec;
-  --text-primary: #1a1a24;
-  --text-secondary: #56566a;
-  --text-muted: #8a8a9c;
-  --accent: #6d6af8;
-  --accent-hover: #5b58e0;
-  --accent-glow: rgba(109, 106, 248, 0.12);
-  --green: #0d9e6e;   --green-bg: rgba(13, 158, 110, 0.12);
-  --yellow: #b7860b;  --yellow-bg: rgba(183, 134, 11, 0.14);
-  --red: #dc4d4d;     --red-bg: rgba(220, 77, 77, 0.10);
-  --blue: #2f7fe0;    --blue-bg: rgba(47, 127, 224, 0.12);
-  --purple: #7c6df0;
-  --shadow: 0 8px 32px rgba(20, 20, 45, 0.10);
+  --bg-primary: #eceee9;
+  --bg-secondary: #f7f8f5;
+  --bg-card: #f7f8f5;
+  --bg-hover: #e3e6e0;
+  --bg-input: #f7f8f5;
+  --track: #d5d8d1;
+  --border: #d5d8d1;
+  --text-primary: #121412;
+  --text-secondary: #4f544e;
+  /* The spec's #6f746d is 4.48:1 on --bg-card, a hair under AA. #686d66 is
+     4.96:1 on the card and 4.53:1 on the page. */
+  --text-muted: #686d66;
+  --accent: var(--accent-day, #2446f0);
+  --accent-ink: #ffffff;
+  --accent-glow: color-mix(in srgb, var(--accent) 9%, transparent);
+  --c-sleep: #5a5fd8;
+  --c-food: #e8730c;
+  --c-water: #0891b2;
+  --c-move: #15a34a;
+  --c-meet: #d9366e;
+  --c-habit: #c48a00;
+  --red: #c2410c;
+  --shadow: 0 8px 32px rgba(20, 24, 20, 0.10);
+  color-scheme: light;
 }
 html[data-theme="light"] body {
-  background:
-    radial-gradient(1100px 600px at 85% -10%, rgba(109, 106, 248, 0.10), transparent 60%),
-    radial-gradient(900px 500px at -10% 25%, rgba(56, 189, 248, 0.07), transparent 55%),
-    var(--bg-primary);
+  background: var(--bg-primary);
 }
-/* Keep the accent gradient buttons white-on-color and readable in light mode */
-html[data-theme="light"] .btn-primary { color: #fff; }
-html[data-theme="light"] .bms-btn.active,
+/* Text on the accent is --accent-ink (white here, near-black at night). */
+html[data-theme="light"] .btn-primary { color: var(--accent-ink); }
+/* .bms-btn.active is NOT in this list: it sits ON the accent (line ~5590 sets
+   background: var(--accent); color: var(--accent-ink)), and `inherit` handed it
+   body text - dark on cobalt, 2.83:1 in Day mode. Only controls that sit on the
+   PAGE background may inherit. .water-btn does: its background is --bg-primary. */
 html[data-theme="light"] .water-btn { color: inherit; }
 
 /* Light-mode overrides for the hardcoded glass surfaces */
@@ -5676,14 +5707,14 @@ html[data-theme="light"] .header {
   /* No background override: .header now uses var(--bg-primary), which is
      already the light background here. A translucent one would put the glass
      back that the solid header just removed. */
-  border-bottom-color: rgba(20, 20, 45, 0.07) !important;
+  border-bottom-color: rgba(18, 20, 18, 0.07) !important;
 }
 html[data-theme="light"] .bottom-nav {
-  background: rgba(245, 245, 250, 0.85) !important;
-  border-top-color: rgba(20, 20, 45, 0.08) !important;
+  background: color-mix(in srgb, var(--bg-primary) 85%, transparent) !important;
+  border-top-color: rgba(18, 20, 18, 0.08) !important;
 }
 html[data-theme="light"] .sidebar-overlay,
-html[data-theme="light"] .more-sheet-overlay { background: rgba(20, 20, 45, 0.35); }
+html[data-theme="light"] .more-sheet-overlay { background: rgba(18, 20, 18, 0.35); }
 
 
 /* ==========================================================================
@@ -5711,7 +5742,7 @@ html[data-theme="light"] .more-sheet-overlay { background: rgba(20, 20, 45, 0.35
   background: var(--bg-card);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
-.th-ring-val { font-family: var(--font-display); font-size: 21px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.th-ring-val { font-family: var(--font-mono); font-size: 21px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 .th-ring-lbl { font-size: 9px; color: var(--text-muted); }
 .th-body { flex: 1; min-width: 0; }
 .th-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); margin-bottom: 5px; }
@@ -5809,7 +5840,7 @@ html[data-theme="light"] .more-sheet-overlay { background: rgba(20, 20, 45, 0.35
   border-bottom: 1px solid var(--border);
   font-size: 14px;
 }
-.photo-confirm-totals { font-size: 12px; font-weight: 700; color: var(--accent-hover); font-variant-numeric: tabular-nums; }
+.photo-confirm-totals { font-size: 12px; font-weight: 700; color: var(--accent-hover); font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
 .photo-item {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -5846,7 +5877,7 @@ html[data-theme="light"] .more-sheet-overlay { background: rgba(20, 20, 45, 0.35
   color: var(--text-primary);
   font-size: 13px; font-weight: 600; text-align: center;
   min-height: 38px;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums; font-family: var(--font-mono);
 }
 .photo-confirm-actions { display: flex; align-items: center; gap: 8px; padding: 4px 8px 10px; }
 .photo-confirm-actions #photoMeal { flex: 0 0 auto; }
@@ -5870,7 +5901,7 @@ html[data-theme="light"] .more-sheet-overlay { background: rgba(20, 20, 45, 0.35
   margin-bottom: 8px;
 }
 .diet-meal-name { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
-.diet-meal-cal-val { font-size: 12px; font-weight: 700; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.diet-meal-cal-val { font-size: 12px; font-weight: 700; color: var(--text-secondary); font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
 .diet-meal-macro { font-size: 11px; color: var(--text-muted); margin-left: 8px; }
 
 
@@ -6016,7 +6047,7 @@ html[data-theme="light"] .more-sheet-overlay { background: rgba(20, 20, 45, 0.35
 .diet-goal-row { display: flex; flex-direction: column; gap: 7px; }
 .diet-goal-header { display: flex; align-items: baseline; justify-content: space-between; }
 .diet-goal-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
-.diet-goal-nums { font-variant-numeric: tabular-nums; }
+.diet-goal-nums { font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
 .diet-goal-current { font-size: 17px; font-weight: 700; }
 .diet-goal-sep { color: var(--text-muted); margin: 0 3px; }
 .diet-goal-target { font-size: 13px; color: var(--text-secondary); font-weight: 600; }
@@ -6078,7 +6109,7 @@ body.profile-gated { overflow: hidden; }
   margin: 0 auto 18px;
   border-radius: 14px;
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-ink);
   font-family: var(--font-display);
   font-size: 24px;
   font-weight: 700;
@@ -6328,7 +6359,7 @@ body.profile-gated { overflow: hidden; }
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
-.cardio-week-value { font-family: var(--font-display); font-size: 19px; font-weight: 700; color: var(--text-primary); }
+.cardio-week-value { font-family: var(--font-mono); font-size: 19px; font-weight: 700; color: var(--text-primary); }
 .cardio-week-sub { font-size: 11px; color: var(--text-muted); }
 .cardio-week-bar {
   grid-column: 1 / -1;
@@ -6344,7 +6375,7 @@ body.profile-gated { overflow: hidden; }
 .cardio-race-head h2 { margin-bottom: 0; }
 .cardio-race-dist { font-size: 12.5px; color: var(--text-muted); }
 .cardio-race-count-wrap { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
-.cardio-race-count { font-family: var(--font-display); font-size: 38px; font-weight: 700; color: var(--accent); line-height: 1; }
+.cardio-race-count { font-family: var(--font-mono); font-size: 38px; font-weight: 700; color: var(--accent); line-height: 1; }
 .cardio-race-sub { font-size: 12.5px; color: var(--text-secondary); }
 .cardio-race-pred {
   display: flex;
@@ -6354,7 +6385,7 @@ body.profile-gated { overflow: hidden; }
   padding-top: 14px;
   border-top: 1px solid var(--border);
 }
-.cardio-race-time { font-family: var(--font-display); font-size: 26px; font-weight: 700; color: var(--text-primary); }
+.cardio-race-time { font-family: var(--font-mono); font-size: 26px; font-weight: 700; color: var(--text-primary); }
 .cardio-race-form { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 
 /* Coach */
@@ -6406,7 +6437,7 @@ body.profile-gated { overflow: hidden; }
 
 .usage-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
 .usage-stat { display: flex; flex-direction: column; gap: 2px; }
-.usage-stat-num { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--text-primary); }
+.usage-stat-num { font-family: var(--font-mono); font-size: 18px; font-weight: 700; color: var(--text-primary); }
 .usage-stat-label { font-size: 11px; font-weight: 600; color: var(--text-secondary); }
 .usage-stat-detail { font-size: 10.5px; color: var(--text-muted); }
 .usage-stat-zero .usage-stat-num { color: var(--text-muted); }
@@ -6494,7 +6525,7 @@ body.profile-gated { overflow: hidden; }
   height: 32px;
   border-radius: 50%;
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-ink);
   font-family: var(--font-display);
   font-size: 15px;
   font-weight: 700;
@@ -6583,7 +6614,7 @@ body.onboard-open { overflow: hidden; }
   margin: 4px auto 6px;
   border-radius: 15px;
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-ink);
   font-family: var(--font-display);
   font-size: 26px; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
@@ -6718,7 +6749,7 @@ body.onboard-open { overflow: hidden; }
   width: 34px; height: 34px;
   border-radius: 50%;
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-ink);
   font-family: var(--font-display);
   font-size: 16px; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
@@ -6797,7 +6828,7 @@ body.onboard-open { overflow: hidden; }
   border-radius: 50%;
   background: var(--accent-glow);
   color: var(--accent);
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 700;
   display: flex;
@@ -6879,7 +6910,7 @@ body.onboard-open { overflow: hidden; }
   background: var(--bg-card);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
-.dg-cal-num { font-family: var(--font-display); font-size: 27px; font-weight: 700; line-height: 1; color: var(--text-primary); }
+.dg-cal-num { font-family: var(--font-mono); font-size: 27px; font-weight: 700; line-height: 1; color: var(--text-primary); }
 .dg-cal-of { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
 .dg-cal-left {
   font-size: 10px; font-weight: 700; margin-top: 3px;
@@ -6976,7 +7007,7 @@ body.onboard-open { overflow: hidden; }
 }
 .training-mode-btn:hover { color: var(--text-primary); }
 .training-mode-btn.active {
-  background: rgba(109, 106, 248, 0.18);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
   color: var(--accent-hover);
 }
 .training-mode-btn[hidden] { display: none; }
@@ -6994,7 +7025,7 @@ body.onboard-open { overflow: hidden; }
 .training-weight[hidden] { display: none; }
 
 .training-weight-num {
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-size: 17px;
   font-weight: 700;
   color: var(--text-primary);
@@ -7004,7 +7035,7 @@ body.onboard-open { overflow: hidden; }
 .training-weight-delta {
   font-size: 12px;
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums; font-family: var(--font-mono);
 }
 .training-weight-delta.good { color: var(--green); }
 .training-weight-delta.bad { color: var(--red); }
@@ -7015,14 +7046,14 @@ body.onboard-open { overflow: hidden; }
   padding: 6px 12px;
   border: none;
   border-radius: 8px;
-  background: rgba(109, 106, 248, 0.18);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
   color: var(--accent-hover);
   font-family: var(--font-body);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }
-.training-weight-log:hover { background: rgba(109, 106, 248, 0.28); }
+.training-weight-log:hover { background: color-mix(in srgb, var(--accent) 28%, transparent); }
 
 /* "This week  3 lifts · 4 runs · 🔥12" */
 .training-week {
@@ -7045,11 +7076,11 @@ body.onboard-open { overflow: hidden; }
 .training-week-chip {
   padding: 5px 11px;
   border-radius: 8px;
-  background: rgba(109, 106, 248, 0.14);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
   color: var(--accent-hover);
   font-size: 12px;
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums; font-family: var(--font-mono);
 }
 .training-week-chip.alt {
   background: rgba(167, 139, 250, 0.14);
@@ -7059,7 +7090,7 @@ body.onboard-open { overflow: hidden; }
   font-size: 12px;
   font-weight: 700;
   color: var(--yellow);
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums; font-family: var(--font-mono);
 }
 
 .training-pane[hidden] { display: none; }
@@ -7156,7 +7187,7 @@ body.onboard-open { overflow: hidden; }
 }
 .segmented-btn:hover { color: var(--text-primary); }
 .segmented-btn.active {
-  background: rgba(109, 106, 248, 0.18);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
   color: var(--accent-hover);
 }
 
@@ -7247,7 +7278,7 @@ body.onboard-open { overflow: hidden; }
 }
 .sleep-step-btn:hover { background: var(--bg-hover); }
 .sleep-hours {
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-size: 34px;
   font-weight: 700;
   color: var(--text-primary);
@@ -7360,7 +7391,7 @@ body.onboard-open { overflow: hidden; }
 .readiness-score {
   position: relative;
   z-index: 1;
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-size: 24px;
   font-weight: 700;
   color: var(--text-primary);
@@ -7437,14 +7468,14 @@ body.onboard-open { overflow: hidden; }
   padding: 4px 10px;
   border: none;
   border-radius: 7px;
-  background: rgba(109, 106, 248, 0.18);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
   color: var(--accent-hover);
   font-family: var(--font-body);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }
-.today-triage-add:hover { background: rgba(109, 106, 248, 0.3); }
+.today-triage-add:hover { background: color-mix(in srgb, var(--accent) 30%, transparent); }
 .today-triage-more {
   border: none;
   background: none;
@@ -7545,7 +7576,7 @@ body.onboard-open { overflow: hidden; }
   font-size: 12px;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
-  text-align: right;
+  text-align: right; font-family: var(--font-mono);
 }
 .today-sched-dot { width: 8px; height: 8px; border-radius: 50%; }
 .today-sched-name { font-size: 14px; color: var(--text-primary); }
@@ -7589,7 +7620,7 @@ body.onboard-open { overflow: hidden; }
   background: var(--bg-secondary);
   padding: 2px 8px;
   border-radius: 6px;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums; font-family: var(--font-mono);
 }
 .today-anytime-schedule {
   min-width: 32px;
@@ -7659,7 +7690,7 @@ body.onboard-open { overflow: hidden; }
   font-weight: 700;
 }
 .cardio-zone.active { color: #fff; }
-.cardio-zone-hr { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; margin-left: 4px; }
+.cardio-zone-hr { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; margin-left: 4px; font-family: var(--font-mono); }
 
 /* Session list detail row */
 .cardio-session-detail { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
@@ -7670,7 +7701,7 @@ body.onboard-open { overflow: hidden; }
   border: 1px solid;
   border-radius: 6px;
 }
-.cardio-session-meta { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.cardio-session-meta { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
 
 /* Weekly mileage ring */
 .cardio-week-ring-wrap { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
@@ -7696,7 +7727,7 @@ body.onboard-open { overflow: hidden; }
 .cardio-mileage-val {
   position: relative;
   z-index: 1;
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-size: 30px;
   font-weight: 700;
   color: var(--text-primary);
@@ -7799,7 +7830,7 @@ body.logfood-sheet-lock { overflow: hidden; }
 }
 .ai-usage-total-val {
   display: block;
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-size: 22px;
   font-weight: 700;
   color: var(--text-primary);
@@ -7824,9 +7855,9 @@ body.logfood-sheet-lock { overflow: hidden; }
   flex-wrap: wrap;
 }
 .ai-usage-fname { font-size: 14px; font-weight: 600; color: var(--text-primary); flex: 1; min-width: 120px; }
-.ai-usage-fcalls { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
-.ai-usage-ftok { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-.ai-usage-fcost { font-size: 14px; font-weight: 700; color: var(--accent-hover); font-variant-numeric: tabular-nums; margin-left: auto; }
+.ai-usage-fcalls { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
+.ai-usage-ftok { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
+.ai-usage-fcost { font-size: 14px; font-weight: 700; color: var(--accent-hover); font-variant-numeric: tabular-nums; margin-left: auto; font-family: var(--font-mono); }
 
 .ai-usage-drow {
   display: grid;
@@ -7836,7 +7867,7 @@ body.logfood-sheet-lock { overflow: hidden; }
   font-size: 13px;
   color: var(--text-secondary);
   border-bottom: 1px solid var(--border);
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums; font-family: var(--font-mono);
 }
 .ai-usage-drow span:last-child { color: var(--accent-hover); font-weight: 600; text-align: right; }
 
@@ -7884,7 +7915,7 @@ body.logfood-sheet-lock { overflow: hidden; }
 }
 .rail-week-val {
   display: block;
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-size: 22px;
   font-weight: 700;
   color: var(--text-primary);
@@ -7929,9 +7960,9 @@ body.logfood-sheet-lock { overflow: hidden; }
 .weight-sheet-empty { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
 
 .weight-sheet-headline { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
-.weight-sheet-num { font-family: var(--font-display); font-size: 30px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.weight-sheet-num { font-family: var(--font-mono); font-size: 30px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 .weight-sheet-num small { font-size: 13px; color: var(--text-muted); }
-.weight-sheet-delta { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.weight-sheet-delta { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
 .weight-sheet-delta.good { color: var(--green); }
 .weight-sheet-delta.bad { color: var(--red); }
 .weight-sheet-goal { font-size: 12px; color: var(--text-muted); margin-left: auto; }
@@ -7939,7 +7970,7 @@ body.logfood-sheet-lock { overflow: hidden; }
   flex-basis: 100%;
   font-size: 12px;
   color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums; font-family: var(--font-mono);
 }
 
 .weight-sheet-chart { position: relative; height: 120px; margin: 8px 0 18px; }
@@ -7960,7 +7991,7 @@ body.logfood-sheet-lock { overflow: hidden; }
   letter-spacing: 0.5px;
   color: var(--text-muted);
 }
-.wsw-num { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.wsw-num { font-family: var(--font-mono); font-size: 22px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 .wsw-num small { font-size: 12px; color: var(--text-muted); }
 .weight-bars { display: flex; align-items: flex-end; gap: 3px; height: 100%; }
 .weight-bar-col { flex: 1; display: flex; align-items: flex-end; height: 100%; }
@@ -8043,7 +8074,7 @@ body.logfood-sheet-lock { overflow: hidden; }
   cursor: pointer;
   white-space: nowrap;
 }
-.diet-usual-tile:hover { background: var(--accent); color: #fff; }
+.diet-usual-tile:hover { background: var(--accent); color: var(--accent-ink); }
 .diet-usual-tile:active { transform: scale(0.96); }
 
 /* Editable logged entry — a visible servings pill opens the +/- stepper */
@@ -8059,7 +8090,7 @@ body.logfood-sheet-lock { overflow: hidden; }
   padding: 2px 9px;
   cursor: pointer;
 }
-.diet-serv-pill:hover { background: var(--accent); color: #fff; }
+.diet-serv-pill:hover { background: var(--accent); color: var(--accent-ink); }
 
 /* Inline "add a brand-new food" when search finds no match */
 .diet-inline-custom {
@@ -8139,7 +8170,7 @@ body.logfood-sheet-lock { overflow: hidden; }
 .def-bank input { width: 16px; height: 16px; accent-color: var(--accent); }
 .def-actions { display: flex; gap: 6px; }
 .def-save, .def-cancel { min-height: 38px; padding: 0 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; cursor: pointer; }
-.def-save { flex: 1; border: 1px solid var(--accent); background: var(--accent); color: #fff; }
+.def-save { flex: 1; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); }
 .def-save:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 .def-cancel { border: 1px solid var(--border); background: transparent; color: var(--text-secondary); }
 .diet-inline-input {
@@ -8177,11 +8208,11 @@ body.logfood-sheet-lock { overflow: hidden; }
   background: var(--accent-glow); color: var(--accent-hover);
 }
 .diet-inline-badge.shared { background: rgba(167,139,250,0.16); color: var(--purple); }
-.diet-inline-macros { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.diet-inline-macros { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
 .diet-inline-plus {
   width: 26px; height: 26px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  border-radius: 7px; background: rgba(109,106,248,0.18);
+  border-radius: 7px; background: color-mix(in srgb, var(--accent) 18%, transparent);
   color: var(--accent-hover); font-size: 18px; font-weight: 700;
 }
 
@@ -8347,7 +8378,7 @@ body.logfood-sheet-lock { overflow: hidden; }
   text-align: center;
 }
 .str-tile-v {
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-size: 22px;
   font-weight: 700;
   color: var(--text-primary);
@@ -8395,7 +8426,7 @@ body.logfood-sheet-lock { overflow: hidden; }
 .str-mv-top { display: flex; align-items: center; gap: 10px; }
 .str-mv-name { font-size: 13px; font-weight: 600; color: var(--text-primary); flex: 1; }
 .str-mv-best {
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-size: 16px;
   font-weight: 700;
   color: var(--text-primary);
@@ -8443,7 +8474,7 @@ body.logfood-sheet-lock { overflow: hidden; }
   padding-top: 12px;
   border-top: 1px solid var(--border);
 }
-.str-cs-v { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.str-cs-v { font-family: var(--font-mono); font-size: 15px; font-weight: 700; color: var(--text-primary); }
 .str-cs-l { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
 .str-curve-note { font-size: 10.5px; color: var(--text-muted); margin-top: 10px; }
 
@@ -8477,15 +8508,15 @@ body.logfood-sheet-lock { overflow: hidden; }
   padding: 2px 7px;
   border-radius: 999px;
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-ink);
   animation: strPrPulse 2.4s ease-in-out infinite;
 }
 @keyframes strPrPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(109, 106, 248, .5); }
-  50% { box-shadow: 0 0 0 6px rgba(109, 106, 248, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 50%, transparent); }
+  50% { box-shadow: 0 0 0 6px transparent; }
 }
 .str-pr-ex { font-size: 11px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.str-pr-val { font-family: var(--font-display); font-size: 21px; font-weight: 700; color: var(--text-primary); margin: 5px 0 1px; }
+.str-pr-val { font-family: var(--font-mono); font-size: 21px; font-weight: 700; color: var(--text-primary); margin: 5px 0 1px; }
 .str-pr-val small { font-size: 11px; color: var(--text-muted); font-weight: 600; }
 .str-pr-meta { font-size: 10px; color: var(--text-muted); }
 
@@ -8569,7 +8600,7 @@ body.logfood-sheet-lock { overflow: hidden; }
   justify-content: center;
   border-radius: 50%;
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-ink);
   font-size: 17px;
   font-weight: 700;
 }
@@ -8664,7 +8695,7 @@ body.logfood-sheet-lock { overflow: hidden; }
   justify-content: center;
   border-radius: 50%;
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-ink);
   font-size: 15px;
   font-weight: 700;
 }
@@ -8856,7 +8887,7 @@ body.app-loading #syncProgress { opacity: 1; }
 
 /* Activity breakdown — the watch total split into strength / cardio / walking. */
 .activity-card { padding: 18px 20px; }
-.act-total { font-family: var(--font-display); font-weight: 700; font-size: 20px; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.act-total { font-family: var(--font-mono); font-weight: 700; font-size: 20px; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 .act-total small { font-size: 12px; font-weight: 500; color: var(--text-muted); }
 .act-bar {
   display: flex;
@@ -8888,7 +8919,7 @@ body.app-loading #syncProgress { opacity: 1; }
 }
 .act-est { color: var(--text-muted); background: var(--bg-secondary); }
 .act-actual { color: var(--green); background: var(--green-bg); }
-.act-min { font-weight: 700; font-size: 14px; color: var(--text-primary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.act-min { font-weight: 700; font-size: 14px; color: var(--text-primary); font-variant-numeric: tabular-nums; white-space: nowrap; font-family: var(--font-mono); }
 .act-min small { font-size: 11px; font-weight: 500; color: var(--text-muted); }
 
 /* Goal Progress card — one row per goal, status pinned right. */
@@ -8965,7 +8996,7 @@ body.app-loading #syncProgress { opacity: 1; }
   background: var(--bg-secondary);
   color: var(--text-muted);
   border: 1px solid var(--border);
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums; font-family: var(--font-mono);
 }
 
 .coach-row {
@@ -9029,7 +9060,7 @@ body.app-loading #syncProgress { opacity: 1; }
   transition: background .2s, color .2s;
 }
 .ins-range:hover { color: var(--text-secondary); }
-.ins-range.active { background: var(--accent); color: #fff; }
+.ins-range.active { background: var(--accent); color: var(--accent-ink); }
 .ins-export {
   margin-left: auto;
   min-height: 34px;
@@ -9057,7 +9088,7 @@ body.app-loading #syncProgress { opacity: 1; }
   animation: riseIn .4s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 .ins-tile-v {
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-size: 21px;
   font-weight: 700;
   color: var(--text-primary);
@@ -9085,7 +9116,7 @@ body.app-loading #syncProgress { opacity: 1; }
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45); font-family: var(--font-mono);
 }
 .ins-tip.show { opacity: 1; transform: translateY(0); }
 .ins-hit { cursor: crosshair; }
@@ -9170,7 +9201,7 @@ body.app-loading #syncProgress { opacity: 1; }
   color: var(--text-muted);
 }
 .brief-ready {
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-size: 17px;
   font-weight: 700;
   color: var(--text-primary);
@@ -9228,7 +9259,7 @@ body.app-loading #syncProgress { opacity: 1; }
   padding: 10px 8px;
   text-align: center;
 }
-.brief-stat-v { font-family: var(--font-display); font-size: 19px; font-weight: 700; color: var(--text-primary); line-height: 1.1; }
+.brief-stat-v { font-family: var(--font-mono); font-size: 19px; font-weight: 700; color: var(--text-primary); line-height: 1.1; }
 .brief-stat-l { font-size: 9.5px; color: var(--text-muted); margin-top: 3px; text-transform: uppercase; letter-spacing: .04em; }
 .brief-delta { display: block; font-size: 9.5px; font-weight: 700; margin-top: 4px; }
 .brief-delta.up { color: var(--green); }
@@ -9282,9 +9313,9 @@ body.app-loading #syncProgress { opacity: 1; }
   }
 }
 
-/* ---- Primary buttons: a top-lit gradient instead of a flat fill ---- */
+/* ---- Primary buttons: flat accent (v3 has no gradients) ---- */
 .btn-primary {
-  background: linear-gradient(180deg, var(--accent-hover), var(--accent));
+  background: var(--accent);
   transition: filter var(--dur-fast) var(--ease-out),
               transform var(--dur-fast) var(--ease-out),
               box-shadow var(--dur) var(--ease-out);
@@ -9293,7 +9324,7 @@ body.app-loading #syncProgress { opacity: 1; }
   .btn-primary:hover {
     filter: brightness(1.07);
     transform: translateY(-1px);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 8px 22px rgba(109, 106, 248, 0.34);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 8px 22px color-mix(in srgb, var(--accent) 34%, transparent);
   }
 }
 .btn-primary:active { transform: translateY(0) scale(0.985); }
@@ -9396,6 +9427,7 @@ textarea:focus-visible {
 .accent-picker { display: flex; flex-wrap: wrap; gap: 10px; }
 .accent-dot {
   width: 34px;
+  background: var(--sw-night);
   height: 34px;
   border-radius: 50%;
   border: 2px solid transparent;
@@ -9406,6 +9438,7 @@ textarea:focus-visible {
 }
 .accent-dot:hover { transform: scale(1.1); }
 .accent-dot.active { border-color: var(--text-primary); transform: scale(1.12); }
+html[data-theme="light"] .accent-dot { background: var(--sw-day); }
 
 .pref-toggles { display: flex; flex-wrap: wrap; gap: 8px; }
 .pref-toggle {
@@ -9516,7 +9549,7 @@ html.layout-editing .layout-item.is-dragging {
   line-height: 1;
   cursor: pointer;
 }
-.layout-btn:hover { background: var(--accent); color: #fff; }
+.layout-btn:hover { background: var(--accent); color: var(--accent-ink); }
 
 /* Saved layouts */
 .layout-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
@@ -9594,7 +9627,7 @@ html.layout-editing .layout-item.is-dragging {
   cursor: pointer;
   transition: background .16s ease, transform .16s ease;
 }
-.layout-restore:hover { background: var(--accent); color: #fff; transform: translateY(-1px); }
+.layout-restore:hover { background: var(--accent); color: var(--accent-ink); transform: translateY(-1px); }
 .layout-restore-plus { font-size: 15px; font-weight: 700; line-height: 1; }
 
 /* Header search button — the command palette's touch entry point */
@@ -9625,7 +9658,7 @@ html.layout-editing .layout-item.is-dragging {
   margin-top: 6px;
   font-size: 10px;
   color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums; font-family: var(--font-mono);
 }
 .ins-axis-scale { color: var(--text-secondary); font-weight: 600; }
 .ins-stats {
@@ -9638,7 +9671,7 @@ html.layout-editing .layout-item.is-dragging {
 }
 .ins-stat { text-align: center; }
 .ins-stat-v {
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-size: 14.5px;
   font-weight: 700;
   color: var(--text-primary);
@@ -9916,11 +9949,11 @@ html.layout-editing .layout-item.is-dragging {
     border: none;
     border-radius: 999px;
     background: var(--accent);
-    color: #fff;
+    color: var(--accent-ink);
     font-size: 15px;
     font-weight: 650;
     letter-spacing: -0.01em;
-    box-shadow: 0 6px 20px rgba(109, 106, 248, 0.45);
+    box-shadow: 0 6px 20px color-mix(in srgb, var(--accent) 45%, transparent);
     cursor: pointer;
     transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.18s ease;
   }
@@ -10117,7 +10150,7 @@ html.layout-editing .layout-item.is-dragging {
   font-variant-numeric: tabular-nums;
   color: var(--blue);
   font-weight: 650;
-  font-size: 11.5px;
+  font-size: 11.5px; font-family: var(--font-mono);
 }
 .schedule-meeting-name { color: var(--text-primary); font-weight: 550; }
 .schedule-meeting-loc { color: var(--text-muted); font-size: 11px; }
@@ -10326,7 +10359,7 @@ html.layout-editing .layout-item.is-dragging {
 }
 .training-tab.active {
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-ink);
 }
 .training-tab:not(.active):hover { color: var(--text-primary); }
 
@@ -10374,7 +10407,7 @@ html.layout-editing .layout-item.is-dragging {
   color: var(--text-secondary);
   font-size: 10.5px;
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums; font-family: var(--font-mono);
 }
 
 /* Was muted grey on a dashed border, which read as disabled chrome next to
@@ -10423,7 +10456,7 @@ html.layout-editing .layout-item.is-dragging {
 }
 .combo-pick input { min-width: 20px; min-height: 20px; }
 .combo-pick-name { flex: 1; font-size: 14px; font-weight: 550; }
-.combo-pick-serv, .combo-pick-cal { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.combo-pick-serv, .combo-pick-cal { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
 .combo-saver-actions { display: flex; gap: 10px; justify-content: flex-end; }
 .combo-saver-actions button { min-height: 46px; padding: 0 18px; }
 
@@ -10459,7 +10492,7 @@ html.layout-editing .layout-item.is-dragging {
 .watch-sync[open] .watch-sync-more { color: var(--accent); }
 .watch-sync-grid { margin-top: 10px; display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; }
 .watch-sync-row { display: contents; }
-.watch-sync-row > span { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.watch-sync-row > span { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
 .watch-sync-row.is-behind > span { color: var(--yellow); }
 .watch-sync-note { margin-top: 10px; font-size: 11.5px; color: var(--text-muted); line-height: 1.45; }
 
@@ -10491,10 +10524,10 @@ html.layout-editing .layout-item.is-dragging {
   background: color-mix(in srgb, var(--accent) 16%, transparent);
   padding: 2px 7px; border-radius: 999px;
 }
-.diet-combo-group-cal { font-size: 13px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.diet-combo-group-cal { font-size: 13px; font-weight: 650; font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
 .diet-combo-group-macros {
   display: flex; gap: 10px; padding: 0 12px 8px 34px;
-  font-size: 11.5px; color: var(--text-muted); font-variant-numeric: tabular-nums;
+  font-size: 11.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; font-family: var(--font-mono);
 }
 .diet-combo-group-body { padding: 0 10px 10px 10px; }
 .diet-food-entry.is-ingredient { background: var(--bg-card); margin-left: 12px; }
@@ -10674,7 +10707,7 @@ html.layout-editing .layout-item.is-dragging {
   letter-spacing: .04em;
   text-transform: uppercase;
 }
-.task-view-subs-count { font-variant-numeric: tabular-nums; }
+.task-view-subs-count { font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
 .task-view-sub {
   display: flex;
   align-items: center;
@@ -10809,7 +10842,7 @@ button.sync-status {
   background: var(--accent);
   border-radius: 14px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
-  color: #fff;
+  color: var(--accent-ink);
   animation: updateBannerIn .28s cubic-bezier(.22, 1, .36, 1);
 }
 @keyframes updateBannerIn {
@@ -10974,7 +11007,7 @@ body.has-update-banner .voice-fab {
   border: none;
   border-bottom: 2px solid var(--border);
   color: var(--text-primary);
-  font-family: var(--font-body);
+  font-family: var(--font-mono);
   font-size: 42px;
   font-weight: 700;
   text-align: center;
@@ -11026,7 +11059,7 @@ body.has-update-banner .voice-fab {
   padding: 1px 7px;
   border-radius: 999px;
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-ink);
   font-size: 11px;
   font-weight: 700;
   text-align: center;
@@ -11112,7 +11145,7 @@ body.has-update-banner .voice-fab {
   padding: 0 5px;
   border-radius: 999px;
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-ink);
   font-size: 10px;
   font-weight: 700;
   line-height: 1;
@@ -11328,7 +11361,7 @@ body.has-update-banner .voice-fab {
   color: var(--text-muted);
   font-size: 12px;
   text-align: right;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums; font-family: var(--font-mono);
 }
 .dfm-cal { color: var(--text-secondary); font-weight: 600; }
 
@@ -11384,7 +11417,7 @@ body.has-update-banner .voice-fab {
   flex: 0 0 auto;
   font-size: 13px;
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums; font-family: var(--font-mono);
 }
 .dmf-cal small { color: var(--text-muted); font-weight: 500; }
 .dmf-add {
@@ -11454,7 +11487,7 @@ body.logbar-open .voice-fab {
   background: var(--accent);
   border: none;
   border-radius: 999px;
-  color: #fff;
+  color: var(--accent-ink);
   font-family: var(--font-body);
   font-size: 13px;
   font-weight: 600;
@@ -11538,3 +11571,350 @@ body.logbar-open .voice-fab {
 
 /* The header has to line up with the rows' new left inset. */
 .diet-meal-group .diet-row-head { padding: 0 10px 0 13px; }
+
+/* ==========================================================================
+   v3 "Day Line" base components (BUILD_SPEC_v3.md §2.4)
+   Built once here and reused by every rebuilt screen. All are opt-in `.dl-`
+   classes: nothing in the v2 markup uses them yet, so adding them changes no
+   existing screen. Preview every one in design/v3/components.html.
+   A component takes its colour from --c (default muted); set it with one of
+   the .c-* helpers (at the end of this section, so they beat each component's
+   default --c) or inline (style="--c: var(--c-food)").
+   ========================================================================== */
+
+/* Every number is mono: metrics, times, counts, dates-as-numbers. */
+.tnum, .dl-num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* Display type */
+.header h1 { font-size: 30px; font-weight: 800; letter-spacing: -0.04em; }
+.dl-date-num { font-family: var(--font-display); font-size: 40px; font-weight: 800; letter-spacing: -0.045em; line-height: 0.9; }
+.dl-title { font-family: var(--font-display); font-size: 30px; font-weight: 800; letter-spacing: -0.04em; line-height: 0.95; }
+.dl-brief { font-family: var(--font-display); font-size: 19px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.18; }
+.dl-eyebrow { font: 500 11px var(--font-mono); color: var(--text-muted); }
+
+/* Material Symbols Rounded. Filled with .fill (the selected nav item). */
+.ms {
+  font-family: 'Material Symbols Rounded';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  direction: ltr;
+  vertical-align: -0.2em;
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'opsz' 20;
+}
+.ms.fill { font-variation-settings: 'FILL' 1, 'wght' 400, 'opsz' 20; }
+
+/* ---- Chip: tinted label ---- */
+.dl-chip {
+  --c: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 600 11px/1.3 var(--font-body);
+  padding: 2px 7px;
+  border-radius: var(--radius-chip);
+  color: var(--c);
+  background: color-mix(in srgb, var(--c) 14%, transparent);
+  white-space: nowrap;
+}
+.dl-chip .ms { font-size: 13px; }
+.dl-dot { --c: var(--text-muted); display: inline-block; width: 8px; height: 8px; border-radius: 3px; background: var(--c); flex: none; }
+
+/* ---- Segmented control ---- */
+.dl-seg {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  border-radius: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  max-width: 100%;
+}
+.dl-seg > button {
+  font: 600 13px var(--font-body);
+  padding: 6px 12px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--dur-fast, .16s) ease, color var(--dur-fast, .16s) ease;
+}
+.dl-seg > button:hover { color: var(--text-primary); }
+.dl-seg > button.on,
+.dl-seg > button[aria-pressed="true"],
+.dl-seg > button[aria-selected="true"] { background: var(--text-primary); color: var(--bg-primary); }
+.dl-seg.full { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; width: 100%; }
+
+/* ---- Card ---- */
+.dl-card {
+  --c: var(--text-muted);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+.dl-card.tint {
+  background: color-mix(in srgb, var(--c) 9%, var(--bg-card));
+  border-color: color-mix(in srgb, var(--c) 40%, var(--border));
+}
+.dl-card-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 8px; font: 600 13px var(--font-body); color: var(--text-primary); }
+.dl-card-h em { font: 500 11px var(--font-mono); font-style: normal; color: var(--text-muted); }
+
+/* ---- Buttons ---- */
+.dl-btn {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  font: 600 14px var(--font-body);
+  padding: 9px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform var(--dur-fast, .16s) ease, background var(--dur-fast, .16s) ease, filter var(--dur-fast, .16s) ease;
+}
+.dl-btn:hover { background: var(--bg-hover); }
+.dl-btn:active { transform: scale(0.98); }
+.dl-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.dl-btn.primary:hover { filter: brightness(1.06); }
+.dl-btn.danger { background: transparent; border-color: transparent; color: var(--red); padding-left: 4px; padding-right: 4px; }
+.dl-btn.danger:hover { text-decoration: underline; }
+.dl-btn.full { display: flex; width: 100%; }
+.dl-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.dl-btn:focus-visible,
+.dl-seg > button:focus-visible,
+.dl-toggle input:focus-visible + .dl-toggle-track,
+.dl-field input:focus-visible,
+.dl-field select:focus-visible,
+.dl-field textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---- Toggle switch (a real checkbox underneath) ---- */
+.dl-toggle { position: relative; display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14px; color: var(--text-primary); }
+.dl-toggle input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.dl-toggle-track {
+  position: relative;
+  width: 40px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--border);
+  flex: none;
+  transition: background var(--dur, .22s) ease;
+}
+.dl-toggle-track::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform var(--dur, .22s) var(--ease-out, ease);
+}
+.dl-toggle input:checked + .dl-toggle-track { background: var(--accent); }
+.dl-toggle input:checked + .dl-toggle-track::after { transform: translateX(16px); }
+
+/* ---- Field: mono caps label over an input box ---- */
+.dl-field { display: grid; gap: 4px; }
+.dl-field > label,
+.dl-field > .dl-field-label {
+  font: 600 9.5px var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.dl-field input,
+.dl-field select,
+.dl-field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  font: 400 15px var(--font-body);
+  padding: 9px 11px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-primary);
+}
+.dl-field input::placeholder, .dl-field textarea::placeholder { color: var(--text-muted); }
+.dl-field .big { font: 700 26px var(--font-mono); letter-spacing: -0.03em; }
+
+/* ---- Tile: big mono number over a small label ---- */
+.dl-tile { --c: var(--text-primary); border-radius: 12px; background: var(--bg-card); border: 1px solid var(--border); padding: 10px 12px; min-width: 0; }
+.dl-tile b { display: block; font: 700 20px var(--font-mono); letter-spacing: -0.03em; color: var(--c); line-height: 1.1; }
+.dl-tile b small { font: 500 11px var(--font-mono); letter-spacing: 0; color: var(--text-muted); margin-left: 3px; }
+.dl-tile span { font-size: 11px; color: var(--text-muted); }
+.dl-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }
+
+/* ---- Ring: SVG, 7px round-capped stroke. Markup:
+   <svg class="dl-ring" viewBox="0 0 64 64"><circle class="dl-ring-track" cx="32" cy="32" r="28"/>
+   <circle class="dl-ring-fill" cx="32" cy="32" r="28" pathLength="100" style="--pct: 62"/></svg> ---- */
+.dl-ring { --c: var(--accent); width: 64px; height: 64px; transform: rotate(-90deg); flex: none; }
+.dl-ring circle { fill: none; stroke-width: 7; }
+.dl-ring-track { stroke: var(--track); }
+.dl-ring-fill {
+  stroke: var(--c);
+  stroke-linecap: round;
+  stroke-dasharray: 100 100;
+  stroke-dashoffset: calc(100 - var(--pct, 0));
+  transition: stroke-dashoffset 0.6s var(--ease-out, ease);
+}
+.dl-ring-wrap { position: relative; display: inline-grid; place-items: center; }
+.dl-ring-wrap > .dl-ring-label { position: absolute; font: 700 14px var(--font-mono); letter-spacing: -0.03em; }
+
+/* ---- Mini charts ---- */
+.dl-meter { --c: var(--accent); height: 7px; border-radius: 4px; background: var(--track); overflow: hidden; }
+.dl-meter > i { display: block; height: 100%; border-radius: 4px; background: var(--c); width: var(--pct, 0%); }
+.dl-ticks { --c: var(--text-primary); display: flex; gap: 2px; }
+.dl-ticks > i { flex: 1; height: 3px; border-radius: 1px; background: var(--c); opacity: 0.22; }
+.dl-ticks > i.on { opacity: 1; }
+.dl-bars { --c: var(--text-primary); display: flex; align-items: flex-end; gap: 4px; height: 56px; }
+.dl-bars > i { flex: 1; min-height: 3px; border-radius: 3px 3px 1px 1px; background: var(--c); opacity: 0.85; height: var(--h, 0%); }
+.dl-bars > i.now { background: var(--accent); opacity: 1; }
+.dl-bars > i.empty { background: var(--track); opacity: 1; }
+.dl-spark { --c: var(--accent); width: 100%; height: 56px; display: block; overflow: visible; }
+.dl-spark polyline, .dl-spark path.line { fill: none; stroke: var(--c); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.dl-spark path.area { fill: color-mix(in srgb, var(--c) 12%, transparent); stroke: none; }
+.dl-spark .goal { stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+
+/* ---- Skeleton loader ---- */
+.dl-skel {
+  display: block;
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--bg-hover) 0%, color-mix(in srgb, var(--bg-hover) 50%, var(--bg-card)) 50%, var(--bg-hover) 100%);
+  background-size: 200% 100%;
+  animation: dl-skel 1.3s ease-in-out infinite;
+  min-height: 12px;
+}
+.dl-skel.line { height: 12px; margin: 6px 0; }
+.dl-skel.block { height: 64px; border-radius: var(--radius); }
+@keyframes dl-skel { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+
+/* ---- The line: the vertical time spine (§4.3), reused on Today, Calendar
+   and Diet. --cut is where "now" sits on the spine (a percentage): above it
+   the day's gradient, below it ink.
+   <div class="dl-line" style="--cut: 55%">
+     <div class="dl-line-item past c-food"><span class="t">8:10</span><span class="n"></span>
+       <span class="ico"><span class="ms">restaurant</span></span>
+       <span class="body">Breakfast<em>oats, coffee</em></span><span class="val">420</span></div>
+     <div class="dl-now"><span>now 3:40</span></div> ... </div> ---- */
+.dl-line { --cut: 50%; position: relative; padding: 8px 0 8px 64px; }
+.dl-line::before {
+  content: "";
+  position: absolute;
+  left: 51px;
+  top: 14px;
+  bottom: 14px;
+  width: 2px;
+  border-radius: 1px;
+  background: linear-gradient(var(--c-sleep) 0, var(--c-habit) calc(var(--cut) * 0.3), var(--c-food) calc(var(--cut) * 0.75), var(--c-water) var(--cut), var(--text-primary) var(--cut), var(--text-primary) 100%);
+}
+.dl-line-item { --c: var(--text-muted); position: relative; display: flex; align-items: center; gap: 10px; padding: 8px 0; min-height: 40px; }
+.dl-line-item .t { position: absolute; left: -64px; width: 36px; text-align: right; font: 500 10px var(--font-mono); color: var(--text-muted); }
+.dl-line-item .n { position: absolute; left: -19px; width: 12px; height: 12px; border-radius: 50%; background: var(--bg-primary); border: 2px solid var(--c); box-sizing: border-box; }
+.dl-line-item.past .n { background: var(--c); }
+.dl-line-item.hl .n { background: var(--accent); border-color: var(--accent); }
+.dl-line-item .ico { width: 24px; height: 24px; border-radius: 8px; display: grid; place-items: center; flex: none; color: var(--c); background: color-mix(in srgb, var(--c) 15%, transparent); }
+.dl-line-item .ico .ms { font-size: 16px; }
+.dl-line-item .body { flex: 1; min-width: 0; font-size: 14px; line-height: 1.25; color: var(--text-primary); }
+.dl-line-item.past .body { color: var(--text-secondary); }
+.dl-line-item .body em { display: block; font-style: normal; font-size: 12px; color: var(--text-muted); }
+.dl-line-item .val { font: 700 12px var(--font-mono); color: var(--c); white-space: nowrap; }
+.dl-line-item.card {
+  padding: 10px 12px;
+  margin: 4px 0;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--c) 10%, var(--bg-card));
+  border: 1px solid color-mix(in srgb, var(--c) 45%, var(--border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 14%, transparent);
+}
+.dl-line-item.card .n { left: -31px; }
+.dl-line-item.card .t { left: -76px; }
+.dl-now { position: relative; margin: 10px 0; display: flex; align-items: center; font: 600 11px var(--font-mono); color: var(--accent); }
+.dl-now::before { content: ""; position: absolute; left: -26px; right: 0; top: 50%; border-top: 2px solid var(--accent); }
+.dl-now > span { position: relative; background: var(--bg-primary); padding-right: 8px; }
+
+/* ---- Sheet: bottom sheet on the phone, centred panel on desktop.
+   <div class="dl-sheet-wrap" id="x"><div class="dl-sheet" role="dialog" aria-modal="true">
+     <div class="dl-grab"></div><h4>Title</h4>...</div></div>
+   openDlSheet(el) / closeDlSheet(el) live in js/utils.js; it closes on a
+   backdrop tap, Esc and a downward swipe. ---- */
+.dl-sheet-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(10, 12, 10, 0.5);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--dur, .22s) ease, visibility 0s linear var(--dur, .22s);
+}
+.dl-sheet-wrap.open { opacity: 1; visibility: visible; transition: opacity var(--dur, .22s) ease; }
+.dl-sheet {
+  position: relative;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+  padding: 8px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  transform: translateY(100%);
+  transition: transform 0.28s var(--ease-out, ease);
+}
+.dl-sheet-wrap.open .dl-sheet { transform: translateY(var(--drag, 0px)); }
+.dl-sheet.dragging { transition: none; }
+.dl-grab { width: 36px; height: 4px; border-radius: 2px; background: var(--border); margin: 0 auto 2px; }
+.dl-sheet h4 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 20px; letter-spacing: -0.02em; }
+@media (min-width: 768px) {
+  .dl-sheet-wrap { align-items: center; padding: 24px; }
+  .dl-sheet {
+    max-width: 520px;
+    max-height: 85vh;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+    padding: 12px 20px 20px;
+    transform: translateY(12px) scale(0.98);
+  }
+  .dl-sheet-wrap.open .dl-sheet { transform: none; }
+  .dl-grab { display: none; }
+}
+
+/* ---- Motion: honour the OS setting and the app's own Reduce motion pref ---- */
+@media (prefers-reduced-motion: reduce) {
+  .dl-skel { animation: none; }
+  .dl-sheet, .dl-sheet-wrap, .dl-toggle-track, .dl-toggle-track::after, .dl-ring-fill, .dl-btn, .dl-seg > button { transition: none; }
+  .dl-btn:active { transform: none; }
+}
+html.pref-reduce-motion .dl-skel { animation: none; }
+html.pref-reduce-motion .dl-btn:active { transform: none; }
+
+/* ---- Category colour helpers ----
+   Last on purpose: same specificity as the component defaults above, so they
+   must come after them to win (.dl-chip.c-food is food, not muted). */
+.c-sleep { --c: var(--c-sleep); }
+.c-food  { --c: var(--c-food); }
+.c-water { --c: var(--c-water); }
+.c-move  { --c: var(--c-move); }
+.c-meet  { --c: var(--c-meet); }
+.c-habit { --c: var(--c-habit); }

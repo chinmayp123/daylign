@@ -7,7 +7,7 @@ function renderBoard() {
     <button class="my-tasks-tab ${activeBoardFilter === null ? 'active' : ''}" data-cat="all">All</button>
     ${cats.map(c => `
       <button class="my-tasks-tab ${activeBoardFilter === c.id ? 'active' : ''}" data-cat="${c.id}">
-        <span class="category-dot" style="background:${c.color}"></span>${c.name}
+        <span class="category-dot" style="background:${taxColor(c)}"></span>${c.name}
       </button>
     `).join('')}`;
   $('#boardFilters').innerHTML = filtersHtml;
@@ -32,12 +32,12 @@ function renderBoard() {
       ? `<div class="board-card-completed">Completed ${new Date(t.completedAt + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>`
       : '';
     const footer = (!hideCategory && cat)
-      ? `<div class="board-card-footer"><span class="board-card-category"><span class="category-dot" style="background:${cat.color}"></span>${cat.name}</span></div>`
+      ? `<div class="board-card-footer"><span class="board-card-category"><span class="category-dot" style="background:${taxColor(cat)}"></span>${cat.name}</span></div>`
       : '';
     return `
       <div class="board-card" data-id="${t.id}">
         <div class="board-card-name">${esc(t.name)}</div>
-        ${proj ? `<span class="board-card-project" style="color:${proj.color};background:${proj.color}15"><span class="category-dot" style="background:${proj.color}"></span>${proj.name}</span>` : ''}
+        ${proj ? `<span class="board-card-project" style="color:${taxColor(proj)};background:color-mix(in srgb, ${taxColor(proj)} 8%, transparent)"><span class="category-dot" style="background:${taxColor(proj)}"></span>${proj.name}</span>` : ''}
         ${completedLine}
         ${footer}
       </div>`;
@@ -69,11 +69,11 @@ function renderBoard() {
       if (useProjectGrouping) {
         const proj = state.projects.find(p => p.id === t.project);
         key = proj ? proj.id : '_no-project';
-        groupData = proj ? { name: proj.name, color: proj.color } : { name: 'No Project', color: 'var(--text-muted)' };
+        groupData = proj ? { name: proj.name, color: taxColor(proj) } : { name: 'No Project', color: 'var(--text-muted)' };
       } else {
         const cat = state.categories.find(c => c.id === t.category);
         key = cat ? cat.id : '_uncategorized';
-        groupData = cat ? { name: cat.name, color: cat.color } : { name: 'Uncategorized', color: 'var(--text-muted)' };
+        groupData = cat ? { name: cat.name, color: taxColor(cat) } : { name: 'Uncategorized', color: 'var(--text-muted)' };
       }
       if (!grouped[key]) grouped[key] = { ...groupData, tasks: [] };
       grouped[key].tasks.push(t);

@@ -1,7 +1,7 @@
 # Daylign v3 "Day Line": Build Spec
 
 You are rebuilding the look and structure of the **existing Daylign app**
-(`chinmayp123/daylign`, local clone `~/Personal-Projects/todo-dashboard`). It is a
+(`chinmayp123/daylign`, local clone `~/Personal-Projects/daylign`). It is a
 vanilla JS PWA with **no build step**. Read the repo's `CLAUDE.md` and `README.md`
 first; every rule in them still applies.
 
@@ -77,7 +77,7 @@ and put these values in its light and dark blocks.
 | `--track`, `--border` | `#d5d8d1` | `#262925` | mockup `--line` |
 | `--text-primary` | `#121412` | `#eeefeb` | mockup `--ink` |
 | `--text-secondary` | `#4f544e` | `#aeb2ab` | `--sub` |
-| `--text-muted` | `#6f746d` | `#8a8f88` | darker than the mockup's `#8a8f88` in light, to pass 4.5:1 |
+| `--text-muted` | `#686d66` | `#8a8f88` | darker than the mockup's `#8a8f88` in light, to pass 4.5:1. Was `#6f746d`, which measures 4.09:1 on `--bg-primary` and misses the bar it was written for; `#686d66` is 4.53:1. |
 | `--accent` | `#2446f0` | `#6c86ff` | "now" and buttons only |
 | `--accent-ink` (new) | `#ffffff` | `#0e0f0e` | text on accent |
 | `--accent-glow` | `rgba(36,70,240,.09)` | `rgba(108,134,255,.13)` | mockup `--soft` |

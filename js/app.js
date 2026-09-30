@@ -618,7 +618,7 @@ function renderSidebarCategories() {
     const count = state.tasks.filter(t => t.category === cat.id).length;
     return `
       <div class="category-item" data-cat="${cat.id}">
-        <span class="category-dot" style="background:${cat.color}"></span>
+        <span class="category-dot" style="background:${taxColor(cat)}"></span>
         ${cat.name}
         <span class="category-count">${count}</span>
         <button class="sidebar-del-btn" data-del-cat="${cat.id}">&times;</button>
@@ -640,7 +640,7 @@ function renderSidebarProjects() {
     const active = activeProject === proj.id;
     return `
       <div class="project-item ${active ? 'active' : ''}" data-proj="${proj.id}">
-        <span class="category-dot" style="background:${proj.color}"></span>
+        <span class="category-dot" style="background:${taxColor(proj)}"></span>
         ${proj.name}
         <span class="category-count">${count}</span>
         <button class="sidebar-del-btn" data-del-proj="${proj.id}">&times;</button>
@@ -671,14 +671,38 @@ function handleAddProject() {
 
 // ---- Shared category/project mutations, used by both the sidebar and the
 // Settings manager so add/rename/delete behave identically everywhere. ----
+// The v2 auto palette, kept only so migrateTaxonomyColors() can map a stored
+// hex to the v3 key in the same position (indigo→meet, green→move, red→food,
+// yellow→habit, blue→water, violet→sleep, then round again).
 const TAXONOMY_COLORS = ['#6366f1', '#22c55e', '#ef4444', '#eab308', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+
+// One-time move of category / project colours from hex to a v3 key. Called
+// from the sync layer once the first cloud read has settled (never from a
+// renderer), so the save goes through the normal path and reaches the cloud
+// instead of being overwritten by an older cloud copy. Idempotent: once every
+// item holds a key it does nothing, so it is safe on every load.
+function migrateTaxonomyColors() {
+  let changed = false;
+  ['categories', 'projects'].forEach(kind => {
+    (state[kind] || []).forEach((item, i) => {
+      if (!item || CATEGORY_COLOR_KEYS.indexOf(item.color) !== -1) return;
+      const at = TAXONOMY_COLORS.indexOf(String(item.color || '').toLowerCase());
+      item.color = CATEGORY_COLOR_KEYS[(at !== -1 ? at : i) % CATEGORY_COLOR_KEYS.length];
+      changed = true;
+    });
+  });
+  if (!changed) return false;
+  saveData(state);
+  render();
+  return true;
+}
 
 function addCategoryNamed(name) {
   if (!name || !name.trim()) return false;
   const clean = name.trim();
   const id = clean.toLowerCase().replace(/\s+/g, '-');
   if (state.categories.some(c => c.id === id)) { showToast('A category with that name already exists'); return false; }
-  state.categories.push({ id, name: clean, color: TAXONOMY_COLORS[state.categories.length % TAXONOMY_COLORS.length] });
+  state.categories.push({ id, name: clean, color: nextCategoryColor(state.categories) });
   saveData(state);
   render();
   return true;
@@ -686,7 +710,7 @@ function addCategoryNamed(name) {
 
 function addProjectNamed(name) {
   if (!name || !name.trim()) return false;
-  state.projects.push({ id: 'proj-' + Date.now(), name: name.trim(), color: TAXONOMY_COLORS[state.projects.length % TAXONOMY_COLORS.length] });
+  state.projects.push({ id: 'proj-' + Date.now(), name: name.trim(), color: nextCategoryColor(state.projects) });
   saveData(state);
   render();
   return true;
@@ -754,7 +778,7 @@ function renderTaxonomyManager(target) {
   if (!wrap) return;
   const row = (item, kind, count) => `
     <div class="tax-row">
-      <span class="tax-dot" style="background:${item.color}"></span>
+      <span class="tax-dot" style="background:${taxColor(item)}"></span>
       <span class="tax-name">${esc(item.name)}</span>
       <span class="tax-count">${count}</span>
       <button class="tax-btn" data-tax-edit="${kind}" data-id="${item.id}" title="Rename">✎</button>

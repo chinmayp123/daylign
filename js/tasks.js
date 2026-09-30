@@ -95,8 +95,8 @@ function renderTaskRow(t, today) {
       <div class="task-row-info">
         <div class="task-row-name ${t.status === 'done' ? 'completed' : ''}">${esc(t.name)}</div>
         <div class="task-row-meta">
-          ${cat ? `<span class="task-row-category"><span class="category-dot" style="background:${cat.color}"></span>${cat.name}</span>` : ''}
-          ${proj ? `<span class="task-row-project" style="color:${proj.color}">${proj.name}</span>` : ''}
+          ${cat ? `<span class="task-row-category"><span class="category-dot" style="background:${taxColor(cat)}"></span>${cat.name}</span>` : ''}
+          ${proj ? `<span class="task-row-project" style="color:${taxColor(proj)}">${proj.name}</span>` : ''}
           ${t.dueDate ? `<span class="task-due ${isOverdue ? 'overdue' : ''}">${isOverdue ? 'Overdue: ' : ''}${formatDate(t.dueDate)}</span>` : ''}
           ${subtaskInfo ? `<span>Subtasks: ${subtaskInfo}</span>` : ''}
           ${createdStr ? `<span class="task-created">Created ${createdStr}</span>` : ''}

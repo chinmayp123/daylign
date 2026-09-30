@@ -137,7 +137,7 @@ function renderCalendarWeek() {
                 <span class="week-task-time">${hour12}${ampm}</span>
                 <div class="week-task-info">
                   <div class="week-task-name priority-border-${t.priority}">${esc(t.name)}</div>
-                  ${cat ? `<span class="week-task-cat" style="color:${cat.color}"><span class="category-dot" style="background:${cat.color}"></span>${cat.name}</span>` : ''}
+                  ${cat ? `<span class="week-task-cat" style="color:${taxColor(cat)}"><span class="category-dot" style="background:${taxColor(cat)}"></span>${cat.name}</span>` : ''}
                 </div>
               </div>`;
           }).join('')}
@@ -147,7 +147,7 @@ function renderCalendarWeek() {
               <div class="week-task" data-id="${t.id}">
                 <div class="week-task-info">
                   <div class="week-task-name priority-border-${t.priority}">${esc(t.name)}</div>
-                  ${cat ? `<span class="week-task-cat" style="color:${cat.color}"><span class="category-dot" style="background:${cat.color}"></span>${cat.name}</span>` : ''}
+                  ${cat ? `<span class="week-task-cat" style="color:${taxColor(cat)}"><span class="category-dot" style="background:${taxColor(cat)}"></span>${cat.name}</span>` : ''}
                 </div>
               </div>`;
           }).join('')}
