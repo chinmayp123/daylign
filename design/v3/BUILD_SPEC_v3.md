@@ -26,7 +26,7 @@ its new home and every `removed` row is gone. §13 says how to check.
 ## 0. Ground rules (from the repo, restated because they bite)
 
 - [ ] Work on a branch (`v3-day-line`), in PR-sized phases (§1). **Never push to
-      `main`**; it auto-deploys to the live app. The co-builder reviews before merge.
+      `main`**; it auto-deploys to the live app. The owner reviews and approves every push.
 - [ ] No framework, no bundler, no modules. A new JS file needs a `<script>` in
       `index.html`, an entry in `sw.js` `ASSETS`, and usually a call in `render()`
       in `js/app.js`.
@@ -109,7 +109,7 @@ and put these values in its light and dark blocks.
 
 ### 2.4 Base components (build once in `style.css`, reuse everywhere)
 
-- [ ] `.dl-chip` (tinted: `color: var(--c)`, background = `--c` at 14%).
+- [ ] `.dl-chip` (tinted: background = `--c` at 14%; text = `--c-ink`). Night's `--c-ink` is `--c` itself. Day's is `--c` mixed with `--text-primary`, tuned per colour (sleep 16%, meet 24%, water 32%, move 37%, food 39%, habit 39%), because the vivid hue on its own tint measures only 2.46-4.02:1 by day. Measured after: 4.58-4.69:1 Day, 4.91-8.46:1 Night. Dots, bars and fills keep the vivid `--c` - they are not text.
 - [ ] `.dl-seg` segmented control (selected = ink background, page-colour text), full-width variant.
 - [ ] `.dl-sheet` bottom sheet: dimmed backdrop, 24px top radius, grab handle, closes on backdrop tap, Esc and swipe down. On desktop it becomes a centred panel max 520px wide.
 - [ ] `.dl-card` and `.dl-card.tint` (surface mixed with `--c` at 9 to 10%, border at 40%).
@@ -289,4 +289,4 @@ Header on every sub-tab: `This week: N sessions`, title, and a weight pill (slee
 - [ ] Every `added` row: works (priority, category colours, install prompt, sync conflict notice, replay setup, stale copy fixed, dead renders gone, wide flag gone).
 - [ ] No console errors on any view; offline reload works (service worker `ASSETS` complete, `CACHE` bumped).
 - [ ] Screens match the mockup: fonts, one accent, category colours, the line on Today, Calendar and Diet, pinned now block.
-- [ ] Nothing pushed to `main`. PRs opened per phase for the co-builder to review.
+- [ ] Nothing pushed to `main`. The owner reviews and approves every push.

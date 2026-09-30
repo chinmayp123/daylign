@@ -43,6 +43,17 @@
   --c-meet: #ff6b9d;    /* meetings, events, default work */
   --c-habit: #f2bd2c;   /* habits, home */
 
+  /* Chip text. On a 14% tint of its own colour the vivid hue is fine at night
+     but not by day, so Day darkens it per colour (see the light block). Night
+     is the colour itself. --c-none is the no-category chip. */
+  --c-sleep-ink: var(--c-sleep);
+  --c-food-ink:  var(--c-food);
+  --c-water-ink: var(--c-water);
+  --c-move-ink:  var(--c-move);
+  --c-meet-ink:  var(--c-meet);
+  --c-habit-ink: var(--c-habit);
+  --c-none-ink:  var(--text-muted);
+
   /* The old status colours alias the category ones, so every existing use
      picks up the new palette. */
   --green: var(--c-move);
@@ -5687,6 +5698,21 @@ html[data-theme="light"] {
   --c-move: #15a34a;
   --c-meet: #d9366e;
   --c-habit: #c48a00;
+
+  /* Tinted chip text failed AA in Day for every category (2.46-4.02:1 on its
+     own 14% tint) - the vivid hues are too light on a near-white surface.
+     Each is mixed with --text-primary by the smallest amount that clears
+     4.5:1 over BOTH Day surfaces (--bg-card is the lighter, so it is the
+     worst case): measured 4.62-4.70:1 on page, 5.00-5.11:1 on card. Derived
+     with color-mix so the ink follows if a colour is ever retuned. The dot,
+     bar and fill keep the vivid colour - they are not text. */
+  --c-sleep-ink: color-mix(in srgb, var(--text-primary) 16%, var(--c-sleep));
+  --c-food-ink:  color-mix(in srgb, var(--text-primary) 39%, var(--c-food));
+  --c-water-ink: color-mix(in srgb, var(--text-primary) 32%, var(--c-water));
+  --c-move-ink:  color-mix(in srgb, var(--text-primary) 37%, var(--c-move));
+  --c-meet-ink:  color-mix(in srgb, var(--text-primary) 24%, var(--c-meet));
+  --c-habit-ink: color-mix(in srgb, var(--text-primary) 39%, var(--c-habit));
+  --c-none-ink:  color-mix(in srgb, var(--text-primary) 15%, var(--text-muted));
   --red: #c2410c;
   --shadow: 0 8px 32px rgba(20, 24, 20, 0.10);
   color-scheme: light;
@@ -11613,13 +11639,14 @@ body.logbar-open .voice-fab {
 /* ---- Chip: tinted label ---- */
 .dl-chip {
   --c: var(--text-muted);
+  --c-ink: var(--c-none-ink);
   display: inline-flex;
   align-items: center;
   gap: 4px;
   font: 600 11px/1.3 var(--font-body);
   padding: 2px 7px;
   border-radius: var(--radius-chip);
-  color: var(--c);
+  color: var(--c-ink, var(--c));
   background: color-mix(in srgb, var(--c) 14%, transparent);
   white-space: nowrap;
 }
@@ -11912,9 +11939,9 @@ html.pref-reduce-motion .dl-btn:active { transform: none; }
 /* ---- Category colour helpers ----
    Last on purpose: same specificity as the component defaults above, so they
    must come after them to win (.dl-chip.c-food is food, not muted). */
-.c-sleep { --c: var(--c-sleep); }
-.c-food  { --c: var(--c-food); }
-.c-water { --c: var(--c-water); }
-.c-move  { --c: var(--c-move); }
-.c-meet  { --c: var(--c-meet); }
-.c-habit { --c: var(--c-habit); }
+.c-sleep { --c: var(--c-sleep); --c-ink: var(--c-sleep-ink); }
+.c-food  { --c: var(--c-food); --c-ink: var(--c-food-ink); }
+.c-water { --c: var(--c-water); --c-ink: var(--c-water-ink); }
+.c-move  { --c: var(--c-move); --c-ink: var(--c-move-ink); }
+.c-meet  { --c: var(--c-meet); --c-ink: var(--c-meet-ink); }
+.c-habit { --c: var(--c-habit); --c-ink: var(--c-habit-ink); }
