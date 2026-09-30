@@ -30,6 +30,7 @@ const ASSETS = [
   'js/utils.js',
   'js/state.js',
   'js/modal.js',
+  'js/task-sheet.js',
   'js/dashboard.js',
   'js/now-block.js',
   'js/line.js',

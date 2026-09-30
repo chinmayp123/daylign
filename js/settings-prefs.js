@@ -67,6 +67,7 @@ const PREF_DEFAULTS = {
   haptics: true,       // tactile feedback where the platform allows it
   accentV3: true,      // accent key is already a v3 key (see migrateAccentPref)
   widgetsV3: true,     // widget keys are already v3 keys (see migratePrefsV3)
+  tasksMode: 'list',   // Tasks: List or Board. Per device — it describes this screen, not the data.
 };
 
 function readPrefs() {

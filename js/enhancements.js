@@ -112,67 +112,9 @@
   // it), so the two sat on screen contradicting each other - 73g against
   // 85g for the same week - and its chips repeated the health strip.
 
-  // ---------- Mobile calendar agenda ----------
-  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const PRIO_COLOR = { high: 'var(--red)', medium: 'var(--yellow)', low: 'var(--blue)' };
-  function buildAgenda() {
-    const host = $('#calAgenda');
-    if (!host || typeof calendarDate === 'undefined' || typeof state === 'undefined') return;
-    const year = calendarDate.getFullYear(), month = calendarDate.getMonth();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const today = (typeof getTodayStr === 'function') ? getTodayStr() : '';
-    const holidays = (typeof getUSHolidays === 'function') ? getUSHolidays(year) : [];
-    const esc2 = (typeof esc === 'function') ? esc : (x => x);
-
-    const groups = [];
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const tasks = (state.tasks || []).filter(t => t.dueDate === dateStr && t.status !== 'done');
-      const events = (state.events || []).filter(e => e.date === dateStr);
-      const holiday = holidays.find(h => h.date === dateStr);
-      if (!tasks.length && !events.length && !holiday) continue;
-      groups.push({ dateStr, d, tasks, events, holiday });
-    }
-
-    if (!groups.length) {
-      host.innerHTML = `<div class="agenda-empty">Nothing scheduled in ${MONTHS[month]} — double-tap a day in month view to add an event.</div>`;
-      return;
-    }
-
-    host.innerHTML = groups.map(g => {
-      const dObj = new Date(g.dateStr + 'T00:00:00');
-      const isToday = g.dateStr === today;
-      const isPast = g.dateStr < today;
-      const dow = isToday ? 'Today' : dObj.toLocaleDateString('en-US', { weekday: 'short' });
-      const dateLbl = dObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      const evRows = g.events
-        .slice().sort((a, b) => (a.time || '').localeCompare(b.time || ''))
-        .map(e => `<div class="agenda-row" data-event-id="${e.id}" style="border-left-color:${e.color || 'var(--accent)'}">
-            <span class="agenda-row-name">${esc2(e.name)}</span>
-            ${e.time ? `<span class="agenda-row-sub">${e.time}</span>` : ''}
-          </div>`).join('');
-      const taskRows = g.tasks.map(t => `<div class="agenda-row" data-id="${t.id}" style="border-left-color:${PRIO_COLOR[t.priority] || 'var(--accent)'}">
-            <span class="agenda-row-name">${esc2(t.name)}</span>
-            <span class="agenda-row-sub agenda-due">due</span>
-          </div>`).join('');
-      const holRow = g.holiday ? `<div class="agenda-row agenda-holiday" style="border-left-color:var(--purple)">
-            <span class="agenda-row-name">${esc2(g.holiday.name)}</span></div>` : '';
-      return `<div class="agenda-day${isToday ? ' today' : ''}${isPast ? ' past' : ''}">
-          <div class="agenda-day-head"><span class="agenda-dow">${dow}</span><span class="agenda-date">${dateLbl}</span></div>
-          <div class="agenda-rows">${holRow}${evRows}${taskRows}</div>
-        </div>`;
-    }).join('');
-
-    $$('.agenda-row[data-id]', host).forEach(el => {
-      el.addEventListener('click', () => { if (typeof openModal === 'function') openModal(el.dataset.id); });
-    });
-    $$('.agenda-row[data-event-id]', host).forEach(el => {
-      el.addEventListener('click', () => {
-        const ev = (state.events || []).find(e => e.id === el.dataset.eventId);
-        if (ev && typeof openEventModal === 'function') openEventModal(ev.date, ev);
-      });
-    });
-  }
+  // The phone calendar agenda moved to js/calendar.js (renderCalAgenda): it
+  // belongs to the week view now, not the whole month, and it is the calendar's
+  // own renderer rather than something bolted onto renderCalendar from here.
 
   // ---------- Serving stepper (Diet log) ----------
   function updateAddLabel() {
@@ -326,11 +268,6 @@
       else { const i = document.getElementById('searchInput'); if (i) i.focus(); }
     });
 
-    // List / Board are two faces of Tasks now, not two nav destinations.
-    $$('[data-tasks-mode]').forEach(b => b.addEventListener('click', () => {
-      if (typeof switchView === 'function') switchView(b.dataset.tasksMode);
-    }));
-
     $$('.bms-btn').forEach(b => b.addEventListener('click', () => setBoardCol(b.dataset.col)));
     setBoardCol('todo');
     updateBoardCounts();
@@ -348,9 +285,7 @@
     setupServingStepper();
 
     // Hook renders and paint our extras once for the initial view.
-    wrap('renderCalendar', buildAgenda);
     wrap('renderDiet', function () { setupServingStepper(); updateAddLabel(); });
-    buildAgenda();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);

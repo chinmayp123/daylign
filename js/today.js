@@ -221,13 +221,7 @@ function bindTodaySurfaces() {
     const clock = e.target.closest('[data-tray-clock]');
     if (clock) {
       e.stopPropagation();
-      if (typeof openModal === 'function') openModal(clock.dataset.trayClock, null, 'edit');
-      // openModal() focuses the name field on a 100ms timer; focusing the time
-      // field any sooner just hands the focus straight back to it.
-      setTimeout(() => {
-        const field = document.getElementById('taskScheduledHour');
-        if (field) field.focus();
-      }, 140);
+      if (typeof openTaskSheet === 'function') openTaskSheet(clock.dataset.trayClock, { focus: 'time' });
       return;
     }
 
@@ -279,6 +273,9 @@ function bindTodaySurfaces() {
       // next hour is the only honest guess.
       const hour = m ? Number(m[1]) : Math.min(23, new Date().getHours() + 1);
       task.scheduledHour = Math.max(0, Math.min(23, hour));
+      // `time` is what the task sheet edits; scheduledHour is derived from it
+      // there, so both are written here to keep the two in step.
+      task.time = String(task.scheduledHour).padStart(2, '0') + ':00';
       task.dueDate = task.dueDate || getTodayStr();
       saveData(state);
       if (typeof showToast === 'function') showToast('Scheduled for ' + task.scheduledHour + ':00');
@@ -301,7 +298,12 @@ function bindTodaySurfaces() {
     }
     if (e.target.closest('[data-triage-all]')) {
       if (typeof closeDlSheet === 'function') closeDlSheet(document.getElementById('triageSheet'));
+      // Tasks groups by when, so "filtered to No date" is the No date group of
+      // the list: make sure it is the list showing, then bring that group up.
+      if (typeof setTasksMode === 'function') setTasksMode('list', true);
       if (typeof switchView === 'function') switchView('tasks');
+      const group = document.querySelector('[data-tk-group="none"]');
+      if (group) group.scrollIntoView({ block: 'start' });
     }
   });
 }

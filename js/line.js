@@ -155,17 +155,22 @@ function lineItemsFor(dateStr) {
   (state.events || []).filter(e => e.date === dateStr).forEach(ev => {
     const m = String(ev.time || '').match(/(\d{1,2}):(\d{2})/);
     const min = m ? Number(m[1]) * 60 + Number(m[2]) : 9 * 60;
-    push({ sort: min, time: lineClock(min), c: 'meet', icon: 'event',
-           title: ev.name || 'Event', sub: ev.location || '', val: '',
-           past: isToday && min <= lineMinutesNow(), tap: 'calendar' });
+    // Value column is the duration (spec 4.3), when the event has an end.
+    const e2 = String(ev.endTime || '').match(/(\d{1,2}):(\d{2})/);
+    const len = (m && e2) ? (Number(e2[1]) * 60 + Number(e2[2])) - min : 0;
+    const dur = len > 0 ? (len >= 60 ? Math.round(len / 6) / 10 + 'h' : len + 'm') : '';
+    const key = (typeof CATEGORY_COLOR_KEYS !== 'undefined' && CATEGORY_COLOR_KEYS.indexOf(ev.color) !== -1) ? ev.color : 'meet';
+    push({ sort: min, time: lineClock(min), c: key, icon: 'event',
+           title: ev.name || 'Event', sub: ev.location || '', val: dur,
+           past: isToday && min <= lineMinutesNow(), tap: 'event:' + ev.id });
   });
   if (typeof getExternalCalendar === 'function') {
-    getExternalCalendar(dateStr).forEach(ev => {
+    getExternalCalendar(dateStr).forEach((ev, gi) => {
       const m = String(ev.start || '').match(/(\d{1,2}):(\d{2})/);
       const min = m ? Number(m[1]) * 60 + Number(m[2]) : 9 * 60;
       push({ sort: min, time: lineClock(min), c: 'meet', icon: 'groups',
              title: ev.title, sub: ev.location || 'from your calendar', val: '',
-             past: isToday && min <= lineMinutesNow(), tap: 'calendar' });
+             past: isToday && min <= lineMinutesNow(), tap: 'gcal:' + dateStr + ':' + gi });
     });
   }
 
@@ -188,12 +193,21 @@ function lineItemsFor(dateStr) {
   return items.sort((a, b) => a.sort - b.sort);
 }
 
-function renderLine(dateStr) {
-  const host = document.getElementById('dayLine');
+// hostId lets Calendar render the selected day's spine into its own container
+// with the same code Today uses — the line is one component, not two.
+function renderLine(dateStr, hostId, opts) {
+  const host = document.getElementById(hostId || 'dayLine');
   if (!host) return;
   const date = dateStr || (typeof dietViewDate !== 'undefined' && dietViewDate) || getTodayStr();
   const isToday = date === getTodayStr();
-  const items = lineItemsFor(date);
+  // Today's line owns the day stepper, the swipe and the tray's anchor. Any
+  // other host (Calendar's #calDayLine) is a plain read of one day.
+  const isMain = host.id === 'dayLine';
+  let items = lineItemsFor(date);
+  // `logged`: drop the unfilled placeholders (a meal with nothing in it, a
+  // habit not ticked). Today wants them — they are the prompt to log. Calendar
+  // does not: on some other day they are seven rows saying nothing happened.
+  if (opts && opts.logged) items = items.filter(it => it.past || it.val || it.action);
 
   if (!items.length) { host.innerHTML = ''; host.hidden = true; return; }
   host.hidden = false;
@@ -213,7 +227,7 @@ function renderLine(dateStr) {
   let markerPlaced = !isToday;
   items.forEach(it => {
     if (!markerPlaced && it.sort > now) {
-      html += `<div class="dl-now" id="dlNowMarker"><span>now ${lineClock(now)}</span></div>`;
+      html += `<div class="dl-now"${isMain ? ' id="dlNowMarker"' : ''}><span>now ${lineClock(now)}</span></div>`;
       markerPlaced = true;
     }
     const past = it.past || (isToday && it.sort <= now && it.val);
@@ -225,12 +239,12 @@ function renderLine(dateStr) {
       <span class="val">${it.action || esc(it.val || '')}</span>
     </div>`;
   });
-  if (!markerPlaced) html += `<div class="dl-now" id="dlNowMarker"><span>now ${lineClock(now)}</span></div>`;
+  if (!markerPlaced) html += `<div class="dl-now"${isMain ? ' id="dlNowMarker"' : ''}><span>now ${lineClock(now)}</span></div>`;
 
   // Day stepper. Always there on desktop; on a phone you swipe the line, so it
   // only appears once you are off today - as the label for which day this is
-  // and the way back.
-  const dayNav = `<div class="dl-line-day${isToday ? '' : ' is-away'}">
+  // and the way back. Today's line only: Calendar picks its day from the grid.
+  const dayNav = !isMain ? '' : `<div class="dl-line-day${isToday ? '' : ' is-away'}">
     <button type="button" class="dl-line-day-btn" data-line-day="-1" aria-label="Previous day"><span class="ms">chevron_left</span></button>
     <b>${isToday ? 'Today' : esc(lineDayLabel(date))}</b>
     <button type="button" class="dl-line-day-btn" data-line-day="1" aria-label="Next day"><span class="ms">chevron_right</span></button>
@@ -238,20 +252,24 @@ function renderLine(dateStr) {
   </div>`;
 
   host.innerHTML = dayNav + `<div class="dl-line" style="--cut:${Math.round(cut)}%">${html}</div>`;
-  bindLine();
+  bindLine(host);
 }
 
-let lineBound = false;
-function bindLine() {
-  const host = document.getElementById('dayLine');
-  if (!host || lineBound) return;   // persistent container: bind once
-  lineBound = true;
+// Each host is a persistent container whose innerHTML is rewritten every
+// render, so the delegated handler is bound to the HOST once — a flag on the
+// element rather than one shared boolean, because there is more than one host
+// now (Today's #dayLine and Calendar's #calDayLine).
+function bindLine(hostArg) {
+  const host = hostArg || document.getElementById('dayLine');
+  if (!host || host.dataset.lineBound === '1') return;
+  host.dataset.lineBound = '1';
 
   // Swipe the line sideways to change day. Horizontal has to clearly win over
   // vertical, or every slightly diagonal scroll would turn the page.
   let sx = 0, sy = 0, st = 0;
+  const swipes = host.id === 'dayLine';
   host.addEventListener('touchstart', (e) => {
-    if (e.touches.length !== 1) { st = 0; return; }
+    if (!swipes || e.touches.length !== 1) { st = 0; return; }
     sx = e.touches[0].clientX; sy = e.touches[0].clientY; st = Date.now();
   }, { passive: true });
   host.addEventListener('touchend', (e) => {
@@ -288,12 +306,18 @@ function bindLine() {
     else if (tap === 'water' || tap.startsWith('meal:')) switchView('diet');
     else if (tap === 'training') switchView('training');
     else if (tap === 'calendar') switchView('calendar');
+    else if (tap.startsWith('event:') && typeof openEventModal === 'function') {
+      const ev = (state.events || []).find(x => x.id === tap.slice(6));
+      if (ev) openEventModal(ev.date, ev);
+    }
+    else if (tap.startsWith('gcal:') && typeof openEventModal === 'function' && typeof getExternalCalendar === 'function') {
+      // Mirrored from Google Calendar: opens read only.
+      const parts = tap.split(':');
+      const g = getExternalCalendar(parts[1])[Number(parts[2])];
+      if (g) openEventModal(parts[1], { name: g.title, date: parts[1], time: g.start || '', description: g.location || '', external: true });
+    }
     else if (tap.startsWith('task:')) {
-      // openTaskView arrives with the task sheet (phase 4); until then the
-      // task form is the only thing that can open a task, and a row that does
-      // nothing when tapped is worse than the old form.
       if (typeof openTaskView === 'function') openTaskView(tap.slice(5));
-      else if (typeof openModal === 'function') openModal(tap.slice(5));
     }
   });
 }

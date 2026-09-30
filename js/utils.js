@@ -411,12 +411,45 @@ function hasIllegalKeyChars(name) {
 // once, on first open, and delegate — sheets rendered later need no binding.
 let dlSheetBound = false;
 
+// Two spellings of the same component are in the markup: .dl-sheet-wrap (the
+// spec's name, used by the task and event sheets) and .dl-sheet-overlay (the
+// avatar sheet, phase 2). Both are matched so Esc and a backdrop tap work on
+// either, and style.css aliases their appearance.
+const DL_SHEET_WRAP = '.dl-sheet-wrap, .dl-sheet-overlay';
+const DL_SHEET_OPEN = '.dl-sheet-wrap.open, .dl-sheet-overlay.open';
+
 function openDlSheet(wrap) {
   if (!wrap) return;
   bindDlSheets();
   wrap.classList.add('open');
   const sheet = wrap.querySelector('.dl-sheet');
   if (sheet) { sheet.style.removeProperty('--drag'); sheet.focus({ preventScroll: true }); }
+  // A sheet marked data-guard is a form. Remember what it held when it opened,
+  // so a stray tap on the backdrop cannot throw away what was typed since.
+  wrap._snap = wrap.hasAttribute('data-guard') ? dlSheetSnapshot(wrap) : null;
+}
+
+// Everything a person can change in a form sheet, as one comparable string.
+function dlSheetSnapshot(wrap) {
+  const fields = Array.from(wrap.querySelectorAll('input, select, textarea'))
+    .map(el => (el.type === 'checkbox' ? String(el.checked) : el.value));
+  const pressed = Array.from(wrap.querySelectorAll('[aria-pressed="true"]'))
+    .map(el => el.dataset.v || el.dataset.color || '');
+  return JSON.stringify([fields, pressed]);
+}
+
+// The three ways of closing a sheet WITHOUT choosing to: backdrop tap, Esc and
+// a downward swipe. The task modal this replaced asked before discarding a
+// half-written task, because on a phone the backdrop is very easy to hit by
+// accident. Same protection, no dialog: an edited form stays open and says why.
+// Cancel, Save and Delete call closeDlSheet() directly and always close.
+function dismissDlSheet(wrap) {
+  if (!wrap) return;
+  if (wrap._snap && dlSheetSnapshot(wrap) !== wrap._snap) {
+    if (typeof showToast === 'function') showToast('Not saved yet — Save it, or Cancel to discard');
+    return;
+  }
+  closeDlSheet(wrap);
 }
 
 function closeDlSheet(wrap) {
@@ -430,20 +463,20 @@ function bindDlSheets() {
   dlSheetBound = true;
 
   document.addEventListener('click', (e) => {
-    const wrap = e.target.closest && e.target.closest('.dl-sheet-wrap.open');
-    if (wrap && e.target === wrap) closeDlSheet(wrap);
+    const wrap = e.target.closest && e.target.closest(DL_SHEET_OPEN);
+    if (wrap && e.target === wrap) dismissDlSheet(wrap);
   });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    const open = document.querySelectorAll('.dl-sheet-wrap.open');
-    if (open.length) closeDlSheet(open[open.length - 1]);
+    const open = document.querySelectorAll(DL_SHEET_OPEN);
+    if (open.length) dismissDlSheet(open[open.length - 1]);
   });
 
   // Swipe down: only when the sheet is scrolled to the top, so a drag inside a
   // long sheet still scrolls it.
   let drag = null;
   document.addEventListener('touchstart', (e) => {
-    const sheet = e.target.closest && e.target.closest('.dl-sheet-wrap.open .dl-sheet');
+    const sheet = e.target.closest && e.target.closest('.dl-sheet-wrap.open .dl-sheet, .dl-sheet-overlay.open .dl-sheet');
     if (!sheet || sheet.scrollTop > 0) return;
     drag = { sheet, y0: e.touches[0].clientY, dy: 0 };
   }, { passive: true });
@@ -459,6 +492,6 @@ function bindDlSheets() {
     drag = null;
     sheet.classList.remove('dragging');
     sheet.style.removeProperty('--drag');
-    if (dy > 90) closeDlSheet(sheet.closest('.dl-sheet-wrap'));
+    if (dy > 90) dismissDlSheet(sheet.closest(DL_SHEET_WRAP));
   });
 }

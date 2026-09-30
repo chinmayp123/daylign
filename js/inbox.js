@@ -105,8 +105,8 @@ function renderInbox() {
             ${r.shots.map((s, i) => `<img class="inbox-shot" src="${esc(s)}" alt="screenshot ${i + 1}" data-shot="${esc(r.id)}:${i}">`).join('')}
           </div>` : ''}
         <div class="inbox-actions">
-          <button type="button" class="btn-secondary inbox-dismiss" data-dismiss="${esc(r.id)}">Dismiss</button>
-          <button type="button" class="btn-primary inbox-accept" data-accept="${esc(r.id)}">Add to board</button>
+          <button type="button" class="dl-btn inbox-dismiss" data-dismiss="${esc(r.id)}">Dismiss</button>
+          <button type="button" class="dl-btn primary inbox-accept" data-accept="${esc(r.id)}">Make it a task</button>
         </div>
       </div>`).join('')}
     ${inboxReports.some(r => r.status === 'accepted')

@@ -206,122 +206,104 @@
       </div>
 
       <!-- Tasks View -->
+      <!-- Tasks (spec 5): ONE view. List and Board are two faces of it, on the
+           phase-1 segmented control, and the choice is remembered per device in
+           daylign_prefs.tasksMode. Board left the nav; its markup lives here. -->
       <div class="view" id="tasksView">
-        <!-- Board left the nav (spec 3): it is a view inside Tasks. Without a
-             route here it would be unreachable, so the list and the board are
-             two faces of Tasks, on the phase-1 segmented control. -->
         <div class="tasks-modeswitch">
           <div class="dl-seg" role="tablist" aria-label="Tasks view">
-            <button type="button" class="dl-seg-btn active" data-tasks-mode="tasks" role="tab" aria-selected="true">List</button>
+            <button type="button" class="dl-seg-btn" data-tasks-mode="list" role="tab" aria-selected="true">List</button>
             <button type="button" class="dl-seg-btn" data-tasks-mode="board" role="tab" aria-selected="false">Board</button>
           </div>
         </div>
-        <div class="tasks-toolbar">
-          <div class="filter-group">
-            <select id="filterStatus">
-              <option value="all">All Status</option>
-              <option value="todo">To Do</option>
-              <option value="in-progress">In Progress</option>
-              <option value="done">Done</option>
-              <option value="archived">Archived</option>
-            </select>
-            <select id="filterCategory">
-              <option value="all">All Categories</option>
-            </select>
+
+        <div class="tasks-pane" id="tasksListPane">
+          <div class="tk-filters" id="tkFilters"></div>
+          <div class="tk-projects" id="tkProjects"></div>
+          <div class="tasks-list" id="tasksList"></div>
+          <div class="tasks-archived-section" id="tasksArchivedSection"></div>
+        </div>
+
+        <div class="tasks-pane" id="tasksBoardPane" hidden>
+          <!-- Reports filed by testers through report.html. Sits above the board
+               because an unread report is the one thing here that needs a
+               decision; it hides itself entirely when the inbox is empty. -->
+          <div class="inbox-panel" id="inboxPanel" hidden></div>
+          <div class="board-mobile-switch" id="boardMobileSwitch">
+            <button class="bms-btn active" data-col="todo" type="button">To do <span class="bms-count" id="bmsTodo">0</span></button>
+            <button class="bms-btn" data-col="in-progress" type="button">Doing <span class="bms-count" id="bmsProgress">0</span></button>
+            <button class="bms-btn" data-col="done" type="button">Done <span class="bms-count" id="bmsDone">0</span></button>
           </div>
-          <div class="sort-group">
-            <select id="sortBy">
-              <option value="created">Date Created</option>
-              <option value="dueDate">Due Date</option>
-              <option value="name">Name</option>
-            </select>
+          <div class="board-filters" id="boardFilters"></div>
+          <div class="board" data-mobile-col="todo">
+            <div class="board-column" data-status="todo">
+              <div class="column-header">
+                <span class="column-dot todo"></span>
+                <h3>To do</h3>
+                <span class="column-count" id="boardTodoCount">0</span>
+              </div>
+              <div class="column-tasks" id="boardTodo"></div>
+            </div>
+            <div class="board-column" data-status="in-progress">
+              <div class="column-header">
+                <span class="column-dot in-progress"></span>
+                <h3>Doing</h3>
+                <span class="column-count" id="boardProgressCount">0</span>
+              </div>
+              <div class="column-tasks" id="boardProgress"></div>
+            </div>
+            <div class="board-column" data-status="done">
+              <div class="column-header">
+                <span class="column-dot done"></span>
+                <h3>Done</h3>
+                <span class="column-count" id="boardDoneCount">0</span>
+              </div>
+              <div class="column-tasks" id="boardDone"></div>
+            </div>
           </div>
         </div>
-        <div class="tasks-list" id="tasksList"></div>
-        <div class="tasks-archived-section" id="tasksArchivedSection"></div>
       </div>
 
-      <!-- Board View -->
-      <div class="view" id="boardView">
-        <div class="tasks-modeswitch">
-          <div class="dl-seg" role="tablist" aria-label="Tasks view">
-            <button type="button" class="dl-seg-btn" data-tasks-mode="tasks" role="tab" aria-selected="false">List</button>
-            <button type="button" class="dl-seg-btn active" data-tasks-mode="board" role="tab" aria-selected="true">Board</button>
-          </div>
-        </div>
-        <!-- Reports filed by testers through report.html. Sits above the board
-             because an unread report is the one thing here that needs a
-             decision; it hides itself entirely when the inbox is empty. -->
-        <div class="inbox-panel" id="inboxPanel" hidden></div>
-        <div class="board-filters" id="boardFilters"></div>
-        <div class="board-mobile-switch" id="boardMobileSwitch">
-          <button class="bms-btn active" data-col="todo" type="button">To Do <span class="bms-count" id="bmsTodo">0</span></button>
-          <button class="bms-btn" data-col="in-progress" type="button">Doing <span class="bms-count" id="bmsProgress">0</span></button>
-          <button class="bms-btn" data-col="done" type="button">Done <span class="bms-count" id="bmsDone">0</span></button>
-        </div>
-        <div class="board" data-mobile-col="todo">
-          <div class="board-column" data-status="todo">
-            <div class="column-header">
-              <span class="column-dot todo"></span>
-              <h3>To Do</h3>
-              <span class="column-count" id="boardTodoCount">0</span>
-            </div>
-            <div class="column-tasks" id="boardTodo"></div>
-          </div>
-          <div class="board-column" data-status="in-progress">
-            <div class="column-header">
-              <span class="column-dot in-progress"></span>
-              <h3>In Progress</h3>
-              <span class="column-count" id="boardProgressCount">0</span>
-            </div>
-            <div class="column-tasks" id="boardProgress"></div>
-          </div>
-          <div class="board-column" data-status="done">
-            <div class="column-header">
-              <span class="column-dot done"></span>
-              <h3>Done</h3>
-              <span class="column-count" id="boardDoneCount">0</span>
-            </div>
-            <div class="column-tasks" id="boardDone"></div>
-          </div>
-        </div>
-      </div>
 
       <!-- Calendar View -->
       <div class="view" id="calendarView">
-        <div class="calendar-header">
-          <button class="cal-nav" id="calPrev">&lt;</button>
-          <h2 id="calMonth"></h2>
-          <button class="cal-nav" id="calNext">&gt;</button>
-          <div class="cal-view-toggle">
-            <button class="cal-toggle-btn active" id="calMonthBtn">Month</button>
-            <button class="cal-toggle-btn" id="calWeekBtn">Week</button>
+        <div class="cal-head">
+          <div class="dl-seg cal-mode" role="tablist" aria-label="Calendar view">
+            <button type="button" id="calMonthBtn" role="tab" aria-selected="true">Month</button>
+            <button type="button" id="calWeekBtn" role="tab" aria-selected="false">Week</button>
           </div>
-          <!-- Creating an event used to require DOUBLE-CLICKING a day cell, a
-               gesture nothing hinted at and that touch has no equivalent for -
-               so on a phone there was no way to add an event at all. -->
-          <button class="cal-add-btn" id="calAddBtn" type="button">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            <span>Add event</span>
-          </button>
+          <div class="cal-nav-row">
+            <button class="cal-nav" id="calPrev" type="button" aria-label="Previous"><span class="ms" aria-hidden="true">chevron_left</span></button>
+            <h2 id="calMonth"></h2>
+            <button class="cal-nav" id="calNext" type="button" aria-label="Next"><span class="ms" aria-hidden="true">chevron_right</span></button>
+            <!-- Creating an event used to require DOUBLE-CLICKING a day cell, a
+                 gesture nothing hinted at and that touch has no equivalent for -
+                 so on a phone there was no way to add an event at all. -->
+            <button class="dl-btn cal-add-btn" id="calAddBtn" type="button"><span class="ms" aria-hidden="true">add</span><span>Add event</span></button>
+          </div>
         </div>
-        <!-- Month View -->
-        <div class="calendar-grid" id="calMonthView">
-          <div class="cal-day-name">Sun</div>
-          <div class="cal-day-name">Mon</div>
-          <div class="cal-day-name">Tue</div>
-          <div class="cal-day-name">Wed</div>
-          <div class="cal-day-name">Thu</div>
-          <div class="cal-day-name">Fri</div>
-          <div class="cal-day-name">Sat</div>
+        <!-- Month: the grid, then the selected day rendered as the SAME .dl-line
+             Today uses (js/line.js renderLine takes a date and a host). -->
+        <div class="cal-month" id="calMonthView">
+          <div class="cal-grid" id="calGrid"></div>
+          <div class="cal-day-panel" id="calDayPanel">
+            <div class="cal-day-panel-head">
+              <h3 id="calDayTitle"></h3>
+              <button class="dl-btn cal-day-add" id="calDayAdd" type="button"><span class="ms" aria-hidden="true">add</span><span>Event</span></button>
+            </div>
+            <div id="calDayLine"></div>
+            <div class="cal-day-empty" id="calDayEmpty" hidden>Nothing on this day yet.</div>
+          </div>
         </div>
-        <!-- Week View -->
-        <div class="calendar-week" id="calWeekView" style="display:none">
-          <div class="week-grid" id="weekGrid"></div>
+        <!-- Week. Desktop gets the hour grid and the "any time" strip; the phone
+             gets the agenda below, because seven columns of hours on a 390px
+             screen is unreadable. -->
+        <div class="calendar-week" id="calWeekView" hidden>
+          <div class="calw" id="calWeekGrid"></div>
         </div>
-        <!-- Agenda (phones — populated by js/enhancements.js) -->
-        <div class="calendar-agenda" id="calAgenda"></div>
+        <div class="calendar-agenda" id="calAgenda" hidden></div>
       </div>
+
 
       <!-- Gym View -->
       <!-- Training View: Gym + Cardio merged behind one nav item. The shared
@@ -1124,132 +1106,32 @@
     </div>
   </div>
 
-  <!-- Task Modal -->
-  <div class="modal-overlay" id="taskModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-    <div class="modal">
-      <div class="modal-header">
-        <div class="modal-header-left">
-          <div class="modal-icon" id="modalIcon">
-            <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          </div>
-          <div>
-            <h2 id="modalTitle">New Task</h2>
-            <p class="modal-subtitle" id="modalSubtitle">Fill in the details below</p>
-          </div>
-        </div>
-        <button class="modal-close" id="modalClose" aria-label="Close">
-          <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
+  <!-- Task sheet (spec 5). Replaces #taskModal: one sheet for every entry
+       point, with a time-on-your-day + length pair that schedules the task onto
+       the line, and a priority picker the old modal never had. Its body is
+       built by js/task-sheet.js on every open. -->
+  <div class="dl-sheet-wrap task-sheet-wrap" id="taskSheet" data-guard role="dialog" aria-modal="true" aria-labelledby="taskSheetTitle">
+    <div class="dl-sheet task-sheet" tabindex="-1">
+      <div class="dl-grab"></div>
+      <div class="ts-head">
+        <h4 id="taskSheetTitle">New task</h4>
+        <button type="button" class="ts-x" id="taskSheetClose" aria-label="Close"><span class="ms" aria-hidden="true">close</span></button>
       </div>
-      <!-- Read-first pane. Clicking a task lands here; Edit swaps in the form
-           below. Built because the description was only ever readable through a
-           three-line textarea with its own scrollbar. -->
-      <div class="task-view" id="taskView" hidden></div>
+      <div class="ts-body"></div>
+    </div>
+  </div>
 
-      <form id="taskForm">
-        <input type="hidden" id="taskId">
 
-        <!-- Task Name - full width prominent field -->
-        <div class="form-group form-group-name">
-          <input type="text" id="taskName" required placeholder="What needs to be done?">
-          <!-- Offers a title built from the description. See suggestTitleFromDescription. -->
-          <div class="task-title-suggest" id="taskTitleSuggest" hidden></div>
-        </div>
-
-        <!-- Details sits directly under the header: it is the part you set on
-             every task, and it was pushing the description down the page. Status
-             and Project each had a whole row to themselves; paired up now. -->
-        <div class="form-section form-section-details">
-          <div class="form-row">
-            <div class="form-group">
-              <label>Status</label>
-              <select id="taskStatus">
-                <option value="todo">To Do</option>
-                <option value="in-progress">In Progress</option>
-                <option value="done">Done</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Category</label>
-              <select id="taskCategory"></select>
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Due Date</label>
-              <input type="date" id="taskDueDate">
-            </div>
-            <div class="form-group form-row-project" id="projectRow" style="display:none">
-              <label>Project</label>
-              <select id="taskProject"><option value="">No Project</option></select>
-            </div>
-          </div>
-        </div>
-        <!-- Description -->
-        <div class="form-group">
-          <label>
-            <svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg>
-            Description
-          </label>
-          <textarea id="taskDesc" rows="7" placeholder="Add more details about this task..."></textarea>
-        </div>
-
-        <!-- Section: Schedule -->
-        <div class="form-section">
-          <div class="form-section-title">
-            <svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
-            Schedule
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Scheduled Time</label>
-              <select id="taskScheduledHour">
-                <option value="">Not scheduled</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Duration</label>
-              <select id="taskDuration">
-                <option value="0.5">30 min</option>
-                <option value="1" selected>1 hour</option>
-                <option value="1.5">1.5 hours</option>
-                <option value="2">2 hours</option>
-                <option value="3">3 hours</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- Section: Subtasks -->
-        <div class="form-section">
-          <div class="form-section-title">
-            <svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-            Subtasks
-          </div>
-          <div id="subtasksList"></div>
-          <div class="subtask-add">
-            <input type="text" id="subtaskInput" placeholder="Add a subtask...">
-            <button type="button" id="addSubtaskBtn" aria-label="Add subtask">
-              <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            </button>
-          </div>
-        </div>
-
-        <!-- Actions -->
-        <div class="form-actions">
-          <button type="button" class="btn-danger" id="deleteBtn" aria-label="Delete task" style="display:none">
-            <svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-            Delete
-          </button>
-          <div class="form-actions-right">
-            <button type="button" class="btn-secondary" id="cancelBtn">Cancel</button>
-            <button type="submit" class="btn-primary">
-              <svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
-              Save Task
-            </button>
-          </div>
-        </div>
-      </form>
+  <!-- Event sheet (spec 6). Colour comes from the six category tokens, not the
+       ten arbitrary hexes the old modal offered. -->
+  <div class="dl-sheet-wrap event-sheet-wrap" id="eventSheet" data-guard role="dialog" aria-modal="true" aria-labelledby="eventSheetTitle">
+    <div class="dl-sheet event-sheet" tabindex="-1">
+      <div class="dl-grab"></div>
+      <div class="ts-head">
+        <h4 id="eventSheetTitle">New event</h4>
+        <button type="button" class="ts-x" id="eventSheetClose" aria-label="Close"><span class="ms" aria-hidden="true">close</span></button>
+      </div>
+      <div class="ev-body"></div>
     </div>
   </div>
 
@@ -1281,6 +1163,7 @@
   <script src="js/utils.js"></script>
   <script src="js/state.js"></script>
   <script src="js/modal.js"></script>
+  <script src="js/task-sheet.js"></script>
   <script src="js/dashboard.js"></script>
   <script src="js/now-block.js"></script>
   <script src="js/line.js"></script>

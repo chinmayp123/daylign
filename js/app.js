@@ -15,7 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
   bindSheetDrag();
   if (typeof bindSyncStatusUI === 'function') bindSyncStatusUI();
   if (typeof bindDiagnostics === 'function') bindDiagnostics();
-  if (typeof bindTaskCapture === 'function') bindTaskCapture();
   if (typeof startInboxWatch === 'function') startInboxWatch();
   const csvBtn = document.getElementById('csvImportBtn');
   if (csvBtn && typeof openCsvImport === 'function') csvBtn.addEventListener('click', openCsvImport);
@@ -125,50 +124,27 @@ function bindEvents() {
     if (typeof haptic === 'function') haptic('light');
     headerPrimaryAction();
   });
-  $('#modalClose').addEventListener('click', closeModal);
-  $('#cancelBtn').addEventListener('click', closeModal);
-  // Tapping the backdrop used to be a silent Cancel — on a phone, with a
-  // full-height form, that is very easy to do by accident and it threw away
-  // everything typed. An untouched form still closes freely; one with content
-  // in it asks first.
-  $('#taskModal').addEventListener('click', (e) => {
-    if (e.target !== $('#taskModal')) return;
-    if (taskFormIsDirty()) {
-      if (!confirm('Discard this task? What you have typed will be lost.')) return;
-    }
-    closeModal();
+  // The two v3 sheets: the header x. Backdrop taps, Esc and a downward swipe
+  // are handled once, for every .dl-sheet, by bindDlSheets() in js/utils.js.
+  [['taskSheetClose', closeTaskSheet], ['eventSheetClose', closeEventSheet]].forEach(([id, fn]) => {
+    const b = document.getElementById(id);
+    if (b) b.addEventListener('click', fn);
   });
 
-  // Form
-  $('#taskForm').addEventListener('submit', handleSaveTask);
-  $('#deleteBtn').addEventListener('click', handleDeleteTask);
+  // Tasks: List / Board, remembered per device. Bound here rather than in
+  // js/enhancements.js, which used to route them through switchView('board').
+  $$('[data-tasks-mode]').forEach(b => b.addEventListener('click', () => setTasksMode(b.dataset.tasksMode)));
 
-  // Category → show/hide project dropdown
-  $('#taskCategory').addEventListener('change', toggleProjectRow);
-
-  // Subtasks
-  $('#addSubtaskBtn').addEventListener('click', addSubtask);
-  $('#subtaskInput').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); addSubtask(); }
-  });
-
-  // Filters
-  $('#filterStatus').addEventListener('change', renderTasksView);
-  $('#filterCategory').addEventListener('change', renderTasksView);
-  $('#sortBy').addEventListener('change', renderTasksView);
-
-  // Search
+  // Search — one box, filtering the task list (spec 5). The phone reaches it
+  // through Ctrl K / the search icon.
   $('#searchInput').addEventListener('input', renderTasksView);
 
   // Calendar: a visible way to create an event. Defaults to the day you are
   // looking at (today when that month is on screen), so the date is usually
   // already right.
-  const calAdd = $('#calAddBtn');
-  if (calAdd) calAdd.addEventListener('click', () => {
-    const today = getTodayStr();
-    const viewing = new Date(calendarDate);
-    const sameMonth = toLocalDateStr(viewing).slice(0, 7) === today.slice(0, 7);
-    openEventModal(sameMonth ? today : toLocalDateStr(new Date(viewing.getFullYear(), viewing.getMonth(), 1)));
+  [['calAddBtn'], ['calDayAdd']].forEach(([id]) => {
+    const b = document.getElementById(id);
+    if (b) b.addEventListener('click', () => openEventModal(calSelectedDate()));
   });
 
   // Calendar nav
@@ -190,18 +166,8 @@ function bindEvents() {
   });
 
   // Calendar view toggle
-  $('#calMonthBtn').addEventListener('click', () => {
-    calViewMode = 'month';
-    $('#calMonthBtn').classList.add('active');
-    $('#calWeekBtn').classList.remove('active');
-    renderCalendar();
-  });
-  $('#calWeekBtn').addEventListener('click', () => {
-    calViewMode = 'week';
-    $('#calWeekBtn').classList.add('active');
-    $('#calMonthBtn').classList.remove('active');
-    renderCalendar();
-  });
+  $('#calMonthBtn').addEventListener('click', () => { calViewMode = 'month'; renderCalendar(); });
+  $('#calWeekBtn').addEventListener('click', () => { calViewMode = 'week'; renderCalendar(); });
 
   // Mini calendar nav (if present)
   if ($('#miniCalPrev')) {
@@ -295,7 +261,6 @@ function bindEvents() {
   // taxonomy and voice overlays dismissable by mouse alone.
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    closeModal();
     if (typeof closeGoalsModal === 'function') closeGoalsModal();
     if (typeof closeTaxonomyModal === 'function') closeTaxonomyModal();
     const voice = document.getElementById('voicePanel');
@@ -481,7 +446,7 @@ function updateHeaderActionBtn(view) {
 
 // Views that use the category/project sidebar sections. Everything else (the
 // fitness modules, settings) hides them — they only clutter those screens.
-const TASKMETA_VIEWS = ['today', 'tasks', 'board', 'calendar'];
+const TASKMETA_VIEWS = ['today', 'tasks', 'calendar'];
 
 function switchView(view) {
   // A running rest timer would otherwise keep ticking and fire its toast from
@@ -505,6 +470,9 @@ function switchView(view) {
   // would mean rewriting the selector strings js/layout.js builds its custom
   // dashboard-order stylesheet from - real breakage risk for no gain.
   if (view === 'dashboard') view = 'today';
+  // Board is a face of Tasks now (spec 5). Old saved views, the avatar sheet's
+  // "Tester reports" item, palette entries and voice all still say 'board'.
+  if (view === 'board') { if (typeof setTasksMode === 'function') setTasksMode('board', true); view = 'tasks'; }
   if (view === 'gym' || view === 'cardio') {
     if (typeof setTrainingMode === 'function') setTrainingMode(view === 'cardio' ? 'cardio' : 'strength');
     view = 'training';
@@ -522,7 +490,7 @@ function switchView(view) {
   $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   $$('.view').forEach(v => v.classList.remove('active'));
 
-  const titles = { insights: 'Insights', today: 'Today', tasks: 'Tasks', board: 'Board', calendar: 'Calendar', training: 'Training', diet: 'Diet', settings: 'Settings' };
+  const titles = { insights: 'Insights', today: 'Today', tasks: 'Tasks', calendar: 'Calendar', training: 'Training', diet: 'Diet', settings: 'Settings' };
   $('#viewTitle').textContent = titles[view];
   const VIEW_EL = { today: 'dashboardView' };
   const viewEl = document.getElementById(VIEW_EL[view] || (view + 'View'));
@@ -922,11 +890,11 @@ function importBackup(e) {
   reader.readAsText(file);
 }
 
-function populateCategoryDropdowns() {
-  const opts = state.categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-  $('#taskCategory').innerHTML = opts;
-  $('#filterCategory').innerHTML = '<option value="all">All Categories</option>' + opts;
-}
+// The task sheet builds its own category select on every open, and the Tasks
+// list filters by chip now — there are no long-lived category dropdowns left to
+// keep in sync. Kept as a no-op because the backup/restore path and the sync
+// layer both call it.
+function populateCategoryDropdowns() {}
 
 // ========== Staying on the current version ==========
 // Registering a service worker was the whole update story: no updatefound, no
