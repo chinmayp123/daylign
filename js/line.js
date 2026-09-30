@@ -48,6 +48,26 @@ function habitState(key, dateStr) {
   return { done: true, min: lineMinutesFrom(n, LINE_SLOT[key]) };
 }
 
+// ---------- which day the line is showing (spec 4.1) ----------
+// null means today, so an app left open across midnight rolls over on its own.
+// Session-only on purpose: it is where you are looking, not a setting. This is
+// what the v2 schedule card's < Today > buttons became.
+let lineViewDate = null;
+
+function lineShiftDay(n) {
+  const today = getTodayStr();
+  const next = n === 0 ? today : offsetDateStr(lineViewDate || today, n);
+  lineViewDate = next === today ? null : next;
+  if (typeof render === 'function') render();
+  if (typeof setHeaderDate === 'function') setHeaderDate();
+}
+
+function lineResetDay() { lineViewDate = null; }
+
+function lineDayLabel(dateStr) {
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
 function lineItemsFor(dateStr) {
   const items = [];
   const isToday = dateStr === getTodayStr();
@@ -150,13 +170,18 @@ function lineItemsFor(dateStr) {
   }
 
   // ---- tasks that carry a time ----
-  (state.tasks || []).filter(t => t && t.dueDate === dateStr && t.time).forEach(t => {
-    const m = String(t.time).match(/(\d{1,2}):(\d{2})/);
+  // taskClockTime() (js/today.js) also reads the existing `scheduledHour`, which
+  // is what the task form actually writes. Without it every task the v2 Schedule
+  // lane held would have vanished from the app: not in the tray (it has a time)
+  // and not on the line (it has no `time`).
+  const clockOf = (t) => (typeof taskClockTime === 'function' ? taskClockTime(t) : t.time);
+  (state.tasks || []).filter(t => t && t.dueDate === dateStr && clockOf(t)).forEach(t => {
+    const m = String(clockOf(t)).match(/(\d{1,2}):(\d{2})/);
     if (!m) return;
     const min = Number(m[1]) * 60 + Number(m[2]);
     const cat = (state.categories || []).find(c => c.id === t.category);
     push({ sort: min, time: lineClock(min), c: (cat && cat.color) || '', icon: 'check_circle',
-           title: t.name, sub: '', val: t.estimate || '',
+           title: t.name, sub: '', val: (typeof taskEstimateText === 'function' ? taskEstimateText(t) : ''),
            past: t.status === 'done', card: t.priority === 'high', tap: 'task:' + t.id });
   });
 
@@ -176,7 +201,7 @@ function renderLine(dateStr) {
   const now = lineMinutesNow();
   // Where the spine changes from the day's colours to plain ink. Off the end
   // on a past day so the whole spine reads as done.
-  let cut = 100;
+  let cut = date > getTodayStr() ? 0 : 100;   // a day that has not happened is all ink
   if (isToday) {
     const first = items[0].sort < 0 ? 0 : items[0].sort;
     const last = items[items.length - 1].sort;
@@ -202,7 +227,17 @@ function renderLine(dateStr) {
   });
   if (!markerPlaced) html += `<div class="dl-now" id="dlNowMarker"><span>now ${lineClock(now)}</span></div>`;
 
-  host.innerHTML = `<div class="dl-line" style="--cut:${Math.round(cut)}%">${html}</div>`;
+  // Day stepper. Always there on desktop; on a phone you swipe the line, so it
+  // only appears once you are off today - as the label for which day this is
+  // and the way back.
+  const dayNav = `<div class="dl-line-day${isToday ? '' : ' is-away'}">
+    <button type="button" class="dl-line-day-btn" data-line-day="-1" aria-label="Previous day"><span class="ms">chevron_left</span></button>
+    <b>${isToday ? 'Today' : esc(lineDayLabel(date))}</b>
+    <button type="button" class="dl-line-day-btn" data-line-day="1" aria-label="Next day"><span class="ms">chevron_right</span></button>
+    ${isToday ? '' : '<button type="button" class="dl-line-btn" data-line-day="0">Back to today</button>'}
+  </div>`;
+
+  host.innerHTML = dayNav + `<div class="dl-line" style="--cut:${Math.round(cut)}%">${html}</div>`;
   bindLine();
 }
 
@@ -212,7 +247,26 @@ function bindLine() {
   if (!host || lineBound) return;   // persistent container: bind once
   lineBound = true;
 
+  // Swipe the line sideways to change day. Horizontal has to clearly win over
+  // vertical, or every slightly diagonal scroll would turn the page.
+  let sx = 0, sy = 0, st = 0;
+  host.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) { st = 0; return; }
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY; st = Date.now();
+  }, { passive: true });
+  host.addEventListener('touchend', (e) => {
+    if (!st) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - sx, dy = t.clientY - sy;
+    const quick = Date.now() - st < 600;
+    st = 0;
+    if (!quick || Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 2) return;
+    lineShiftDay(dx < 0 ? 1 : -1);
+  }, { passive: true });
+
   host.addEventListener('click', (e) => {
+    const day = e.target.closest('[data-line-day]');
+    if (day) { lineShiftDay(Number(day.dataset.lineDay)); return; }
     const habit = e.target.closest('[data-line-habit]');
     if (habit) {
       const key = habit.dataset.lineHabit;
@@ -234,7 +288,13 @@ function bindLine() {
     else if (tap === 'water' || tap.startsWith('meal:')) switchView('diet');
     else if (tap === 'training') switchView('training');
     else if (tap === 'calendar') switchView('calendar');
-    else if (tap.startsWith('task:') && typeof openTaskView === 'function') openTaskView(tap.slice(5));
+    else if (tap.startsWith('task:')) {
+      // openTaskView arrives with the task sheet (phase 4); until then the
+      // task form is the only thing that can open a task, and a row that does
+      // nothing when tapped is worse than the old form.
+      if (typeof openTaskView === 'function') openTaskView(tap.slice(5));
+      else if (typeof openModal === 'function') openModal(tap.slice(5));
+    }
   });
 }
 

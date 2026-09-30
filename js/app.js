@@ -55,8 +55,12 @@ function setHeaderDate() {
   // render: without this the Diet day would leak onto Today and Insights.
   const dietActive = (document.getElementById('dietView') || {}).classList
     && document.getElementById('dietView').classList.contains('active');
+  // Same rule for the line on Today, which can step to another day (spec 4.1).
+  const todayActive = (document.getElementById('dashboardView') || {}).classList
+    && document.getElementById('dashboardView').classList.contains('active');
   const viewing = (dietActive && typeof dietViewDate === 'string' && dietViewDate)
-    ? dietViewDate : null;
+    ? dietViewDate
+    : (todayActive && typeof lineViewDate !== 'undefined' && lineViewDate) ? lineViewDate : null;
   const d = viewing ? new Date(viewing + 'T00:00:00') : new Date();
   const narrow = window.matchMedia('(max-width: 600px)').matches;
   $('#headerDate').textContent = d.toLocaleDateString('en-US', narrow
@@ -205,18 +209,13 @@ function bindEvents() {
     $('#miniCalNext').addEventListener('click', () => { miniCalDate.setMonth(miniCalDate.getMonth() + 1); renderMiniCalendar(); });
   }
 
-  // Schedule day nav
-  $('#schedulePrev').addEventListener('click', () => {
-    scheduleDate.setDate(scheduleDate.getDate() - 1);
-    renderSchedule();
-  });
-  $('#scheduleNext').addEventListener('click', () => {
-    scheduleDate.setDate(scheduleDate.getDate() + 1);
-    renderSchedule();
-  });
-  $('#scheduleToday').addEventListener('click', () => {
-    scheduleDate = new Date();
-    renderSchedule();
+  // Today's right column (desktop): the two things the phone reaches from the
+  // + in the bottom bar. New opens the task form; Say it opens voice.
+  const todayNew = $('#todayNewBtn');
+  if (todayNew) todayNew.addEventListener('click', () => openModal());
+  const todaySay = $('#todaySayBtn');
+  if (todaySay) todaySay.addEventListener('click', () => {
+    if (typeof openVoicePanel === 'function') openVoicePanel();
   });
 
   // Gym & Diet
@@ -257,22 +256,6 @@ function bindEvents() {
         input.click();
       });
     });
-
-  // Schedule card: collapsed by default on phones (the two-lane plan already
-  // shows today's tasks), expandable with the header toggle. Remembered per
-  // device so a re-open reflects your choice.
-  const scheduleCard = $('#scheduleCard');
-  const scheduleToggle = $('#scheduleCollapseBtn');
-  if (scheduleCard) {
-    const isPhone = window.matchMedia('(max-width: 640px)').matches;
-    const saved = localStorage.getItem('daylign_schedule_collapsed');
-    const collapsed = saved === null ? isPhone : saved === '1';
-    scheduleCard.classList.toggle('is-collapsed', collapsed);
-    if (scheduleToggle) scheduleToggle.addEventListener('click', () => {
-      const now = scheduleCard.classList.toggle('is-collapsed');
-      try { localStorage.setItem('daylign_schedule_collapsed', now ? '1' : '0'); } catch (e) {}
-    });
-  }
 
   // Add category / project
   $('#addCategoryBtn').addEventListener('click', handleAddCategory);
@@ -531,6 +514,9 @@ function switchView(view) {
     if (view === 'training' && !moduleEnabled('gym') && !moduleEnabled('cardio')) view = 'today';
     if (view === 'diet' && !moduleEnabled('diet')) view = 'today';
   }
+  // Leaving Today puts the line back on today: this app stays open for days,
+  // and coming back to find last Tuesday is a wrong-day bug waiting to happen.
+  if (view !== 'today' && typeof lineResetDay === 'function') lineResetDay();
   currentView = view;
   localStorage.setItem('tf_view', view);
   $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
@@ -594,20 +580,17 @@ function render() {
   renderSidebarProjects();
   renderDashboard();
   renderMiniCalendar();
-  renderSchedule();
   renderTasksView();
   renderBoard();
   renderCalendar();
   renderGym();
   if (typeof renderStrength === 'function') renderStrength();
   if (typeof renderCoach === 'function') renderCoach();
-  if (typeof renderDailyBrief === 'function') renderDailyBrief();
   if (typeof renderInsights === 'function') renderInsights();
   if (typeof renderCardio === 'function') renderCardio();
   if (typeof renderTodayCardio === 'function') renderTodayCardio();
   if (typeof renderTraining === 'function') renderTraining();
   if (typeof renderSleep === 'function') renderSleep();
-  if (typeof renderTodayPlan === 'function') renderTodayPlan();
   if (typeof renderSettingsPrefs === 'function') renderSettingsPrefs();
   if (typeof renderAiUsageReport === 'function') renderAiUsageReport();
   renderDiet();

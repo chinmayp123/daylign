@@ -1,35 +1,43 @@
-// ========== Dashboard layout editor ==========
-// Drag to reorder, resize (desktop), hide, and save named layouts.
+// ========== Arrange Today (spec 4.7) ==========
+// The Today screen is a fixed skeleton with three movable sections in it.
 //
-// Two constraints shaped this:
-//   1. HTML5 drag-and-drop fires no events from touch on iOS — the Board and
-//      Schedule already prove that. So dragging here is built on Pointer
-//      Events, which behave identically for finger, pen and mouse.
-//   2. Ordering is applied with CSS `order` rather than moving DOM nodes.
-//      Every view re-renders by rewriting innerHTML, so moved nodes would be
-//      undone constantly; `order` survives because it targets the containers.
+// Locked, by the owner's rule: the now block (health numbers are always on
+// screen) and the line (it IS the screen). Movable: Brief and actions, Due
+// soon, This week. Saved layouts live here too — they used to be in Settings,
+// two screens away from the thing they rearrange.
 //
-// Reordering works within a container, so the eight stacked sections reorder
-// among themselves and the seven grid cards among themselves. Resize only
-// applies to the grid cards, and only above the mobile breakpoint — at 390px
-// every card is already full width, so "wide" would be meaningless.
+// Two constraints from v2 still shape this:
+//   1. Ordering is applied with CSS `order`, never by moving DOM nodes. Every
+//      view re-renders by rewriting innerHTML, so moved nodes would be undone
+//      constantly; `order` targets the containers, which survive.
+//   2. The old edit mode dropped a drag handle INTO each card on the Today
+//      screen and dragged with Pointer Events. That is gone: a sheet with
+//      up/down buttons works with a finger, a mouse and a keyboard, and it
+//      doesn't rearrange the page you are trying to read while you use it.
 
-let layoutEditing = false;
+// Where the fixed parts sit. The movable sections take the gaps: the FIRST one
+// goes above the line, the rest below it — so "move Due soon to the top" means
+// "put it above the line", which is what the sheet's arrows appear to promise.
+const LAYOUT_FIXED_ORDER = {
+  '#nowBlockTop': 1,
+  '#nowBlock': 2,
+  '#dayLine': 15,
+  '#dashboardView .today-arrange': 90,
+  '#dashboardView .today-actions': 91,
+};
 
 function layoutOrder() {
   const p = readPrefs();
   const saved = p.order || [];
   // Anything not yet in the saved order keeps its natural position at the end,
-  // so a newly added widget can never disappear.
+  // so a newly added section can never disappear.
   const known = DASH_WIDGETS.map(w => w.key);
   return saved.filter(k => known.indexOf(k) !== -1)
     .concat(known.filter(k => saved.indexOf(k) === -1));
 }
 
 function applyLayout() {
-  const p = readPrefs();
   const order = layoutOrder();
-  const wide = p.wide || [];
 
   let tag = document.getElementById('layoutStyle');
   if (!tag) {
@@ -38,56 +46,20 @@ function applyLayout() {
     document.head.appendChild(tag);
   }
 
-  let css = '#dashboardView.active{display:flex;flex-direction:column;}';
+  // Only `order` is written here. The display mode of #dashboardView (column
+  // stack on a phone, two columns on desktop) lives in style.css: this tag is
+  // appended to <head> last, so anything it declares beats the stylesheet, and
+  // a `display` here would silently kill the desktop layout.
+  let css = '';
+  Object.keys(LAYOUT_FIXED_ORDER).forEach(sel => {
+    css += sel + '{order:' + LAYOUT_FIXED_ORDER[sel] + ';}';
+  });
   order.forEach((key, i) => {
     const w = DASH_WIDGETS.find(x => x.key === key);
-    if (w) css += w.sel + '{order:' + (i + 1) + ';}';
+    if (!w) return;
+    css += w.sel + '{order:' + (i === 0 ? 10 : 19 + i) + ';}';
   });
-
-  // Direct children of #dashboardView that are NOT managed widgets — the
-  // project filter, and the .dashboard-grid wrapper itself — have no `order`,
-  // which in flexbox means order:0, i.e. BEFORE everything given order 1+.
-  // Without this the entire grid (sleep, readiness, deadlines, weight...)
-  // jumped above the whole stack the moment any custom order was saved.
-  // The grid takes the position of the earliest widget it actually contains.
-  const rootForOrder = document.getElementById('dashboardView');
-  const gridForOrder = rootForOrder && rootForOrder.querySelector('.dashboard-grid');
-  if (gridForOrder) {
-    let gridPos = null;
-    order.forEach((key, i) => {
-      const el = layoutElFor(key);
-      if (el && el.parentElement === gridForOrder && gridPos === null) gridPos = i + 1;
-    });
-    css += '#dashboardView .dashboard-grid{order:' + (gridPos === null ? order.length + 1 : gridPos) + ';}';
-  }
-  // The project filter belongs with the controls at the top.
-  css += '#dashboardView .dashboard-project-filter{order:0;}';
-  // Wide cards span both grid columns. Scoped above the mobile breakpoint
-  // because the grid is single-column on a phone anyway.
-  const wideSels = wide.map(k => (DASH_WIDGETS.find(x => x.key === k) || {}).sel).filter(Boolean);
-  if (wideSels.length) {
-    css += '@media (min-width: 901px){' + wideSels.join(',') + '{grid-column:1 / -1;}}';
-  }
   tag.textContent = css;
-
-  // Reconcile which CONTAINER each widget lives in. CSS `order` only sorts
-  // siblings, so moving a card past the boundary between the stacked sections
-  // and the two-column grid means physically relocating the node — and that
-  // has to be re-applied on every load, because the HTML always starts out in
-  // its original arrangement.
-  const rootEl = document.getElementById('dashboardView');
-  const gridEl = rootEl && rootEl.querySelector('.dashboard-grid');
-  const cont = p.container || {};
-  if (rootEl && gridEl) {
-    order.forEach(key => {
-      const want = cont[key];
-      if (!want) return;
-      const el = layoutElFor(key);
-      if (!el) return;
-      if (want === 'root' && el.parentElement !== rootEl) rootEl.insertBefore(el, gridEl);
-      else if (want === 'grid' && el.parentElement !== gridEl) gridEl.appendChild(el);
-    });
-  }
 }
 
 function layoutElFor(key) {
@@ -95,38 +67,36 @@ function layoutElFor(key) {
   return w ? document.querySelector(w.sel) : null;
 }
 
-// ---------- edit mode ----------
-function layoutWidgetEls() {
-  return DASH_WIDGETS.map(w => {
+// ---------- FLIP animation ----------
+// Record where everything is, let the reorder happen, then animate each card
+// from where it was to where it landed. Without this, `order` changes snap.
+function captureRects() {
+  const map = {};
+  DASH_WIDGETS.forEach(w => {
     const el = document.querySelector(w.sel);
-    return el ? { key: w.key, label: w.label, el } : null;
-  }).filter(Boolean);
+    if (el) map[w.key] = el.getBoundingClientRect();
+  });
+  return map;
 }
 
-function toggleLayoutEdit(on) {
-  layoutEditing = (on === undefined) ? !layoutEditing : !!on;
-  document.documentElement.classList.toggle('layout-editing', layoutEditing);
-
-  layoutWidgetEls().forEach(w => {
-    const existing = w.el.querySelector(':scope > .layout-handle');
-    if (!layoutEditing) { if (existing) existing.remove(); w.el.classList.remove('layout-item'); return; }
-    w.el.classList.add('layout-item');
-    if (existing) return;
-    const bar = document.createElement('div');
-    bar.className = 'layout-handle';
-    bar.innerHTML =
-      '<span class="layout-grip" aria-hidden="true">⠿</span>' +
-      '<span class="layout-name">' + esc(w.label) + '</span>' +
-      '<button type="button" class="layout-btn" data-lay-up="' + w.key + '" aria-label="Move up">↑</button>' +
-      '<button type="button" class="layout-btn" data-lay-down="' + w.key + '" aria-label="Move down">↓</button>' +
-      '<button type="button" class="layout-btn" data-lay-hide="' + w.key + '" aria-label="Hide">✕</button>';
-    w.el.insertBefore(bar, w.el.firstChild);
-    attachLayoutDrag(bar, w.key);
+function flipFrom(before) {
+  if (document.documentElement.classList.contains('pref-reduce-motion')) return;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  DASH_WIDGETS.forEach(w => {
+    const el = document.querySelector(w.sel);
+    const b = before[w.key];
+    if (!el || !b) return;
+    const a = el.getBoundingClientRect();
+    const dx = b.left - a.left, dy = b.top - a.top;
+    if (!dx && !dy) return;
+    el.style.transition = 'none';
+    el.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+    requestAnimationFrame(() => {
+      el.style.transition = 'transform .32s cubic-bezier(0.22, 1, 0.36, 1)';
+      el.style.transform = '';
+      setTimeout(() => { el.style.transition = ''; }, 340);
+    });
   });
-
-  const btn = document.getElementById('layoutEditBtn');
-  if (btn) btn.textContent = layoutEditing ? 'Done' : 'Edit layout';
-  renderHiddenTray();
 }
 
 function moveWidget(key, dir) {
@@ -135,24 +105,7 @@ function moveWidget(key, dir) {
   const j = i + dir;
   if (i === -1 || j < 0 || j >= order.length) return;
 
-  const el = layoutElFor(key);
-  const other = layoutElFor(order[j]);
-  if (!el || !other) return;
-
   const before = captureRects();
-
-  // Crossing between the stacked sections and the grid: move the node itself,
-  // then remember the new home so a reload doesn't undo it.
-  if (el.parentElement !== other.parentElement) {
-    if (dir < 0) other.parentElement.insertBefore(el, other);
-    else other.parentElement.insertBefore(el, other.nextSibling);
-    const rootEl = document.getElementById('dashboardView');
-    const p2 = readPrefs();
-    p2.container = p2.container || {};
-    p2.container[key] = (el.parentElement === rootEl) ? 'root' : 'grid';
-    writePrefs(p2);
-  }
-
   order.splice(i, 1);
   order.splice(j, 0, key);
   const p = readPrefs();
@@ -160,133 +113,29 @@ function moveWidget(key, dir) {
   writePrefs(p);
   applyLayout();
   flipFrom(before);
-  renderHiddenTray();
+  renderArrangeSheet();
 }
 
-// ---------- FLIP animation ----------
-// Record where everything is, let the reorder happen, then animate each card
-// from where it was to where it landed. Without this, `order` changes snap.
-function captureRects() {
-  const map = {};
-  layoutWidgetEls().forEach(w => { map[w.key] = w.el.getBoundingClientRect(); });
-  return map;
-}
-
-function flipFrom(before) {
-  if (document.documentElement.classList.contains('pref-reduce-motion')) return;
-  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  layoutWidgetEls().forEach(w => {
-    const b = before[w.key];
-    if (!b) return;
-    const a = w.el.getBoundingClientRect();
-    const dx = b.left - a.left, dy = b.top - a.top;
-    if (!dx && !dy) return;
-    w.el.style.transition = 'none';
-    w.el.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
-    requestAnimationFrame(() => {
-      w.el.style.transition = 'transform .32s cubic-bezier(0.22, 1, 0.36, 1)';
-      w.el.style.transform = '';
-      setTimeout(() => { w.el.style.transition = ''; }, 340);
-    });
-  });
-}
-
-// ---------- pointer drag ----------
-// Pointer Events rather than HTML5 DnD, so this works with a finger on iOS.
-function attachLayoutDrag(handle, key) {
-  let startY = 0, dragging = false, el = null;
-
-  handle.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('.layout-btn')) return; // let the buttons work
-    el = handle.parentElement;
-    startY = e.clientY;
-    dragging = true;
-    el.classList.add('is-dragging');
-    handle.setPointerCapture(e.pointerId);
-    e.preventDefault();
-  });
-
-  handle.addEventListener('pointermove', (e) => {
-    if (!dragging || !el) return;
-    const dy = e.clientY - startY;
-    el.style.transform = 'translateY(' + dy + 'px)';
-
-    // Once dragged past half a neighbour, commit the swap and re-anchor.
-    const rect = el.getBoundingClientRect();
-    const siblings = layoutWidgetEls().filter(w => w.el !== el && w.el.parentElement === el.parentElement);
-    for (const s of siblings) {
-      const r = s.el.getBoundingClientRect();
-      const overlapDown = dy > 0 && rect.bottom > r.top + r.height / 2 && r.top > rect.top;
-      const overlapUp = dy < 0 && rect.top < r.bottom - r.height / 2 && r.bottom < rect.bottom;
-      if (overlapDown || overlapUp) {
-        el.style.transform = '';
-        el.style.transition = 'none';
-        moveWidget(key, overlapDown ? 1 : -1);
-        startY = e.clientY;
-        requestAnimationFrame(() => { el.style.transition = ''; });
-        break;
-      }
-    }
-  });
-
-  const end = (e) => {
-    if (!dragging || !el) return;
-    dragging = false;
-    el.classList.remove('is-dragging');
-    el.style.transform = '';
-    try { handle.releasePointerCapture(e.pointerId); } catch (err) {}
-  };
-  handle.addEventListener('pointerup', end);
-  handle.addEventListener('pointercancel', end);
-}
-
-// ---------- hidden widgets tray ----------
-// Hiding a widget used to be a one-way door from the dashboard — the only way
-// back was buried in Settings. In edit mode the hidden ones now sit at the
-// bottom as ghosts you can restore in place.
-function renderHiddenTray() {
-  const rootEl = document.getElementById('dashboardView');
-  if (!rootEl) return;
-  let tray = document.getElementById('layoutHiddenTray');
-
-  if (!layoutEditing) { if (tray) tray.remove(); return; }
-
-  if (!tray) {
-    tray = document.createElement('div');
-    tray.id = 'layoutHiddenTray';
-    tray.className = 'layout-tray';
-    rootEl.appendChild(tray);
-  }
-  tray.style.order = '9999';
-
-  const hidden = readPrefs().hidden || [];
-  if (!hidden.length) {
-    tray.innerHTML = '<div class="layout-tray-title">Hidden widgets</div>' +
-      '<p class="layout-tray-empty">Nothing hidden. Tap ✕ on any widget to tuck it away — it will show up here.</p>';
-    return;
-  }
-  tray.innerHTML = '<div class="layout-tray-title">Hidden widgets <span>' + hidden.length + '</span></div>' +
-    '<div class="layout-tray-items">' + hidden.map(k => {
-      const w = DASH_WIDGETS.find(x => x.key === k);
-      if (!w) return '';
-      return '<button type="button" class="layout-restore" data-lay-show="' + k + '">' +
-        '<span class="layout-restore-plus">+</span>' + esc(w.label) + '</button>';
-    }).join('') + '</div>';
+function setWidgetHidden(key, hide) {
+  const p = readPrefs();
+  const h = new Set(p.hidden || []);
+  if (hide) h.add(key); else h.delete(key);
+  setPref('hidden', Array.from(h));   // setPref applies the prefs and re-renders Settings
+  renderArrangeSheet();
 }
 
 // ---------- named layouts ----------
 function savedLayouts() {
-  const p = readPrefs();
-  return p.layouts || {};
+  return readPrefs().layouts || {};
 }
 
 function saveNamedLayout(name) {
   if (!name) return;
   const p = readPrefs();
   p.layouts = p.layouts || {};
-  p.layouts[name] = { order: layoutOrder(), hidden: p.hidden || [], wide: p.wide || [] };
+  p.layouts[name] = { order: layoutOrder(), hidden: p.hidden || [] };
   writePrefs(p);
-  renderLayoutManager();
+  renderArrangeSheet();
   if (typeof showToast === 'function') showToast('Saved layout "' + name + '"');
 }
 
@@ -297,12 +146,11 @@ function applyNamedLayout(name) {
   const p = readPrefs();
   p.order = l.order || [];
   p.hidden = l.hidden || [];
-  p.wide = l.wide || [];
   writePrefs(p);
   applyPrefs();
   applyLayout();
   flipFrom(before);
-  renderLayoutManager();
+  renderArrangeSheet();
   if (typeof renderSettingsPrefsPanel === 'function') renderSettingsPrefsPanel();
   if (typeof showToast === 'function') showToast('Switched to "' + name + '"');
 }
@@ -312,68 +160,129 @@ function deleteNamedLayout(name) {
   if (!p.layouts || !p.layouts[name]) return;
   delete p.layouts[name];
   writePrefs(p);
-  renderLayoutManager();
+  renderArrangeSheet();
 }
 
-function renderLayoutManager() {
-  const host = document.getElementById('layoutManager');
-  if (!host) return;
+// Which saved layout the screen currently matches, so the chips can show one as
+// active instead of making you remember what you last applied.
+function activeLayoutName() {
+  const order = layoutOrder().join(',');
+  const hidden = (readPrefs().hidden || []).slice().sort().join(',');
   const names = Object.keys(savedLayouts());
-  host.innerHTML =
-    (names.length
-      ? '<div class="layout-chips">' + names.map(n =>
-          '<span class="layout-chip"><button type="button" data-lay-apply="' + esc(n) + '">' + esc(n) + '</button>' +
-          '<button type="button" class="layout-chip-x" data-lay-del="' + esc(n) + '" aria-label="Delete ' + esc(n) + '">×</button></span>'
-        ).join('') + '</div>'
-      : '<p class="settings-desc">No saved layouts yet.</p>') +
-    '<div class="layout-save"><input type="text" id="layoutName" placeholder="Layout name" maxlength="24">' +
-    '<button type="button" class="btn-secondary" id="layoutSaveBtn">Save current</button></div>';
+  for (const n of names) {
+    const l = savedLayouts()[n];
+    const lo = (l.order || []).filter(k => DASH_WIDGETS.some(w => w.key === k)).join(',');
+    const lh = (l.hidden || []).slice().sort().join(',');
+    if (lo === order && lh === hidden) return n;
+  }
+  return null;
 }
 
+// ---------- the sheet ----------
+function renderArrangeSheet() {
+  const host = document.getElementById('arrangeBody');
+  if (!host) return;
+  const p = readPrefs();
+  const hidden = p.hidden || [];
+  const order = layoutOrder();
+  const names = Object.keys(savedLayouts());
+  const active = activeLayoutName();
+
+  const locked = DASH_LOCKED.map(r => `
+    <div class="arr-row is-locked">
+      <span class="ms">lock</span>
+      <span class="arr-name">${esc(r.label)}</span>
+      <span class="arr-note">${esc(r.note)}</span>
+    </div>`).join('');
+
+  const rows = order.map((key, i) => {
+    const w = DASH_WIDGETS.find(x => x.key === key);
+    if (!w) return '';
+    const on = hidden.indexOf(key) === -1;
+    return `
+    <div class="arr-row">
+      <span class="ms">drag_indicator</span>
+      <span class="arr-name">${esc(w.label)}${w.desktop ? '<em>desktop</em>' : ''}</span>
+      <span class="arr-moves">
+        <button type="button" class="arr-move" data-lay-up="${key}" aria-label="Move ${esc(w.label)} up"${i === 0 ? ' disabled' : ''}><span class="ms">keyboard_arrow_up</span></button>
+        <button type="button" class="arr-move" data-lay-down="${key}" aria-label="Move ${esc(w.label)} down"${i === order.length - 1 ? ' disabled' : ''}><span class="ms">keyboard_arrow_down</span></button>
+      </span>
+      <label class="dl-toggle">
+        <input type="checkbox" data-lay-show-toggle="${key}" aria-label="Show ${esc(w.label)}"${on ? ' checked' : ''}>
+        <span class="dl-toggle-track"></span>
+      </label>
+    </div>`;
+  }).join('');
+
+  host.innerHTML = `
+    ${locked}
+    ${rows}
+    <div class="dl-field arr-layouts">
+      <span class="dl-field-label">Saved layouts</span>
+      <div class="arr-chips">
+        ${names.map(n => `
+          <span class="arr-chip${n === active ? ' on' : ''}">
+            <button type="button" data-lay-apply="${esc(n)}">${esc(n)}</button>
+            <button type="button" class="arr-chip-x" data-lay-del="${esc(n)}" aria-label="Delete layout ${esc(n)}">&times;</button>
+          </span>`).join('')}
+        <button type="button" class="arr-chip arr-chip-add" id="layoutSaveBtn"><span class="ms">add</span>Save current</button>
+      </div>
+      <input type="text" id="layoutName" class="arr-name-input" placeholder="Name this layout" maxlength="24" hidden>
+    </div>
+    <p class="arr-foot">Habits like the daily ride live on the line — turn one off in its own settings, not here.</p>`;
+}
+
+function openArrangeSheet() {
+  renderArrangeSheet();
+  if (typeof openDlSheet === 'function') openDlSheet(document.getElementById('arrangeSheet'));
+}
+
+// Bound once, on the document, because the sheet's contents are rewritten on
+// every change — per-render listeners on a persistent container stack up.
+let arrangeBound = false;
 function bindLayoutEditor() {
   applyLayout();
-  renderLayoutManager();
+  if (arrangeBound) return;
+  arrangeBound = true;
 
-  const btn = document.getElementById('layoutEditBtn');
-  if (btn) btn.addEventListener('click', () => toggleLayoutEdit());
+  const openBtn = document.getElementById('arrangeBtn');
+  if (openBtn) openBtn.addEventListener('click', openArrangeSheet);
 
-  // Delegated so the controls survive every re-render.
   document.addEventListener('click', (e) => {
     const up = e.target.closest('[data-lay-up]');
     const down = e.target.closest('[data-lay-down]');
-    const hide = e.target.closest('[data-lay-hide]');
     const apply = e.target.closest('[data-lay-apply]');
     const del = e.target.closest('[data-lay-del]');
-    if (up) { moveWidget(up.dataset.layUp, -1); }
-    if (down) { moveWidget(down.dataset.layDown, 1); }
-    if (hide) {
-      const p = readPrefs();
-      const h = new Set(p.hidden || []);
-      h.add(hide.dataset.layHide);
-      setPref('hidden', Array.from(h));
-      renderHiddenTray();
-      if (typeof showToast === 'function') showToast('Hidden — restore it from the tray below');
-    }
-    const show = e.target.closest('[data-lay-show]');
-    if (show) {
-      const p = readPrefs();
-      const h = new Set(p.hidden || []);
-      h.delete(show.dataset.layShow);
-      setPref('hidden', Array.from(h));
-      // The widget is back in the DOM flow, so it needs its handle again.
-      if (layoutEditing) { toggleLayoutEdit(false); toggleLayoutEdit(true); }
-      renderHiddenTray();
-      if (typeof showToast === 'function') showToast('Restored');
-    }
+    if (up) moveWidget(up.dataset.layUp, -1);
+    if (down) moveWidget(down.dataset.layDown, 1);
     if (apply) applyNamedLayout(apply.dataset.layApply);
     if (del) deleteNamedLayout(del.dataset.layDel);
-    if (e.target.id === 'layoutSaveBtn') {
+
+    // Save current: first click reveals the name box, second saves it. One
+    // field that is only there when it is needed, rather than an empty input
+    // sitting in the sheet forever.
+    if (e.target.closest('#layoutSaveBtn')) {
       const inp = document.getElementById('layoutName');
-      const name = (inp && inp.value || '').trim();
-      if (!name) { if (typeof showToast === 'function') showToast('Give the layout a name first'); return; }
+      if (!inp) return;
+      if (inp.hidden) { inp.hidden = false; inp.focus(); return; }
+      const name = (inp.value || '').trim();
+      if (!name) { if (typeof showToast === 'function') showToast('Give the layout a name first'); inp.focus(); return; }
       saveNamedLayout(name);
-      if (inp) inp.value = '';
     }
+  });
+
+  document.addEventListener('change', (e) => {
+    const cb = e.target.closest('[data-lay-show-toggle]');
+    if (cb) setWidgetHidden(cb.dataset.layShowToggle, !cb.checked);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const inp = e.target.closest('#layoutName');
+    if (!inp) return;
+    e.preventDefault();
+    const name = (inp.value || '').trim();
+    if (name) saveNamedLayout(name);
   });
 }
 

@@ -11,11 +11,15 @@ const PREFS_KEY = 'daylign_prefs';
 // accent is --accent-ink: white on every Day shade, near-black on every Night
 // shade, and each pair clears 4.5:1 against its ink. Hover and glow are derived
 // in style.css, so an accent is just these two colours.
+//
+// The accent is also TEXT on the page (the line's "now 9:40", links), so each
+// Day shade has to clear 4.5:1 on --bg-primary as well. Green and orange were
+// #15803d and #c2410c, which measure 4.29 and 4.43 there; these are 4.64/4.75.
 const ACCENTS = [
   { key: 'cobalt', label: 'Cobalt', day: '#2446f0', night: '#6c86ff' },
-  { key: 'green',  label: 'Green',  day: '#15803d', night: '#3ddc7a' },
+  { key: 'green',  label: 'Green',  day: '#147a3a', night: '#3ddc7a' },
   { key: 'rose',   label: 'Rose',   day: '#be185d', night: '#ff6b9d' },
-  { key: 'orange', label: 'Orange', day: '#c2410c', night: '#fb923c' },
+  { key: 'orange', label: 'Orange', day: '#ba3e0b', night: '#fb923c' },
   { key: 'teal',   label: 'Teal',   day: '#0f766e', night: '#2dd4bf' },
   { key: 'indigo', label: 'Indigo', day: '#4f46e5', night: '#8b8afc' },
 ];
@@ -25,21 +29,32 @@ const ACCENTS = [
 // v3 default. The rest map to their nearest surviving hue.
 const ACCENT_RENAMES = { indigo: 'cobalt', violet: 'indigo', blue: 'cobalt', amber: 'orange' };
 
-// Dashboard cards the user can hide. Each maps to a real element, so a toggle
-// can never point at something that no longer exists without showing up here.
-// Sleep, readiness, weight trend and the weekly report left this list when they
-// moved off Today — two of their selectors were #dashboardView-scoped and would
-// have quietly stopped matching anything.
+// Today sections the user can hide or reorder (Arrange Today, spec 4.7). Each
+// maps to a real element, so a toggle can never point at something that has
+// stopped existing without showing up here.
+//
+// The now block and the line are deliberately NOT in this list: the owner's
+// rule is that the health numbers and the day itself are always on screen, so
+// they are locked. Arrange Today shows them as locked rows.
 const DASH_WIDGETS = [
-  { key: 'brief',     label: 'Daily brief',     sel: '#dailyBrief' },
-  { key: 'plan',      label: 'Today plan',      sel: '#todayPlan' },
-  { key: 'health',    label: 'Health strip',    sel: '#healthGrid' },
-  { key: 'cardio',    label: 'Daily ride',      sel: '#todayCardio' },
-  { key: 'reminders', label: 'Reminders',       sel: '#remindersBar' },
-  { key: 'mytasks',   label: 'My tasks',        sel: '#dashboardView .my-tasks-board-card' },
-  { key: 'deadlines', label: 'Deadlines',       sel: '#dashboardView .deadlines-card' },
-  { key: 'schedule',  label: 'Schedule',        sel: '#scheduleCard' },
+  { key: 'brief', label: 'Brief and actions', sel: '#todayBrief' },
+  { key: 'due',   label: 'Due soon',          sel: '#todayDue' },
+  { key: 'week',  label: 'This week',         sel: '#todayWeek', desktop: true },
 ];
+
+// Drawn above the movable rows in Arrange Today, so "this one cannot move" is
+// visible rather than mysterious.
+const DASH_LOCKED = [
+  { label: 'Now block', note: 'always first' },
+  { label: 'The line',  note: 'always there' },
+];
+
+// v2 widget keys, for migratePrefsV3(). plan / schedule / cardio / health are
+// gone as separate surfaces — the now block and the line absorbed all four — so
+// they are dropped rather than renamed. The reminder cards became the brief's
+// action chips; My tasks and Deadlines became one "Due soon" list.
+const WIDGET_RENAMES = { reminders: 'brief', mytasks: 'due', deadlines: 'due' };
+const WIDGET_DROPPED = ['plan', 'schedule', 'cardio', 'health'];
 
 const PREF_DEFAULTS = {
   accent: 'cobalt',
@@ -51,6 +66,7 @@ const PREF_DEFAULTS = {
   alwaysShowActions: false, // reveal hover-only delete buttons permanently
   haptics: true,       // tactile feedback where the platform allows it
   accentV3: true,      // accent key is already a v3 key (see migrateAccentPref)
+  widgetsV3: true,     // widget keys are already v3 keys (see migratePrefsV3)
 };
 
 function readPrefs() {
@@ -74,6 +90,69 @@ function migrateAccentPref() {
     if (stored.accentV3) return;
     if (ACCENT_RENAMES[stored.accent]) stored.accent = ACCENT_RENAMES[stored.accent];
     stored.accentV3 = true;
+    writePrefs(stored);
+  } catch (e) { /* unreadable prefs: readPrefs() already falls back to defaults */ }
+}
+
+// ---------- v2 -> v3 widget keys ----------
+// Runs once per device, before the first applyPrefs(), and rewrites every place
+// a widget key is stored: `order`, `hidden`, and each named layout. Keyed on the
+// STORED blob lacking widgetsV3, so it cannot run twice and a device with no
+// prefs yet already has v3 defaults.
+//
+// A dropped key is simply removed — the surface it named no longer exists, and
+// leaving it would make layoutOrder() filter it out silently on every read.
+function migrateWidgetKeys(keys) {
+  const out = [];
+  (keys || []).forEach(k => {
+    if (WIDGET_DROPPED.indexOf(k) !== -1) return;
+    const mapped = WIDGET_RENAMES[k] || k;
+    if (DASH_WIDGETS.some(w => w.key === mapped) && out.indexOf(mapped) === -1) out.push(mapped);
+  });
+  return out;
+}
+
+// Hiding is the one case where two keys collapsing into one needs a rule: My
+// tasks and Deadlines both became "Due soon", so hiding it because ONE of them
+// was hidden would take away a list the user still wanted. Both or neither.
+function migrateHiddenKeys(hidden) {
+  const had = (k) => (hidden || []).indexOf(k) !== -1;
+  const out = [];
+  if (had('reminders')) out.push('brief');
+  if (had('mytasks') && had('deadlines')) out.push('due');
+  // A key already in v3 form (a device that half-migrated) stays hidden.
+  (hidden || []).forEach(k => {
+    if (DASH_WIDGETS.some(w => w.key === k) && out.indexOf(k) === -1 && !WIDGET_RENAMES[k]) out.push(k);
+  });
+  return out;
+}
+
+function migrateLayoutBlob(l) {
+  const out = { order: migrateWidgetKeys(l && l.order), hidden: migrateHiddenKeys(l && l.hidden) };
+  // `wide` is gone with the two-column dashboard grid it spanned; `container`
+  // moved widgets between that grid and the stack, and there is no grid now.
+  return out;
+}
+
+function migratePrefsV3() {
+  try {
+    const raw = localStorage.getItem(PREFS_KEY);
+    if (!raw) return;
+    const stored = JSON.parse(raw) || {};
+    if (stored.widgetsV3) return;
+
+    const top = migrateLayoutBlob(stored);
+    stored.order = top.order;
+    stored.hidden = top.hidden;
+    delete stored.wide;
+    delete stored.container;
+
+    if (stored.layouts && typeof stored.layouts === 'object') {
+      Object.keys(stored.layouts).forEach(name => {
+        stored.layouts[name] = migrateLayoutBlob(stored.layouts[name]);
+      });
+    }
+    stored.widgetsV3 = true;
     writePrefs(stored);
   } catch (e) { /* unreadable prefs: readPrefs() already falls back to defaults */ }
 }
@@ -202,4 +281,5 @@ function bindSettingsPrefs() {
 
 // Applied as early as possible so the accent doesn't flash on load.
 migrateAccentPref();
+migratePrefsV3();
 applyPrefs();

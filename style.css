@@ -31,6 +31,12 @@
      picked accent needs no second colour. */
   --accent: var(--accent-night, #6c86ff);
   --accent-ink: #0e0f0e;   /* text on accent */
+  /* Accent as TEXT on the now block. The block inverts (near-white at night),
+     so the night accent on it measures 2.80:1; the day shade is the one made
+     for a light surface. Nudged toward the page colour because day orange
+     alone sits at 4.4:1. */
+  --accent-onink: color-mix(in srgb, var(--bg-primary) 15%, var(--accent-day, #2446f0));
+  --red-ink: var(--red);   /* warn as small text; darkened by day, below */
   --accent-hover: color-mix(in srgb, var(--accent) 84%, var(--text-primary));
   --accent-glow: color-mix(in srgb, var(--accent) 13%, transparent);
 
@@ -78,7 +84,7 @@
   --macro-carbs: var(--c-habit);
   --macro-fat: var(--c-meet);
 
-  --sidebar-width: 260px;
+  --sidebar-width: 230px;
   --radius: 16px;       /* cards */
   --radius-sm: 10px;    /* rows, inputs */
   --radius-chip: 6px;
@@ -5699,6 +5705,11 @@ html[data-theme="light"] {
   --text-muted: #686d66;
   --accent: var(--accent-day, #2446f0);
   --accent-ink: #ffffff;
+  /* The now block is near-black by day: the night shade is the legible one
+     (day cobalt on it is 2.83:1). */
+  --accent-onink: var(--accent-night, #6c86ff);
+  /* --red is 4.43:1 on the page as small text, a hair under AA. */
+  --red-ink: color-mix(in srgb, var(--text-primary) 14%, #c2410c);
   --accent-glow: color-mix(in srgb, var(--accent) 9%, transparent);
   --c-sleep: #5a5fd8;
   --c-food: #e8730c;
@@ -11874,7 +11885,7 @@ body.logbar-open .voice-fab {
 .dl-line-item .body { flex: 1; min-width: 0; font-size: 14px; line-height: 1.25; color: var(--text-primary); }
 .dl-line-item.past .body { color: var(--text-secondary); }
 .dl-line-item .body em { display: block; font-style: normal; font-size: 12px; color: var(--text-muted); }
-.dl-line-item .val { font: 700 12px var(--font-mono); color: var(--c); white-space: nowrap; }
+.dl-line-item .val { font: 700 12px var(--font-mono); color: var(--c-ink, var(--c)); white-space: nowrap; }
 .dl-line-item.card {
   padding: 10px 12px;
   margin: 4px 0;
@@ -11885,6 +11896,22 @@ body.logbar-open .voice-fab {
 }
 .dl-line-item.card .n { left: -31px; }
 .dl-line-item.card .t { left: -76px; }
+/* --text-muted is tuned for the page; on the card's tint it drops to 4.4:1. */
+.dl-line-item.card .body em { color: var(--text-secondary); }
+/* Day stepper above the line (spec 4.1). Desktop always; phone only when the
+   line is showing another day, because there you swipe. */
+.dl-line-day { display: none; align-items: center; gap: 6px; margin: 0 0 8px; font: 600 12px var(--font-mono); color: var(--text-primary); }
+.dl-line-day.is-away { display: flex; }
+.dl-line-day b { font-weight: 600; min-width: 84px; text-align: center; }
+.dl-line-day .dl-line-btn { margin-left: auto; }
+.dl-line-day-btn { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-secondary); cursor: pointer; }
+.dl-line-day-btn .ms { font-size: 18px; }
+.dl-line-day-btn:hover { background: var(--bg-hover); }
+.dl-line-day-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (min-width: 901px) {
+  .dl-line-day { display: flex; }
+  .dl-line-day-btn { width: 28px; height: 28px; border-radius: 8px; }
+}
 .dl-now { position: relative; margin: 10px 0; display: flex; align-items: center; font: 600 11px var(--font-mono); color: var(--accent); }
 .dl-now::before { content: ""; position: absolute; left: -26px; right: 0; top: 50%; border-top: 2px solid var(--accent); }
 .dl-now > span { position: relative; background: var(--bg-primary); padding-right: 8px; }
@@ -11925,6 +11952,13 @@ body.logbar-open .voice-fab {
 }
 .dl-sheet-wrap.open .dl-sheet { transform: translateY(var(--drag, 0px)); }
 .dl-sheet.dragging { transition: none; }
+/* Focus is moved onto the sheet so Esc and screen readers land in it; that is
+   not a reason to draw a ring round the whole panel. */
+.dl-sheet:focus { outline: none; }
+/* The voice and + buttons float at z-index 900, above every sheet, and sat on
+   top of the sheet's own buttons. */
+body:has(.dl-sheet-wrap.open) .voice-fab,
+body:has(.dl-sheet-wrap.open) .primary-fab { opacity: 0; pointer-events: none; }
 .dl-grab { width: 36px; height: 4px; border-radius: 2px; background: var(--border); margin: 0 auto 2px; }
 .dl-sheet h4 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 20px; letter-spacing: -0.02em; }
 @media (min-width: 768px) {
@@ -12204,7 +12238,7 @@ html.pref-reduce-motion .dl-btn:active { transform: none; }
   margin-bottom: 8px;
   font: 700 9px/1 var(--font-mono);
   letter-spacing: .14em;
-  color: var(--accent);
+  color: var(--accent-onink, var(--accent));
 }
 
 .nb-cal {
@@ -12327,3 +12361,291 @@ html.pref-reduce-motion .dl-btn:active { transform: none; }
   }
   .now-block { top: 84px; }
 }
+
+
+/* ============================================================
+   Today: brief, tray, Due soon, This week, Arrange (spec 4.4-4.7)
+   ============================================================ */
+
+/* The screen is a stack on a phone and two columns on desktop. Both are
+   declared here rather than in the #layoutStyle tag js/layout.js writes,
+   because that tag is appended to <head> last and a `display` in it would beat
+   this file and silently flatten the desktop layout. That tag only ever sets
+   `order`, which is why DOM order in index.html does not matter. */
+#dashboardView.active { display: flex; flex-direction: column; }
+/* The desktop columns. Invisible to layout on a phone, so the sections inside
+   them are flex items of #dashboardView and `order` runs across all of them. */
+.today-main, .today-rail { display: contents; }
+
+.today-brief:empty, .today-due:empty, .today-week:empty { display: none; }
+
+/* ---- 4.5 Brief and actions ---- */
+.today-brief { margin: 0 0 18px; }
+.brief-say {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 19px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.brief-say b { font-weight: 800; }
+/* The second clause is the supporting half of the sentence, so it steps back a
+   tone rather than becoming a separate line of UI text. */
+.brief-say span { color: var(--text-secondary); }
+.brief-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.brief-act {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: 600 12px var(--font-body);
+  padding: 8px 12px;
+  border-radius: 11px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  cursor: pointer;
+  min-height: 36px;
+}
+.brief-act .ms { font-size: 16px; }
+.brief-act:hover { background: var(--bg-hover); }
+.brief-act:active { transform: scale(0.98); }
+.brief-act:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* First chip only: one accent per screen, and this is the thing to do next. */
+.brief-act.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.brief-act.primary:hover { filter: brightness(1.06); background: var(--accent); }
+
+/* ---- 4.4 The tray at "now" ---- */
+/* Dashed, because it is the one box on the line that is not a moment in the
+   day: it is the pile that has no time yet. It renders INSIDE .dl-line, so it
+   sits in the line's left gutter indent. */
+.today-tray {
+  margin: 8px 0 10px;
+  padding: 10px 12px;
+  border: 1.5px dashed var(--border);
+  border-radius: 14px;
+}
+.today-tray h6 {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 4px;
+  font: 600 12px var(--font-body);
+  color: var(--text-primary);
+}
+.today-tray h6 em { font: 500 10.5px var(--font-mono); font-style: normal; color: var(--text-muted); }
+.tray-task { display: flex; align-items: center; gap: 9px; padding: 5px 0; font-size: 13.5px; color: var(--text-primary); }
+.tray-task.is-dragging { opacity: 0.45; }
+.tray-cb {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  padding: 0;
+  border-radius: 5px;
+  border: 1.5px solid var(--text-secondary);
+  background: transparent;
+  cursor: pointer;
+}
+.tray-cb.on { background: var(--text-primary); border-color: var(--text-primary); position: relative; }
+.tray-cb.on::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid var(--bg-primary);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.tray-cb:focus-visible, .tray-clock:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tray-name { flex: 1; min-width: 0; cursor: pointer; }
+.tray-task.is-done .tray-name { text-decoration: line-through; color: var(--text-muted); }
+.tray-est { font: 500 10.5px var(--font-mono); color: var(--text-muted); }
+.tray-clock {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.tray-clock .ms { font-size: 17px; }
+.tray-clock:hover { background: var(--bg-hover); color: var(--accent); }
+.tray-triage { padding: 6px 0 0; font-size: 12px; color: var(--text-secondary); }
+.tray-triage b { font-family: var(--font-mono); color: var(--red-ink, var(--red)); }
+.tray-triage-open {
+  border: none;
+  background: none;
+  padding: 0;
+  font: 600 12px var(--font-body);
+  color: var(--accent);
+  cursor: pointer;
+}
+.tray-triage-open:hover { text-decoration: underline; }
+
+/* Drop target while dragging a tray task onto a row of the line. */
+.dl-line-item.is-drop { box-shadow: inset 0 -2px 0 var(--accent); }
+
+/* ---- 4.6 Due soon ---- */
+.today-sec-t {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+.today-sec-t em { font: 500 10px var(--font-mono); font-style: normal; color: var(--text-muted); margin-left: 6px; }
+.today-due { margin: 4px 0 18px; }
+.due-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 0;
+  font-size: 13.5px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.due-row + .due-row { border-top: 1px solid var(--border); }
+.due-date { flex: none; width: 52px; font: 500 10.5px var(--font-mono); color: var(--text-muted); }
+/* --red on the page measures 4.43:1 in Day, just under the bar for text this
+   small. Mixing a little of the ink in darkens it by day and lightens it by
+   night (--text-primary flips), so one rule clears 4.5:1 in both themes. */
+.due-date.is-over { color: color-mix(in srgb, var(--red) 86%, var(--text-primary)); }
+.due-row .due-name { flex: 1; min-width: 0; }
+.due-row .dl-chip { margin-left: auto; font-style: normal; }
+
+/* ---- 4.6 This week (desktop right column) ---- */
+.today-week { margin: 0 0 18px; }
+.today-week .dl-bars { height: 44px; }
+.week-labels {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-top: 3px;
+  font: 500 9.5px var(--font-mono);
+  color: var(--text-muted);
+  text-align: center;
+}
+.week-note { margin: 6px 0 0; font-size: 11.5px; color: var(--text-muted); }
+
+/* ---- Tail of the screen ---- */
+.today-actions { display: none; gap: 6px; margin-bottom: 18px; }
+.today-arrange { display: flex; justify-content: center; margin: 4px 0 8px; }
+.today-arrange .dl-btn { font-size: 13px; min-height: 36px; color: var(--text-secondary); }
+
+/* Phone: no right column, so This week and its two buttons are not drawn —
+   the + in the bottom bar is how you add anything there. */
+@media (max-width: 900px) {
+  .today-week { display: none; }
+}
+
+/* ---- Desktop: sidebar | centre | 240px right column ---- */
+@media (min-width: 901px) {
+  #dashboardView.active {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 240px;
+    column-gap: 28px;
+    align-items: start;
+  }
+  /* Two real columns, each its own stack. Placing the sections straight into
+     grid cells tied their heights together row by row: Due soon beside the now
+     block opened a gap under it, and This week landed below the whole line.
+     `order` still applies inside each column. */
+  .today-main, .today-rail { display: flex; flex-direction: column; min-width: 0; }
+  #dashboardView .today-actions { display: flex; }
+  #dashboardView .today-arrange { justify-content: flex-start; }
+  /* The right column is a quiet rail, not a stack of cards. */
+  #todayDue, #todayWeek { font-size: 13px; }
+}
+
+/* ---- 4.7 Arrange Today sheet ---- */
+.arr-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  color: var(--text-primary);
+}
+.arr-row > .ms { color: var(--text-muted); font-size: 19px; }
+.arr-name { flex: 1; min-width: 0; }
+.arr-name em { font: 500 9.5px var(--font-mono); font-style: normal; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-left: 6px; }
+.arr-note { font: 500 10.5px var(--font-mono); color: var(--text-muted); }
+.arr-row.is-locked { color: var(--text-secondary); }
+.arr-moves { display: flex; gap: 2px; }
+.arr-move {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.arr-move .ms { font-size: 18px; }
+.arr-move:hover { background: var(--bg-hover); }
+.arr-move:disabled { opacity: 0.35; cursor: not-allowed; }
+.arr-move:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.arr-layouts { margin-top: 6px; }
+.arr-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.arr-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-card);
+  overflow: hidden;
+}
+.arr-chip > button {
+  border: none;
+  background: none;
+  padding: 7px 10px;
+  font: 600 12px var(--font-body);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.arr-chip.on { border-color: var(--accent); }
+.arr-chip.on > button { color: var(--accent); }
+.arr-chip-x { color: var(--text-muted) !important; padding-left: 0 !important; }
+.arr-chip-add { padding: 0 10px 0 6px; color: var(--text-secondary); font: 600 12px var(--font-body); cursor: pointer; }
+.arr-chip-add .ms { font-size: 16px; vertical-align: -0.25em; }
+.arr-name-input {
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 8px;
+  font: 400 15px var(--font-body);
+  padding: 9px 11px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-primary);
+}
+.arr-foot { margin: 4px 0 0; font-size: 11.5px; color: var(--text-muted); }
+
+/* ---- 4.4 Triage sheet ---- */
+.triage-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  color: var(--text-primary);
+}
+.triage-name { flex: 1; min-width: 0; }
+.triage-row .dl-chip { font-style: normal; }
+.triage-add { min-height: 34px; padding: 6px 11px; font-size: 12.5px; }
+#triageBody, #arrangeBody { display: block; }

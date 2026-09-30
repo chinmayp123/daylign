@@ -154,75 +154,54 @@
 
       <!-- Dashboard View -->
       <div class="view active" id="dashboardView">
-                <div class="layout-bar"><button type="button" class="layout-edit-btn" id="layoutEditBtn">Edit layout</button></div>
+        <!-- Today is a fixed skeleton: the now block, then the day itself, and
+             three sections that Arrange Today can reorder or hide (spec 4.7).
+             DOM order here is not the screen order — js/layout.js writes CSS
+             `order`, because every render rewrites these sections' contents and
+             moving nodes would be undone constantly.
 
-        <!-- Health strip FIRST. Measured on a phone, this used to start at
-             screen 1.17 - every number below 986px of brief, triage and task
-             counters. Chinmay: "not even reading the today section and
-             scrolling down everytime to see all the data". So the data leads.
-             The counters that sat here are gone entirely; 17 total / 0 in
-             progress / 14 completed said almost nothing and cost 150px. -->
-        <!-- Zero-height marker at the block's resting position. The block is
+             The two wrappers are the desktop columns. On a phone they are
+             `display: contents`, so every section is one flat stack and
+             `order` runs across all of them. -->
+
+        <div class="today-main">
+        <!-- Zero-height marker at the now block's resting position. The block is
              sticky, so it never leaves the viewport and an observer on the
              block itself would never fire; this is what "scrolled past" means. -->
         <div id="nowBlockTop" aria-hidden="true"></div>
         <!-- The now block (spec 4.2). Locked: not hideable, not reorderable. -->
         <section class="now-block" id="nowBlock" aria-label="Today's numbers"></section>
 
-        <!-- Daily brief: the morning read across training, food and tasks (js/brief.js) -->
-        <div id="dailyBrief"></div>
+        <!-- Brief and actions (spec 4.5): one coach sentence and up to three
+             chips. Replaced #dailyBrief and the six #remindersBar cards. -->
+        <div id="todayBrief" class="today-brief"></div>
 
-        <!-- Today plan: triage nudge + two lanes (Scheduled / Anytime).
-             Populated by js/today.js. The Overview below is demoted, not removed. -->
-        <div id="todayPlan" class="today-plan"></div>
-
-        <!-- Project Filter -->
-        <div class="dashboard-project-filter" id="dashboardProjectFilter"></div>
-
-        <!-- Daily cardio one-tap (js/cardio.js) — a daily habit behind a nav
-             tab never gets logged, so it surfaces here too. -->
+        <!-- Daily cardio one-tap (js/cardio.js). Kept in the DOM and never
+             shown: the line's "Log it" button clicks this one, so deleting it
+             would delete the one-tap ride log with it. -->
         <div id="todayCardio" hidden></div>
-        <!-- The line (spec 4.3): one spine for the whole day. Replaces the
-             Scheduled lane, the schedule card, the reminders list and the
-             daily-ride pill. -->
+
+        <!-- The line (spec 4.3): one spine for the whole day, with the tray
+             (spec 4.4) rendered into it at the now marker. Locked. -->
         <div id="dayLine"></div>
 
-        <!-- Reminders -->
-        <div class="reminders-bar" id="remindersBar"></div>
+        <div class="today-arrange">
+          <button type="button" class="dl-btn" id="arrangeBtn"><span class="ms">tune</span>Arrange Today</button>
+        </div>
+        </div>
 
-        <!-- Dashboard Grid -->
-        <div class="dashboard-grid">
-          <!-- My Tasks Board — collapsed on mobile; the two-lane plan above is
-               the primary task view there. -->
-          <div class="card my-tasks-board-card collapsible" data-collapse="mobile" data-collapse-key="mytasks">
-            <h2>My Tasks</h2>
-            <div class="my-tasks-tabs" id="myTasksTabs"></div>
-            <div class="my-tasks-board" id="myTasksBoard"></div>
-          </div>
+        <div class="today-rail">
+        <!-- Due soon (spec 4.6): replaced the My Tasks board and Deadlines. -->
+        <div id="todayDue" class="today-due"></div>
 
-          <!-- Upcoming Deadlines -->
-          <div class="card deadlines-card">
-            <h2>Upcoming Deadlines</h2>
-            <div class="deadlines-list" id="deadlinesList"></div>
-          </div>
+        <!-- This week (spec 4.6): desktop right column only. -->
+        <div id="todayWeek" class="today-week"></div>
 
-          <!-- Daily Schedule -->
-          <div class="card schedule-card" id="scheduleCard">
-            <div class="schedule-header">
-              <button type="button" class="schedule-collapse-btn" id="scheduleCollapseBtn" aria-label="Show or hide the schedule">
-                <h2 id="scheduleTitle">Today's Schedule</h2>
-                <span class="schedule-chevron">▾</span>
-              </button>
-              <div class="schedule-nav">
-                <button class="schedule-nav-btn" id="schedulePrev" aria-label="Previous day">&lt;</button>
-                <button class="schedule-nav-btn schedule-today-btn" id="scheduleToday">Today</button>
-                <button class="schedule-nav-btn" id="scheduleNext" aria-label="Next day">&gt;</button>
-                <span class="schedule-date-label" id="scheduleDate"></span>
-              </div>
-            </div>
-            <div class="schedule-unscheduled" id="scheduleUnscheduled"></div>
-            <div class="schedule-timeline" id="scheduleTimeline"></div>
-          </div>
+        <!-- Desktop right column tail; the phone reaches both from the + bar. -->
+        <div class="today-actions">
+          <button type="button" class="dl-btn primary" id="todayNewBtn"><span class="ms">add</span>New</button>
+          <button type="button" class="dl-btn" id="todaySayBtn"><span class="ms">mic</span>Say it</button>
+        </div>
         </div>
       </div>
 
@@ -844,15 +823,9 @@
           </section>
 
           <section class="settings-card">
-            <h2>Dashboard widgets</h2>
-            <p class="settings-desc">Uncheck anything you don't want on the Today screen. Nothing is deleted — the data stays and the card comes back the moment you re-check it.</p>
+            <h2>Today sections</h2>
+            <p class="settings-desc">Uncheck anything you don't want on the Today screen. Nothing is deleted — the data stays and the section comes back the moment you re-check it. Reordering and saved layouts live in <strong>Arrange Today</strong>, at the end of the Today screen.</p>
             <div class="pref-toggles" id="widgetToggles"></div>
-          </section>
-
-          <section class="settings-card">
-            <h2>Saved layouts</h2>
-            <p class="settings-desc">Save the current arrangement and switch between setups. Reorder by tapping <strong>Edit layout</strong> on the Today screen.</p>
-            <div id="layoutManager"></div>
           </section>
 
           <section class="settings-card">
@@ -972,6 +945,26 @@
         <input type="number" id="waistInput" placeholder="waist in" step="0.1" min="15" max="80" inputmode="decimal">
         <button class="btn-primary" id="weightLogBtn">Log</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Arrange Today (spec 4.7). Filled by js/layout.js on open; the now block
+       and the line appear as locked rows, and saved layouts live here rather
+       than in Settings, two screens from what they rearrange. -->
+  <div class="dl-sheet-wrap" id="arrangeSheet">
+    <div class="dl-sheet" role="dialog" aria-modal="true" aria-label="Arrange Today" tabindex="-1">
+      <div class="dl-grab"></div>
+      <h4>Arrange Today</h4>
+      <div id="arrangeBody"></div>
+    </div>
+  </div>
+
+  <!-- Triage nudge sheet (spec 4.4), opened from the tray. -->
+  <div class="dl-sheet-wrap" id="triageSheet">
+    <div class="dl-sheet" role="dialog" aria-modal="true" aria-label="Tasks with no date" tabindex="-1">
+      <div class="dl-grab"></div>
+      <h4>No date yet</h4>
+      <div id="triageBody"></div>
     </div>
   </div>
 

@@ -1,212 +1,307 @@
-// ========== Today plan (two-lane) ==========
-// design_handoff_daylign_v2 section 1, refs 10a/10b. The Dashboard became
-// Today; this is the plan that now leads it. Two lanes:
-//   Scheduled — clock-pinned tasks/events, a vertical timeline.
-//   Anytime   — undated-but-due-today work, the majority. Check to complete,
-//               or schedule it to give it a time.
-// Plus a triage nudge that pulls your dateless pile into the day. Everything
-// that was already on the dashboard (stat chips, health strip, weekly report)
-// stays below, demoted — nothing lost.
+// ========== Today: the tray, Due soon and This week (spec 4.4, 4.6) ==========
+// What is left of the two-lane "Today plan" after the line took over. The
+// Scheduled lane became the line itself (js/line.js); the Anytime lane became
+// the tray, a dashed box that sits directly under the now marker — work with no
+// clock time belongs at "now", not in a card of its own further down the page.
+// The triage nudge moved inside the tray with it.
+//
+// Nothing here writes during a render. Every save is behind a click.
 
-const TRIAGE_CHIP_LIMIT = 3;
+const TRIAGE_SHEET_LIMIT = 12;
 
-// Domain colours for the timeline dots (handoff: work / training / meals /
-// recovery). Task category maps onto them; a due item overrides to red.
-function todayDomainColor(task) {
-  const cat = task.category || '';
-  if (cat === 'health') return 'var(--purple)';   // training/fitness
-  if (cat === 'personal') return 'var(--blue)';    // recovery/life
-  if (cat === 'learning') return 'var(--green)';
-  return 'var(--accent)';                           // work + default
+// The task model stores an hour (`scheduledHour`, 6..21) rather than a clock
+// string; the line also reads a v3 `time` if one is ever set. A task with
+// neither is what the tray holds.
+function taskClockTime(t) {
+  if (!t) return null;
+  if (t.time) return String(t.time);
+  if (t.scheduledHour != null && t.scheduledHour !== '') {
+    return String(t.scheduledHour).padStart(2, '0') + ':00';
+  }
+  return null;
 }
 
-function formatHourLabel(h) {
-  const hr = ((h + 11) % 12) + 1;
-  return `${hr}:00${h < 12 ? ' AM' : ' PM'}`.replace(':00', ':00');
-}
-
-// A short estimate chip from the task's duration (hours). Only shown when set.
-function todayEstimateChip(task) {
-  const d = Number(task.duration);
+// `duration` is in hours (the modal's field). Shown the way you'd say it.
+function taskEstimateText(t) {
+  const d = Number(t && t.duration);
   if (!d || d <= 0) return '';
   const mins = Math.round(d * 60);
-  const txt = mins >= 60 ? `~${Math.round(mins / 60 * 10) / 10}h` : `~${mins}m`;
-  return `<span class="today-anytime-est">${txt}</span>`;
+  return mins >= 60 ? Math.round(mins / 60 * 10) / 10 + 'h' : mins + 'm';
 }
 
-function renderTodayPlan() {
-  const host = document.getElementById('todayPlan');
+function trayTasks() {
+  const today = getTodayStr();
+  return (state.tasks || []).filter(t =>
+    t && t.dueDate === today && !taskClockTime(t) &&
+    (t.status !== 'done' || t.completedAt === today));
+}
+
+function datelessTasks() {
+  return (state.tasks || []).filter(t => t && !t.dueDate && t.status !== 'done' && !taskClockTime(t));
+}
+
+// ---------- the tray ----------
+// Rendered INTO the line, right after the now marker, so it reads as part of
+// the day rather than a separate card. It cannot own a persistent host element
+// for that reason: renderLine() rewrites the line's innerHTML, which would
+// destroy anything living inside it. So the tray is built fresh each render and
+// its clicks are delegated from #dashboardView (bound once, below).
+function renderTray() {
+  const lineHost = document.getElementById('dayLine');
+  if (!lineHost) return;
+  document.querySelectorAll('.today-tray').forEach(el => el.remove());
+  // The tray is today's undated-time work and sits at "now"; another day has
+  // no now to sit at.
+  if (typeof lineViewDate !== 'undefined' && lineViewDate) return;
+
+  const tasks = trayTasks();
+  const dateless = datelessTasks();
+  // Empty tray hides — but the triage nudge lives inside it, so a day with
+  // nothing committed and a pile of undated work still needs the box to sit in.
+  if (!tasks.length && !dateless.length) return;
+
+  const left = tasks.filter(t => t.status !== 'done').length;
+  const rows = tasks.map(t => {
+    const done = t.status === 'done';
+    const est = taskEstimateText(t);
+    return `
+    <div class="tray-task${done ? ' is-done' : ''}" draggable="${done ? 'false' : 'true'}" data-tray-task="${t.id}">
+      <button type="button" class="tray-cb${done ? ' on' : ''}" data-tray-toggle="${t.id}"
+              role="checkbox" aria-checked="${done}" aria-label="${done ? 'Completed' : 'Complete'}: ${esc(t.name)}"></button>
+      <span class="tray-name" data-tray-open="${t.id}">${esc(t.name)}</span>
+      ${est ? `<span class="tray-est">${est}</span>` : ''}
+      <button type="button" class="tray-clock" data-tray-clock="${t.id}" aria-label="Give ${esc(t.name)} a time">
+        <span class="ms">schedule</span>
+      </button>
+    </div>`;
+  }).join('');
+
+  const nudge = dateless.length ? `
+    <div class="tray-triage">
+      <b>${dateless.length}</b> task${dateless.length === 1 ? '' : 's'} ha${dateless.length === 1 ? 's' : 've'} no date.
+      <button type="button" class="tray-triage-open" data-triage-open>Pull into today</button>
+    </div>` : '';
+
+  const html = `
+    <div class="today-tray">
+      <h6>No time needed <em>${left} left</em></h6>
+      ${rows}
+      ${nudge}
+    </div>`;
+
+  const marker = document.getElementById('dlNowMarker');
+  if (marker && marker.parentElement) {
+    marker.insertAdjacentHTML('afterend', html);
+  } else {
+    // No line to sit in (a day with nothing on it at all): the tray becomes the
+    // only thing there rather than disappearing with the line.
+    lineHost.hidden = false;
+    lineHost.insertAdjacentHTML('beforeend', html);
+  }
+}
+
+// ---------- triage sheet ----------
+function renderTriageSheet() {
+  const host = document.getElementById('triageBody');
+  if (!host) return;
+  const dateless = datelessTasks();
+
+  if (!dateless.length) {
+    host.innerHTML = '<p class="arr-foot">Nothing is waiting for a date. Good place to be.</p>';
+    return;
+  }
+
+  host.innerHTML =
+    dateless.slice(0, TRIAGE_SHEET_LIMIT).map(t => `
+      <div class="triage-row">
+        <span class="triage-name">${esc(t.name)}</span>
+        ${taskCatChip(t)}
+        <button type="button" class="dl-btn triage-add" data-triage-add="${t.id}">+ Today</button>
+      </div>`).join('') +
+    `<button type="button" class="dl-btn full" data-triage-all>See all ${dateless.length}</button>`;
+}
+
+function openTriageSheet() {
+  renderTriageSheet();
+  if (typeof openDlSheet === 'function') openDlSheet(document.getElementById('triageSheet'));
+}
+
+// ---------- Due soon (spec 4.6) ----------
+// Replaces the My Tasks board and the Deadlines card: overdue first, then the
+// next seven days. One list, dates in mono, category as a tinted chip.
+function taskCatChip(t) {
+  const cat = (state.categories || []).find(c => c.id === t.category);
+  if (!cat) return '';
+  const key = (typeof CATEGORY_COLOR_KEYS !== 'undefined' && CATEGORY_COLOR_KEYS.indexOf(cat.color) !== -1) ? cat.color : '';
+  return `<em class="dl-chip${key ? ' c-' + key : ''}">${esc(cat.name)}</em>`;
+}
+
+function renderDueSoon() {
+  const host = document.getElementById('todayDue');
   if (!host) return;
   const today = getTodayStr();
-  const tasks = (state.tasks || []).filter(t => t.status !== 'done' || t.completedAt === today);
+  const horizon = offsetDateStr(today, 7);
 
-  // Scheduled: due today (or overdue) AND pinned to an hour. Plus timed events.
-  const scheduled = tasks
-    .filter(t => t.status !== 'done' && t.scheduledHour != null && (!t.dueDate || t.dueDate <= today))
-    .sort((a, b) => a.scheduledHour - b.scheduledHour);
+  const items = (state.tasks || [])
+    .filter(t => t && t.status !== 'done' && t.dueDate && t.dueDate <= horizon)
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+    .slice(0, 8);
 
-  // Anytime today: committed to today (due today) but no clock time yet — the
-  // undated-but-due majority. Completed-today items stay so checking one off
-  // doesn't make it vanish mid-glance.
-  const anytime = tasks
-    .filter(t => t.dueDate === today && t.scheduledHour == null);
+  if (!items.length) { host.innerHTML = ''; host.hidden = true; return; }
+  host.hidden = false;
 
-  // Triage: genuinely dateless, not-done work waiting to be pulled into a day.
-  const dateless = tasks.filter(t => !t.dueDate && t.status !== 'done' && t.scheduledHour == null);
-
-  const parts = [];
-
-  // ---- Triage nudge ----
-  if (dateless.length) {
-    const chips = dateless.slice(0, TRIAGE_CHIP_LIMIT).map(t => `
-      <div class="today-triage-chip">
-        <span class="today-triage-name">${esc(t.name)}</span>
-        <button type="button" class="today-triage-add" data-triage-add="${t.id}">+ Today</button>
-      </div>`).join('');
-    const more = dateless.length > TRIAGE_CHIP_LIMIT
-      ? `<button type="button" class="today-triage-more" data-triage-all>See all ${dateless.length} ›</button>`
-      : '';
-    parts.push(`
-      <div class="today-triage">
-        <div class="today-triage-head">
-          <span class="today-triage-icon">🗂️</span>
-          <span>${dateless.length} task${dateless.length === 1 ? ' has' : 's have'} no date. Pull ${dateless.length === 1 ? 'it' : 'a few'} into today?</span>
-        </div>
-        <div class="today-triage-chips">${chips}${more}</div>
-      </div>`);
-  }
-
-  // ---- Scheduled lane ----
-  const scheduledRows = scheduled.length ? scheduled.map(t => {
-    const overdue = t.dueDate && t.dueDate < today;
-    const dot = overdue ? 'var(--red)' : todayDomainColor(t);
-    return `
-      <div class="today-sched-row${overdue ? ' is-due' : ''}" data-open-task="${t.id}">
-        <span class="today-sched-time">${formatHourLabel(t.scheduledHour)}</span>
-        <span class="today-sched-dot" style="background:${dot}"></span>
-        <span class="today-sched-name">${esc(t.name)}${overdue ? ' <span class="today-sched-due">due</span>' : ''}</span>
-        <span class="today-sched-check ${t.status === 'done' ? 'checked' : ''}" data-toggle-task="${t.id}"></span>
+  host.innerHTML = `
+    <h2 class="today-sec-t">Due soon</h2>
+    ${items.map(t => {
+      const overdue = t.dueDate < today;
+      return `
+      <div class="due-row" data-due-open="${t.id}">
+        <span class="due-date${overdue ? ' is-over' : ''}">${esc(formatDate(t.dueDate))}</span>
+        <span class="due-name">${esc(t.name)}</span>
+        ${taskCatChip(t)}
       </div>`;
-  }).join('') : '<div class="today-lane-empty">Nothing pinned to a time yet.</div>';
-
-  // ---- Anytime lane ----
-  const anytimeRows = anytime.length ? anytime.map(t => `
-      <div class="today-anytime-row${t.status === 'done' ? ' is-done' : ''}" draggable="true" data-anytime-task="${t.id}">
-        <span class="today-anytime-check ${t.status === 'done' ? 'checked' : ''}" data-toggle-task="${t.id}"></span>
-        <span class="today-anytime-name" data-open-task="${t.id}">${esc(t.name)}</span>
-        ${todayEstimateChip(t)}
-        <button type="button" class="today-anytime-schedule" data-schedule-task="${t.id}" title="Give it a time">🕑</button>
-        <span class="today-anytime-handle" aria-hidden="true">⠿</span>
-      </div>`).join('') : '<div class="today-lane-empty">Nothing committed to today yet — pull a task up from the nudge above.</div>';
-
-  // A lane with nothing in it used to render a card explaining its own
-  // emptiness. In the morning both were empty, so Today opened with two boxes
-  // announcing what had not happened yet — and with the nudge above them, three
-  // consecutive statements of absence. An empty lane is now simply not drawn;
-  // when BOTH are empty the whole block disappears, because the nudge above is
-  // already the way in.
-  const hasScheduled = scheduled.length > 0;
-  const hasAnytime = anytime.length > 0;
-  if (hasScheduled || hasAnytime) {
-    parts.push(`
-    <div class="today-lanes${hasScheduled && hasAnytime ? '' : ' is-single'}">
-      ${hasScheduled ? `
-      <div class="today-lane today-lane-scheduled">
-        <div class="today-lane-label">Scheduled</div>
-        <div class="today-sched-list" id="todaySchedList">${scheduledRows}</div>
-      </div>` : ''}
-      ${hasAnytime ? `
-      <div class="today-lane today-lane-anytime">
-        <div class="today-lane-label">Anytime today ${hasScheduled ? '<span class="today-lane-hint">drag up to schedule</span>' : ''}</div>
-        <div class="today-anytime-list">${anytimeRows}</div>
-      </div>` : ''}
-    </div>`);
-  }
-
-  host.innerHTML = parts.join('');
-  bindTodayPlan();
+    }).join('')}`;
 }
 
-function bindTodayPlan() {
-  const host = document.getElementById('todayPlan');
+// ---------- This week (spec 4.6, desktop right column) ----------
+// Seven bars in the move colour: active energy per day, which is the one figure
+// that covers lifting, cardio and walking in a single unit, so a bar is never
+// empty for a reason the chart can't show. Today's bar is outlined in accent.
+function renderWeekBars() {
+  const host = document.getElementById('todayWeek');
   if (!host) return;
+  const today = getTodayStr();
 
-  // Triage "+ Today": commit a dateless task to today.
-  host.querySelectorAll('[data-triage-add]').forEach(btn => {
-    btn.addEventListener('click', e => {
+  // Monday-first week containing today, so the bars line up with the MTWTFSS
+  // labels under them whatever day you open the app.
+  const d = new Date(today + 'T00:00:00');
+  const monday = offsetDateStr(today, -((d.getDay() + 6) % 7));
+
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const date = offsetDateStr(monday, i);
+    const watch = (typeof getExternalActiveEnergy === 'function') ? getExternalActiveEnergy(date) : null;
+    const burn = watch !== null && watch !== undefined
+      ? Math.round(watch)
+      : ((typeof estimateBurnForDate === 'function') ? Math.round(estimateBurnForDate(date) || 0) : 0);
+    days.push({ date, burn, future: date > today });
+  }
+
+  const max = Math.max(1, ...days.map(x => x.burn));
+  const sessions = days.filter(x =>
+    (typeof isFullSession === 'function' && isFullSession(x.date)) ||
+    (state.cardio || []).some(c => c && c.date === x.date)).length;
+
+  host.innerHTML = `
+    <h2 class="today-sec-t">This week <em>kcal burned</em></h2>
+    <div class="dl-bars c-move">
+      ${days.map(x => `<i class="${x.date === today ? 'now' : (x.burn ? '' : 'empty')}" style="--h:${x.future ? 0 : Math.round((x.burn / max) * 100)}%" title="${x.date}: ${x.burn} kcal"></i>`).join('')}
+    </div>
+    <div class="week-labels">${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(l => `<span>${l}</span>`).join('')}</div>
+    <p class="week-note">${sessions} session${sessions === 1 ? '' : 's'} so far this week</p>`;
+}
+
+// ---------- one delegated binding for all three ----------
+// #dashboardView survives every render, so this is bound once behind a guard.
+// Everything inside it is rewritten constantly; nothing here binds per row.
+let todayBound = false;
+function bindTodaySurfaces() {
+  const root = document.getElementById('dashboardView');
+  if (!root || todayBound) return;
+  todayBound = true;
+
+  root.addEventListener('click', (e) => {
+    const toggle = e.target.closest('[data-tray-toggle]');
+    if (toggle) { e.stopPropagation(); toggleTaskDone(toggle.dataset.trayToggle); return; }
+
+    const open = e.target.closest('[data-tray-open]');
+    if (open) { e.stopPropagation(); if (typeof openModal === 'function') openModal(open.dataset.trayOpen); return; }
+
+    // Touch path for scheduling: the task sheet with the time field focused.
+    const clock = e.target.closest('[data-tray-clock]');
+    if (clock) {
       e.stopPropagation();
-      const task = state.tasks.find(t => t.id === btn.dataset.triageAdd);
+      if (typeof openModal === 'function') openModal(clock.dataset.trayClock, null, 'edit');
+      // openModal() focuses the name field on a 100ms timer; focusing the time
+      // field any sooner just hands the focus straight back to it.
+      setTimeout(() => {
+        const field = document.getElementById('taskScheduledHour');
+        if (field) field.focus();
+      }, 140);
+      return;
+    }
+
+    if (e.target.closest('[data-triage-open]')) { openTriageSheet(); return; }
+
+    const due = e.target.closest('[data-due-open]');
+    if (due && typeof openModal === 'function') openModal(due.dataset.dueOpen);
+  });
+
+  // Desktop: drag a tray task onto a row of the line to take that row's time.
+  // Touch never fires HTML5 drag events, which is what the clock button above
+  // is for — the same reason the board has both.
+  let dragId = null;
+  root.addEventListener('dragstart', (e) => {
+    const row = e.target.closest('[data-tray-task]');
+    if (!row) return;
+    dragId = row.dataset.trayTask;
+    row.classList.add('is-dragging');
+    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+  });
+  root.addEventListener('dragend', (e) => {
+    const row = e.target.closest('[data-tray-task]');
+    if (row) row.classList.remove('is-dragging');
+    dragId = null;
+  });
+  const line = document.getElementById('dayLine');
+  if (line) {
+    line.addEventListener('dragover', (e) => {
+      if (!dragId) return;
+      e.preventDefault();
+      const row = e.target.closest('.dl-line-item');
+      document.querySelectorAll('.dl-line-item.is-drop').forEach(el => el.classList.remove('is-drop'));
+      if (row) row.classList.add('is-drop');
+    });
+    line.addEventListener('dragleave', () => {
+      document.querySelectorAll('.dl-line-item.is-drop').forEach(el => el.classList.remove('is-drop'));
+    });
+    line.addEventListener('drop', (e) => {
+      if (!dragId) return;
+      e.preventDefault();
+      document.querySelectorAll('.dl-line-item.is-drop').forEach(el => el.classList.remove('is-drop'));
+      const task = (state.tasks || []).find(t => t.id === dragId);
+      dragId = null;
+      if (!task) return;
+      const row = e.target.closest('.dl-line-item');
+      const label = row && row.querySelector('.t') ? row.querySelector('.t').textContent : '';
+      const m = String(label).match(/(\d{1,2}):(\d{2})/);
+      // Dropped on empty space, or on the sleep row that has no clock time: the
+      // next hour is the only honest guess.
+      const hour = m ? Number(m[1]) : Math.min(23, new Date().getHours() + 1);
+      task.scheduledHour = Math.max(0, Math.min(23, hour));
+      task.dueDate = task.dueDate || getTodayStr();
+      saveData(state);
+      if (typeof showToast === 'function') showToast('Scheduled for ' + task.scheduledHour + ':00');
+      render();
+    });
+  }
+
+  // Triage sheet lives outside #dashboardView, so it gets its own delegation.
+  document.addEventListener('click', (e) => {
+    const add = e.target.closest('[data-triage-add]');
+    if (add) {
+      const task = (state.tasks || []).find(t => t.id === add.dataset.triageAdd);
       if (!task) return;
       task.dueDate = getTodayStr();
       saveData(state);
-      if (typeof showToast === 'function') showToast(`"${task.name}" pulled into today`);
+      if (typeof showToast === 'function') showToast('"' + task.name + '" pulled into today');
       render();
-    });
+      renderTriageSheet();
+      return;
+    }
+    if (e.target.closest('[data-triage-all]')) {
+      if (typeof closeDlSheet === 'function') closeDlSheet(document.getElementById('triageSheet'));
+      if (typeof switchView === 'function') switchView('tasks');
+    }
   });
-
-  // "See all N" → the task list, filtered to what needs a date.
-  const seeAll = host.querySelector('[data-triage-all]');
-  if (seeAll) seeAll.addEventListener('click', () => { if (typeof switchView === 'function') switchView('tasks'); });
-
-  // Check off a task from either lane.
-  host.querySelectorAll('[data-toggle-task]').forEach(el => {
-    el.addEventListener('click', e => {
-      e.stopPropagation();
-      if (typeof toggleTaskDone === 'function') toggleTaskDone(el.dataset.toggleTask);
-    });
-  });
-
-  // Open a task (row body / name).
-  host.querySelectorAll('[data-open-task]').forEach(el => {
-    el.addEventListener('click', e => {
-      e.stopPropagation();
-      if (typeof openModal === 'function') openModal(el.dataset.openTask);
-    });
-  });
-
-  // Schedule button: open the task so a time can be set (works on touch, where
-  // dragging between lanes is unreliable).
-  host.querySelectorAll('[data-schedule-task]').forEach(btn => {
-    btn.addEventListener('click', e => {
-      e.stopPropagation();
-      if (typeof openModal === 'function') openModal(btn.dataset.scheduleTask, null, 'edit');
-    });
-  });
-
-  // Desktop: drag an Anytime task onto the Scheduled lane to give it a time.
-  // Drops onto a specific row inherit that row's hour; drops on empty space
-  // use the next hour from now. Touch falls back to the schedule button above.
-  let dragId = null;
-  host.querySelectorAll('[data-anytime-task]').forEach(row => {
-    row.addEventListener('dragstart', e => {
-      dragId = row.dataset.anytimeTask;
-      row.classList.add('is-dragging');
-      if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
-    });
-    row.addEventListener('dragend', () => { dragId = null; row.classList.remove('is-dragging'); });
-  });
-  const schedList = document.getElementById('todaySchedList');
-  if (schedList) {
-    schedList.addEventListener('dragover', e => { e.preventDefault(); schedList.classList.add('is-drop'); });
-    schedList.addEventListener('dragleave', () => schedList.classList.remove('is-drop'));
-    schedList.addEventListener('drop', e => {
-      e.preventDefault();
-      schedList.classList.remove('is-drop');
-      if (!dragId) return;
-      const task = state.tasks.find(t => t.id === dragId);
-      if (!task) return;
-      const overRow = e.target.closest('.today-sched-row');
-      let hour;
-      if (overRow) {
-        const overTask = state.tasks.find(t => t.id === overRow.dataset.openTask);
-        hour = overTask ? overTask.scheduledHour : null;
-      }
-      if (hour == null) hour = Math.min(23, new Date().getHours() + 1);
-      task.scheduledHour = hour;
-      task.dueDate = task.dueDate || getTodayStr();
-      saveData(state);
-      if (typeof showToast === 'function') showToast(`Scheduled for ${formatHourLabel(hour)}`);
-      render();
-    });
-  }
 }
