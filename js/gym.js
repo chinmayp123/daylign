@@ -234,6 +234,40 @@ function sessionFocusRow(entries) {
     </div>`;
 }
 
+// The same tally as a label plus parts, for the session card's header.
+function sessionFocusData(entries) {
+  if (!entries || !entries.length) return null;
+  const ORDER = (typeof MUSCLE_ORDER !== 'undefined') ? MUSCLE_ORDER : ['push', 'pull', 'legs', 'core'];
+  const tally = { push: 0, pull: 0, legs: 0, core: 0 };
+  let classified = 0, unknown = 0;
+  entries.forEach(ex => {
+    const grp = muscleGroupFor(ex.exercise);
+    const n = (ex.sets || []).length;
+    if (grp) { tally[grp] += n; classified += n; } else { unknown += n; }
+  });
+  if (!classified) return null;
+  const hit = ORDER.filter(k => tally[k] > 0).sort((a, b) => tally[b] - tally[a]);
+  const label = tally[hit[0]] / classified >= 0.7 ? `${groupLabel(hit[0])} day` : 'Mixed';
+  const parts = hit.map(k => `${groupLabel(k)} ${tally[k]}`);
+  if (unknown) parts.push(`Other ${unknown}`);
+  return { label, parts };
+}
+
+// "3 x 8 · 155 lb" when every set matches, otherwise the sets spelled out, so
+// a row says what was actually lifted without a table under it.
+function setsSummary(ex, isBW) {
+  const sets = (ex && ex.sets) || [];
+  if (!sets.length) return '';
+  const reps = sets.map(s => Number(s.reps) || 0);
+  const wts = sets.map(s => Number(s.weight) || 0);
+  const sameReps = reps.every(r => r === reps[0]);
+  const sameWt = wts.every(w => w === wts[0]);
+  if (isBW || sameWt) {
+    return (sameReps ? sets.length + ' x ' + reps[0] : reps.join(', ')) + ' · ' + (isBW ? 'bodyweight' : wts[0] + ' lb');
+  }
+  return sets.map((s, i) => reps[i] + ' x ' + wts[i]).join(', ') + ' lb';
+}
+
 function latestBodyWeightLbs() {
   const entries = Object.entries(state.weight || {}).sort((a, b) => a[0].localeCompare(b[0]));
   return entries.length ? entries[entries.length - 1][1] : 160;
@@ -389,23 +423,23 @@ function renderLastTimeChip() {
   if (!name) { el.innerHTML = ''; return; }
   const hist = exerciseHistory(name, gymViewDate);
   if (!hist.length) {
-    el.innerHTML = `<div class="gym-lasttime">First time logging <strong>${esc(name)}</strong> — today sets the baseline.</div>`;
+    el.innerHTML = `<div class="gl-last"><span class="ms" aria-hidden="true">flag</span><span>First time logging <b>${esc(name)}</b>. Today sets the baseline.</span></div>`;
     return;
   }
   const last = hist[0];
   const bw = last.bodyweight || isBodyweightExercise(last.exercise);
-  const setsStr = last.sets.map(s => bw ? s.reps : `${s.reps}&times;${s.weight}`).join(', ');
-  const pr = hist.reduce((m, ex) => Math.max(m, bestSetScore(ex)), 0);
   const lastBestReps = last.sets.reduce((m, s) => Math.max(m, Number(s.reps) || 0), 0);
-  const target = bw
-    ? `get ${lastBestReps + 1} reps on your first set`
-    : 'add a rep to each set, or +2.5 lbs';
-  el.innerHTML = `<div class="gym-lasttime">
-    <span class="gym-lasttime-label">Last time (${formatDate(last.date)}):</span>
-    <span class="gym-lasttime-sets">${setsStr}</span>
-    <span class="gym-lasttime-pr">PR: ${bw ? pr + ' reps' : pr.toLocaleString() + ' lbs&middot;set'}</span>
-    <span class="gym-lasttime-target">Beat it &mdash; ${target}</span>
-  </div>`;
+  const reps = last.sets.map(s => Number(s.reps) || 0);
+  const wts = last.sets.map(s => Number(s.weight) || 0);
+  const uniform = reps.every(r => r === reps[0]) && wts.every(w => w === wts[0]);
+  // A concrete target, not "do better": the same session with one thing moved.
+  let target;
+  if (bw) target = `${lastBestReps + 1} reps on the first set`;
+  else if (uniform) target = `${last.sets.length} x ${reps[0]} at ${wts[0] + 5}, or a rep more per set`;
+  else target = 'a rep more per set, or 5 lb';
+  const lastStr = setsSummary(last, bw).replace(' · ', bw ? ', ' : ' at ');
+  el.innerHTML = `<div class="gl-last"><span class="ms" aria-hidden="true">trending_up</span>
+    <span>Last time (${esc(formatDate(last.date))}) <b>${esc(lastStr)}</b>. Beat it: <b>${esc(target)}</b>.</span></div>`;
 }
 
 // A day only "counts" for consistency — the streak, and a solid calendar cell —
@@ -842,16 +876,29 @@ function renderStreak() {
   }
 
   const checkIns = activeWeek - realWeek;
-  $('#streakSummary').textContent = checkIns > 0
-    ? `${realWeek} session${realWeek === 1 ? '' : 's'} · ${checkIns} check-in${checkIns === 1 ? '' : 's'} in the last 7 days`
-    : `${realWeek} of the last 7 days`;
-  $('#streakStats').innerHTML = `
-    <div class="gym-stat"><span class="gym-stat-val">${streak}</span><span class="gym-stat-lbl">Day Streak</span></div>
-    <div class="gym-stat"><span class="gym-stat-val">${realWeek}<small class="streak-stat-target"> / 4+</small></span><span class="gym-stat-lbl">Sessions This Week</span></div>
-    <div class="gym-stat"><span class="gym-stat-val">${best}</span><span class="gym-stat-lbl">Best Streak</span></div>
-  `;
+  const sum = $('#streakSummary');
+  if (sum) sum.textContent = streak ? `${streak}-day streak` : 'no streak yet';
+  const note = $('#streakStats');
+  if (note) {
+    const bits = [`Last 16 weeks. ${realWeek} session${realWeek === 1 ? '' : 's'} in the last 7 days`
+      + (checkIns > 0 ? `, plus ${checkIns} check-in${checkIns === 1 ? '' : 's'}` : '') + '.'];
+    if (best > 1) bits.push(`Best streak ${best} days.`);
+    const next = nextTrainingNote();
+    if (next) bits.push(next);
+    note.textContent = bits.join(' ');
+  }
 
-  renderConsistencyCalendar(heatEl, daySets, today);
+  renderConsistencyCalendar(heatEl, daySets, today, 112);   // 16 weeks (spec 7)
+}
+
+// "Next training day: today, Pull + Core." From the same split engine the coach
+// reads, so the card and the coach cannot name different days.
+function nextTrainingNote() {
+  const rec = (typeof nextTrainingDay === 'function') ? nextTrainingDay() : null;
+  if (!rec || !rec.label) return '';
+  const when = isConsistencyDay(getTodayStr()) ? 'tomorrow' : 'today';
+  if (rec.day === 'recovery') return `${when === 'today' ? 'Today' : 'Tomorrow'} is a recovery day.`;
+  return `Next training day: ${when}, ${rec.label}.`;
 }
 
 // Last-30-days calendar: columns = weeks, rows = Mon..Sun (so it reads down a
@@ -1011,8 +1058,9 @@ function openGymLogSheet(prefillName) {
   const input = document.getElementById('gymExerciseName');
   if (input && typeof prefillName === 'string') input.value = prefillName;
   renderGym();
-  sheet.classList.add('is-open');
-  document.body.classList.add('gym-sheet-lock');
+  // A .dl-sheet like the task sheet: bottom sheet on a phone, centred panel on
+  // desktop, closes on backdrop / Esc / swipe unless the form has been edited.
+  openDlSheet(sheet);
   if (typeof haptic === 'function') haptic('light');
   const title = document.getElementById('gymLogSheetTitle');
   if (title) title.textContent = gymEditingIdx === null ? 'Log exercise' : 'Edit exercise';
@@ -1028,10 +1076,21 @@ function openGymLogSheet(prefillName) {
 function closeGymLogSheet() {
   const sheet = document.getElementById('gymLogSheet');
   if (!sheet) return;
-  sheet.classList.remove('is-open');
-  document.body.classList.remove('gym-sheet-lock');
+  closeDlSheet(sheet);
+}
+
+// Runs on EVERY close (the sheet fires dl-sheet-close whether it was Save, the
+// x, the backdrop or Esc). Without it, closing an edit left the form in edit
+// mode, and the next "Log exercise" opened as "Edit exercise" holding the old
+// sets.
+function resetGymLogForm() {
+  gymEditingIdx = null;
   const input = document.getElementById('gymExerciseName');
-  if (input) input.blur();
+  if (input) { input.value = ''; input.blur(); }
+  gymSets = (typeof defaultGymSets === 'function') ? defaultGymSets() : [{ reps: '', weight: '' }];
+  gymBodyweight = false;
+  const btn = document.getElementById('gymSaveExerciseBtn');
+  if (btn) btn.textContent = 'Save';
 }
 
 function bindGymSuggestions() {
@@ -1055,13 +1114,9 @@ function bindGymSuggestions() {
 
   const close = document.getElementById('gymLogClose');
   if (close) close.addEventListener('click', closeGymLogSheet);
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeGymLogSheet();
-  });
-  // Desktop popup: clicking the dimmed backdrop (the sheet element itself, never
-  // the panel inside it) closes, matching how the New Task modal behaves.
+  // Backdrop, Esc and swipe are the shared .dl-sheet handlers in js/utils.js.
   const sheet = document.getElementById('gymLogSheet');
-  if (sheet) sheet.addEventListener('click', (e) => { if (e.target === sheet) closeGymLogSheet(); });
+  if (sheet) sheet.addEventListener('dl-sheet-close', resetGymLogForm);
 }
 
 // ---- Rest timer ----
@@ -1072,7 +1127,7 @@ function stopRestTimer() {
   restInterval = null;
   $$('.gym-rest-btn').forEach(b => {
     b.classList.remove('active');
-    b.textContent = `Rest ${b.dataset.rest}s`;
+    b.textContent = `${b.dataset.rest}s`;
   });
 }
 
@@ -1278,8 +1333,11 @@ function renderGym() {
   const todayStr = getTodayStr();
   const viewDate = new Date(gymViewDate + 'T00:00:00');
   const isToday = gymViewDate === todayStr;
-  $('#gymDateLabel').textContent = isToday ? 'Today' :
-    viewDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const shortDay = viewDate.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
+  $('#gymDateLabel').textContent = isToday ? `Today, ${shortDay}`
+    : viewDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const todayBtn = $('#gymToday');
+  if (todayBtn) todayBtn.hidden = isToday;
 
   // Populate exercise suggestions
   const allExercises = [...new Set([...COMMON_EXERCISES, ...state.gym.map(e => e.exercise)])].sort();
@@ -1290,16 +1348,18 @@ function renderGym() {
   const exerciseName = $('#gymExerciseName').value.trim();
   gymBodyweight = isBodyweightExercise(exerciseName);
 
-  // Render set inputs
+  // Set rows in the log sheet. The input classes are what the listeners below
+  // bind to; everything else is the v3 row.
   $('#gymSetsList').innerHTML = gymSets.map((s, i) => `
-    <div class="gym-set-chip" data-index="${i}">
-      <span class="gym-set-chip-num">${i + 1}</span>
-      <input type="number" class="gym-reps-input" value="${s.reps}" placeholder="reps" min="0" data-index="${i}">
+    <div class="gl-set" data-index="${i}">
+      <span class="gl-set-n">Set ${i + 1}</span>
+      <span class="gl-set-spacer"></span>
+      <input type="number" inputmode="numeric" class="gym-reps-input" value="${s.reps}" placeholder="0" min="0" data-index="${i}" aria-label="Set ${i + 1} reps">
+      <span class="gl-set-u">reps</span>
       ${!gymBodyweight ? `
-        <span class="gym-set-chip-x">&times;</span>
-        <input type="number" class="gym-weight-input" value="${s.weight}" placeholder="lbs" min="0" step="2.5" data-index="${i}">
-      ` : '<span class="gym-bw-label">BW</span>'}
-      ${gymSets.length > 1 ? `<button type="button" class="gym-remove-set" data-index="${i}">&times;</button>` : ''}
+        <input type="number" inputmode="decimal" class="gym-weight-input" value="${s.weight}" placeholder="0" min="0" step="2.5" data-index="${i}" aria-label="Set ${i + 1} weight">
+        <span class="gl-set-u">lb</span>` : '<span class="gl-set-u">bodyweight</span>'}
+      ${gymSets.length > 1 ? `<button type="button" class="gym-remove-set" data-index="${i}" aria-label="Remove set ${i + 1}"><span class="ms" aria-hidden="true">remove_circle</span></button>` : ''}
     </div>
   `).join('');
 
@@ -1320,52 +1380,39 @@ function renderGym() {
   const totalVolume = weightedExercises.reduce((s, ex) => s + ex.sets.reduce((v, set) => v + Number(set.reps) * Number(set.weight), 0), 0);
   const totalReps = dayExercises.reduce((s, ex) => s + ex.sets.reduce((v, set) => v + Number(set.reps), 0), 0);
 
-  // Stats
+  // The session card (spec 7): a header that names the day and carries the
+  // three numbers, then one row per exercise. It replaced a stats band, a focus
+  // row and a card per exercise with a set table inside each.
+  const session = document.getElementById('gymSession');
+  if (session) session.classList.toggle('is-empty', !dayExercises.length);
+  const focus = sessionFocusData(dayExercises);
+  const liftKcal = dayExercises.length
+    ? Math.max(0, estimateBurnForDate(gymViewDate) - ((typeof cardioBurnForDate === 'function') ? cardioBurnForDate(gymViewDate) : 0))
+    : 0;
+  const headBits = [`${totalSets} set${totalSets === 1 ? '' : 's'}`];
+  if (totalVolume) headBits.push(`${totalVolume.toLocaleString()} lb`);
+  if (liftKcal) headBits.push(`~${Math.round(liftKcal)} kcal`);
   $('#gymStats').innerHTML = dayExercises.length ? `
-    <div class="gym-stat"><span class="gym-stat-val">${dayExercises.length}</span><span class="gym-stat-lbl">Exercises</span></div>
-    <div class="gym-stat"><span class="gym-stat-val">${totalSets}</span><span class="gym-stat-lbl">Sets</span></div>
-    <div class="gym-stat"><span class="gym-stat-val">${totalReps.toLocaleString()}</span><span class="gym-stat-lbl">Reps</span></div>
-    <div class="gym-stat"><span class="gym-stat-val">${totalVolume.toLocaleString()}</span><span class="gym-stat-lbl">Volume (lbs)</span></div>
-  ` : '';
+    <h6 class="dl-card-h ss-h"><span>${esc(focus ? focus.label : 'Session')}</span><em>${headBits.join(' · ')}</em></h6>
+    ${focus && focus.parts.length > 1 ? `<p class="ss-focus">${esc(focus.parts.join(' · '))} sets</p>` : ''}` : '';
 
-  // Exercise list
   if (!dayExercises.length) {
-    $('#gymTodayList').innerHTML = '<div class="gym-empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" opacity="0.4"><path d="M6.5 6.5h-3a1 1 0 00-1 1v9a1 1 0 001 1h3"/><path d="M17.5 6.5h3a1 1 0 011 1v9a1 1 0 01-1 1h-3"/><rect x="6.5" y="4" width="4" height="16" rx="1"/><rect x="13.5" y="4" width="4" height="16" rx="1"/><line x1="10.5" y1="12" x2="13.5" y2="12"/></svg><p>No exercises logged</p><p class="gym-empty-sub">Tap Log exercise to start tracking</p></div>';
+    $('#gymTodayList').innerHTML = `<p class="ss-empty">Nothing logged ${isToday ? 'yet today' : 'on this day'}.</p>`;
   } else {
-    $('#gymTodayList').innerHTML = sessionFocusRow(dayExercises) + dayExercises.map((ex, idx) => {
+    $('#gymTodayList').innerHTML = dayExercises.map((ex, idx) => {
       const isBW = ex.bodyweight || isBodyweightExercise(ex.exercise);
-      const totalRepsEx = ex.sets.reduce((sum, s) => sum + Number(s.reps), 0);
-      const vol = ex.sets.reduce((sum, s) => sum + (Number(s.reps) * Number(s.weight)), 0);
       // PR: best set today beats every earlier session of this exercise
       const hist = exerciseHistory(ex.exercise, ex.date);
       const isPR = hist.length > 0 && bestSetScore(ex) > hist.reduce((m, h) => Math.max(m, bestSetScore(h)), 0);
-      const grp = muscleGroupFor(ex.exercise);
       return `
-      <div class="gym-entry">
-        <div class="gym-entry-head">
-          <div class="gym-entry-left">
-            <span class="gym-entry-num">${idx + 1}</span>
-            <span class="gym-entry-name">${esc(ex.exercise)}</span>
-            ${grp ? `<span class="gym-group-badge" data-group="${grp}">${groupLabel(grp)}</span>` : ''}
-            ${isPR ? '<span class="gym-pr-badge">PR</span>' : ''}
-            ${isBW ? '<span class="gym-bw-badge">Bodyweight</span>' : ''}
-          </div>
-          <div class="gym-entry-right">
-            <span class="gym-entry-vol">${isBW ? totalRepsEx + ' reps' : vol.toLocaleString() + ' lbs'}</span>
-            <button class="gym-entry-edit" data-gym-idx="${idx}" title="Edit">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            </button>
-            <button class="gym-entry-del" data-gym-idx="${idx}" title="Delete">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-            </button>
-          </div>
+      <div class="ss-row">
+        <span class="ss-sw"></span>
+        <div class="ss-main">
+          <div class="ss-name">${esc(ex.exercise)}${isPR ? '<span class="dl-chip c-food ss-pr"><span class="ms" aria-hidden="true">trophy</span>PR</span>' : ''}</div>
+          <div class="ss-sets">${esc(setsSummary(ex, isBW))}</div>
         </div>
-        <table class="gym-sets-table">
-          <thead><tr><th>Set</th><th>Reps</th>${!isBW ? '<th>Weight</th>' : ''}</tr></thead>
-          <tbody>
-            ${ex.sets.map((s, si) => `<tr><td>${si + 1}</td><td>${s.reps}</td>${!isBW ? `<td>${s.weight} lbs</td>` : ''}</tr>`).join('')}
-          </tbody>
-        </table>
+        <button type="button" class="ss-act gym-entry-edit" data-gym-idx="${idx}" aria-label="Edit ${esc(ex.exercise)}"><span class="ms" aria-hidden="true">edit</span></button>
+        <button type="button" class="ss-act gym-entry-del" data-gym-idx="${idx}" aria-label="Delete ${esc(ex.exercise)}"><span class="ms" aria-hidden="true">delete</span></button>
       </div>`;
     }).join('');
   }
@@ -1380,9 +1427,7 @@ function renderGym() {
       $('#gymExerciseName').value = ex.exercise;
       gymSets = ex.sets.map(s => ({ reps: String(s.reps), weight: String(s.weight) }));
       // Update button text
-      $('#gymSaveExerciseBtn').innerHTML = `
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
-        Update Exercise`;
+      $('#gymSaveExerciseBtn').textContent = 'Save changes';
       // Editing opens the same popup as logging — on both mobile and desktop now.
       // openGymLogSheet() calls renderGym() and handles focus per platform.
       if (typeof openGymLogSheet === 'function') openGymLogSheet(ex.exercise);
@@ -1418,7 +1463,10 @@ function bindGymEvents() {
   // Live "beat last time" chip while typing (chip only — no full re-render mid-keystroke)
   $('#gymExerciseName').addEventListener('input', renderLastTimeChip);
   $$('.gym-rest-btn').forEach(btn => btn.addEventListener('click', () => startRestTimer(btn)));
-  $('#gymDate').addEventListener('change', (e) => { gymViewDate = e.target.value; renderGym(); });
+  $('#gymDate').addEventListener('change', (e) => { if (e.target.value) { gymViewDate = e.target.value; renderGym(); } });
+  // The date input sits invisibly over the day label; desktop browsers only
+  // open the picker from their own icon, so ask for it.
+  $('#gymDate').addEventListener('click', (e) => { try { e.target.showPicker(); } catch (err) { /* not supported: the field still works */ } });
   $('#gymPrevDay').addEventListener('click', () => {
     const d = new Date(gymViewDate + 'T00:00:00');
     d.setDate(d.getDate() - 1);
@@ -1460,12 +1508,13 @@ function bindGymEvents() {
   bindGymSuggestions();
   $('#gymSaveExerciseBtn').addEventListener('click', () => {
     const name = $('#gymExerciseName').value.trim();
-    if (!name) return;
+    // Both of these used to return silently: a Save button that does nothing.
+    if (!name) { showToast('Name the exercise first'); $('#gymExerciseName').focus(); return; }
     const bw = isBodyweightExercise(name);
     const validSets = gymSets
       .filter(s => s.reps && (bw || s.weight))
       .map(s => ({ reps: Number(s.reps), weight: bw ? 0 : Number(s.weight) }));
-    if (!validSets.length) return;
+    if (!validSets.length) { showToast(bw ? 'Add the reps for at least one set' : 'Add reps and weight for at least one set'); return; }
 
     if (gymEditingIdx !== null) {
       // Update existing exercise
@@ -1477,9 +1526,7 @@ function bindGymEvents() {
         target.bodyweight = bw;
       }
       gymEditingIdx = null;
-      $('#gymSaveExerciseBtn').innerHTML = `
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Add Exercise`;
+      $('#gymSaveExerciseBtn').textContent = 'Save';
     } else {
       state.gym.push({ date: gymViewDate, exercise: name, sets: validSets, bodyweight: bw });
     }

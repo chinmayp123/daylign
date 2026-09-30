@@ -503,6 +503,6 @@ function bindStrengthEvents(movements) {
     }
     if (typeof renderGym === 'function') renderGym();
     if (nameInput) nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    if (typeof showToast === 'function') showToast(`Loaded 3 × ${insight.targetReps} ${insight.name} — hit Add Exercise`);
+    if (typeof showToast === 'function') showToast(`Loaded 3 × ${insight.targetReps} ${insight.name} — check the sets and Save`);
   });
 }

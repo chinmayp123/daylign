@@ -13064,3 +13064,108 @@ html[data-theme="light"] .dl-sheet-overlay { background: rgba(18, 20, 18, .35); 
 }
 html.reduce-motion .tk-archive-chev,
 html.reduce-motion .board-folder-chev { transition: none; }
+
+
+/* ============================================================
+   v3 phase 6: inside the Training panes (spec 7)
+   ============================================================ */
+
+/* --text-muted is tuned for the page; on a tinted card it is 4.4:1. */
+.dl-card.tint .dl-card-h em { color: var(--text-secondary); }
+
+/* ---- Day stepper (Strength and Cardio) ---- */
+.dl-daynav { display: flex; align-items: center; gap: 6px; margin: 12px 0 10px; }
+.dl-daynav-label {
+  position: relative; flex: 1; min-height: 36px;
+  display: grid; place-items: center;
+  font: 600 13px var(--font-mono); color: var(--text-primary);
+  border-radius: 10px; cursor: pointer;
+}
+.dl-daynav-label:hover { background: var(--bg-hover); }
+.dl-daynav-label:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.dl-daynav-input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: 0; padding: 0; cursor: pointer; }
+
+/* ---- Strength: the session card ---- */
+.str-session { margin-bottom: 10px; }
+.str-session.is-empty { background: var(--bg-card); border-color: var(--border); border-style: dashed; }
+.ss-focus { margin: -4px 0 6px; font: 500 11px var(--font-mono); color: var(--text-secondary); }
+.ss-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid color-mix(in srgb, var(--c-move) 22%, var(--border)); }
+.ss-sw { width: 4px; align-self: stretch; border-radius: 2px; background: var(--c-move); flex: none; }
+.ss-main { flex: 1; min-width: 0; }
+.ss-name { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 14px; font-weight: 500; color: var(--text-primary); }
+.ss-sets { margin-top: 1px; font: 500 12px var(--font-mono); color: var(--text-secondary); }
+.ss-pr .ms { font-size: 13px; margin-right: 2px; vertical-align: -2px; }
+.ss-act {
+  display: grid; place-items: center; flex: none;
+  width: 34px; height: 34px; border-radius: 9px; border: 0;
+  background: transparent; color: var(--text-secondary); cursor: pointer;
+}
+.ss-act:hover { background: var(--bg-hover); color: var(--text-primary); }
+.ss-act.gym-entry-del:hover { color: var(--red-ink); }
+/* The v2 rule hides these until the row is hovered. A phone has no hover, so
+   edit and delete were simply not there. */
+.ss-row .ss-act { opacity: 1; padding: 0; }
+.ss-act:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.ss-act .ms { font-size: 18px; }
+.ss-empty { margin: 0; padding: 12px 0; font-size: 13px; color: var(--text-secondary); text-align: center; }
+.training-log-btn { margin-bottom: 14px; }
+.str-note { margin: 8px 0 0; font-size: 12px; line-height: 1.4; color: var(--text-secondary); }
+.streak-card.dl-card { margin-bottom: 14px; }
+
+/* ---- Log exercise sheet ---- */
+.gl-suggest { display: flex; flex-wrap: wrap; gap: 6px; margin-top: -8px; }
+.gl-suggest:empty { display: none; }
+.gl-suggest .gym-suggest-chip {
+  border: 1px solid var(--border); border-radius: 999px;
+  background: var(--bg-card); color: var(--text-primary);
+  padding: 6px 11px; font: 500 12.5px var(--font-body); cursor: pointer;
+}
+.gl-suggest .gym-suggest-chip:hover { border-color: var(--text-muted); }
+.gl-suggest .gym-suggest-chip.is-new { border-style: dashed; color: var(--text-secondary); }
+.gl-last {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 9px 11px; border-radius: 12px;
+  background: color-mix(in srgb, var(--c-food) 10%, var(--bg-card));
+  border: 1px solid color-mix(in srgb, var(--c-food) 40%, var(--border));
+  font-size: 12.5px; line-height: 1.4; color: var(--text-primary);
+}
+.gl-last .ms { font-size: 17px; color: var(--c-food-ink); flex: none; }
+.gl-last b { font-weight: 600; }
+.gl-sets { display: grid; }
+.gl-set { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.gl-set-n { font: 500 12px var(--font-mono); color: var(--text-secondary); }
+.gl-set-spacer { flex: 1; }
+.gl-set input.gym-reps-input,
+.gl-set input.gym-weight-input {
+  box-sizing: border-box; width: 68px; height: 40px; padding: 0 8px;
+  text-align: right; font: 600 15px var(--font-mono);
+  border: 1px solid var(--border); border-radius: 10px;
+  background: var(--bg-card); color: var(--text-primary);
+}
+.gl-set input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+.gl-set-u { font: 500 11.5px var(--font-mono); color: var(--text-secondary); min-width: 24px; }
+.gl-set .gym-remove-set {
+  display: grid; place-items: center; width: 34px; height: 34px; padding: 0;
+  border: 0; border-radius: 9px; background: transparent; color: var(--text-secondary); cursor: pointer; opacity: 1;
+}
+.gl-set .gym-remove-set:hover { color: var(--red-ink); background: var(--bg-hover); }
+.gl-set .gym-remove-set .ms { font-size: 19px; }
+.gl-addset { align-self: flex-start; border: 0; background: none; padding: 6px 0; font: 600 13px var(--font-body); color: var(--accent); cursor: pointer; }
+.gl-addset:hover { text-decoration: underline; }
+.gl-foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.gl-rest-lbl { font-size: 12px; color: var(--text-secondary); }
+.gl-foot .gym-rest-btn { min-width: 56px; font-family: var(--font-mono); }
+.gl-foot .gym-rest-btn.active { border-color: var(--accent); color: var(--accent); }
+
+/* ---- Consistency heatmap: 16 weeks that fit the card ----
+   The v2 grid is fixed 15px cells in a horizontally scrolling box; at 16 weeks
+   that is wider than a phone, and the newest week - the one that matters - was
+   the part scrolled out of view. Columns share the width instead. */
+.streak-card.dl-card .gym-cal-wrap { overflow: visible; }
+.streak-card.dl-card .gym-cal { width: 100%; max-width: 560px; }
+.streak-card.dl-card .gym-cal-months { grid-auto-columns: minmax(0, 1fr); gap: 3px; margin-left: 32px; }
+.streak-card.dl-card .gym-cal-body { gap: 4px; }
+.streak-card.dl-card .gym-cal-days { grid-template-rows: repeat(7, 1fr); gap: 3px; width: 28px; }
+.streak-card.dl-card .gym-cal-days span { line-height: 1; display: grid; align-items: center; justify-content: end; }
+.streak-card.dl-card .gym-cal-grid { flex: 1; min-width: 0; grid-template-rows: repeat(7, auto); grid-auto-columns: minmax(0, 1fr); gap: 3px; }
+.streak-card.dl-card .gym-cal-grid .gym-cal-cell { width: auto; height: auto; aspect-ratio: 1; box-sizing: border-box; }

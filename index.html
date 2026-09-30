@@ -357,50 +357,21 @@
           <button type="button" role="tab" data-strength-sub="today" aria-selected="true">Today</button>
           <button type="button" role="tab" data-strength-sub="progress" aria-selected="false">Progress</button>
         </div>
-        <!-- Logging sheet. On mobile this is a full-screen page opened from the
-             primary action; on desktop it opens as a centered popup, like the
-             New Task modal. Either way the form itself is identical — only the
-             .gym-log-sheet-panel wrapper's presentation differs by breakpoint. -->
-        <div class="gym-log-sheet" id="gymLogSheet">
-          <div class="gym-log-sheet-panel">
-          <div class="gym-log-sheet-head">
-            <h2 id="gymLogSheetTitle">Log exercise</h2>
-            <button type="button" class="gym-log-close" id="gymLogClose" aria-label="Close">&times;</button>
-          </div>
-        <!-- Add Exercise (primary action — kept at top so logging never needs a scroll) -->
-        <div class="gym-add-bar">
-          <input type="text" id="gymExerciseName" placeholder="Add exercise..." class="gym-exercise-input" list="exerciseSuggestions" autocomplete="off">
-          <div class="gym-suggest" id="gymSuggest"></div>
-          <div id="gymLastTime"></div>
-          <datalist id="exerciseSuggestions"></datalist>
-          <div class="gym-sets-inline" id="gymSetsList"></div>
-          <div class="gym-add-actions">
-            <button type="button" class="gym-add-set-btn" id="gymAddSetBtn">+ Set</button>
-            <button type="button" class="gym-rest-btn" data-rest="60">Rest 60s</button>
-            <button type="button" class="gym-rest-btn" data-rest="90">Rest 90s</button>
-            <button type="button" class="btn-primary gym-save-btn" id="gymSaveExerciseBtn">Add Exercise</button>
-          </div>
-        </div>
-          </div>
-        </div>
         <div class="strength-sub" data-strength-pane="today">
-        <!-- Date Navigation -->
-        <div class="gym-date-bar">
-          <button class="gym-date-nav" id="gymPrevDay" aria-label="Previous day">&lt;</button>
-          <button class="gym-date-today" id="gymToday">Today</button>
-          <button class="gym-date-nav" id="gymNextDay" aria-label="Next day">&gt;</button>
-          <span class="gym-date-label" id="gymDateLabel"></span>
-          <input type="date" id="gymDate" class="gym-date-input">
+        <!-- Day stepper. The date input sits invisibly over the label, so
+             tapping the date opens the native picker. -->
+        <div class="dl-daynav">
+          <button type="button" class="dl-line-day-btn" id="gymPrevDay" aria-label="Previous day"><span class="ms" aria-hidden="true">chevron_left</span></button>
+          <label class="dl-daynav-label"><span id="gymDateLabel"></span><input type="date" id="gymDate" class="dl-daynav-input" aria-label="Pick a day"></label>
+          <button type="button" class="dl-line-day-btn" id="gymNextDay" aria-label="Next day"><span class="ms" aria-hidden="true">chevron_right</span></button>
+          <button type="button" class="dl-line-btn" id="gymToday" hidden>Today</button>
         </div>
 
-        <!-- Today's log. The stats fold into this card's header instead of a
-             standalone band, and the whole card sits at the top of the pane —
-             the log is the first thing you see, not the coach. -->
-        <div class="card gym-log-card">
-          <div class="gym-stats" id="gymStats"></div>
-          <div class="gym-workout" id="gymTodayList">
-            <div class="empty-state"><svg aria-hidden="true" focusable="false" class="empty-state-icon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg><p class="empty-state-title">No exercises yet</p><p class="empty-state-hint">Tap “+ Add Exercise” to start this session.</p></div>
-          </div>
+        <!-- The session (spec 7): one tinted card. js/gym.js writes the header
+             into #gymStats and one row per exercise into #gymTodayList. -->
+        <div class="dl-card tint c-move str-session" id="gymSession">
+          <div id="gymStats"></div>
+          <div id="gymTodayList"></div>
         </div>
 
         <!-- The primary action, spelled out in the pane (spec section 7). It
@@ -408,14 +379,11 @@
              invisible on a desktop screenshot and easy to miss on a phone. -->
         <button type="button" class="dl-btn primary full training-log-btn" id="gymLogOpenBtn"><span class="ms" aria-hidden="true">add</span> Log exercise</button>
 
-        <!-- Consistency -->
-        <div class="card streak-card collapsible" data-collapse="mobile" data-collapse-key="trainstreak">
-          <div class="coach-head">
-            <h2>Consistency</h2>
-            <span class="weight-goal-chip" id="streakSummary"></span>
-          </div>
-          <div class="streak-stats" id="streakStats"></div>
+        <!-- Consistency: 16 weeks, the streak, and the next training day. -->
+        <div class="dl-card streak-card">
+          <h6 class="dl-card-h"><span>Consistency</span><em id="streakSummary"></em></h6>
           <div class="gym-cal-wrap"><div class="gym-cal" id="streakHeatmap"></div></div>
+          <p class="str-note" id="streakStats"></p>
         </div>
         </div><!-- /Strength: Today -->
 
@@ -1120,6 +1088,44 @@
             <button type="button" class="btn-primary" id="goalsSaveBtn">Save Goals</button>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Log exercise sheet (spec 7). Lives out here, not inside the Strength
+       pane: a fixed sheet inside a hidden pane never shows, and the coach's
+       "Start it" opens this from the Coach tab. -->
+  <div class="dl-sheet-wrap" id="gymLogSheet" data-guard role="dialog" aria-modal="true" aria-labelledby="gymLogSheetTitle">
+    <div class="dl-sheet task-sheet gym-log" tabindex="-1">
+      <div class="dl-grab"></div>
+      <div class="ts-head">
+        <h4 id="gymLogSheetTitle">Log exercise</h4>
+        <button type="button" class="ts-x" id="gymLogClose" aria-label="Close"><span class="ms" aria-hidden="true">close</span></button>
+      </div>
+      <div class="ts-body">
+        <div class="dl-field">
+          <label for="gymExerciseName">Exercise</label>
+          <!-- No list= on the input: the ranked chips below are the suggestions.
+               The native dropdown was a second, alphabetical copy of them. The
+               datalist element stays because renderGym() still fills it. -->
+          <input type="text" id="gymExerciseName" placeholder="Bench press, squat, pull ups..." autocomplete="off">
+          <datalist id="exerciseSuggestions"></datalist>
+        </div>
+        <div class="gl-suggest" id="gymSuggest"></div>
+        <div id="gymLastTime"></div>
+        <div class="ts-group">
+          <span class="ts-label">Sets</span>
+          <div class="gl-sets" id="gymSetsList"></div>
+          <button type="button" class="gl-addset" id="gymAddSetBtn">+ Add set</button>
+        </div>
+        <div class="gl-foot">
+          <span class="gl-rest-lbl">Rest timer</span>
+          <button type="button" class="dl-btn gym-rest-btn" data-rest="60">60s</button>
+          <button type="button" class="dl-btn gym-rest-btn" data-rest="90">90s</button>
+          <span class="ts-spacer"></span>
+          <button type="button" class="dl-btn primary gym-save-btn" id="gymSaveExerciseBtn">Save</button>
+        </div>
+        <p class="ts-hint">Bodyweight moves (dips, pull ups) are spotted automatically and skip the weight field.</p>
       </div>
     </div>
   </div>

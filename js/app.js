@@ -438,7 +438,7 @@ function updateHeaderActionBtn(view) {
   if (fab) fab.hidden = false;
   if (view === 'training') {
     const cardio = typeof effectiveTrainingMode === 'function' && effectiveTrainingMode() === 'cardio';
-    setBoth(cardio ? 'Log Session' : '+ Add Exercise');
+    setBoth(cardio ? 'Log session' : 'Log exercise');
     return;
   }
   setBoth(HEADER_ACTION_LABELS[view] || '+ New Task');
