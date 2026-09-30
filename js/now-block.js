@@ -105,7 +105,7 @@ function bindNowBlock() {
     steps: () => switchView('training'),
     burn: () => switchView('training'),
     exercise: () => switchView('training'),
-    sleep: () => { switchView('training'); if (typeof setTrainingTab === 'function') setTrainingTab('coach'); },
+    sleep: () => { switchView('training'); if (typeof setTrainingTab === 'function') setTrainingTab('sleep'); },
     weight: () => { if (typeof openWeightSheet === 'function') openWeightSheet(); else switchView('training'); },
   };
   host.addEventListener('click', (e) => {

@@ -2586,7 +2586,8 @@ body {
 }
 
 .gym-empty p { margin-top: 12px; font-size: 14px; font-weight: 500; }
-.gym-empty-sub { margin-top: 4px !important; font-size: 12px !important; font-weight: 400 !important; opacity: 0.6; }
+/* No opacity: on top of --text-muted it measured 2.35:1. */
+.gym-empty-sub { margin-top: 4px !important; font-size: 12px !important; font-weight: 400 !important; }
 
 /* Today's log as one card: the stats become a compact header strip above the
    workout list, instead of a separate band of big tiles. */
@@ -2691,10 +2692,12 @@ body {
   border: 1px solid currentColor;
   background: transparent;
 }
+/* The -ink tokens, not the vivid hues: as 10-11px text by day the vivid ones
+   measure 2.8:1. */
 .gym-group-badge[data-group="push"] { color: var(--accent); }
-.gym-group-badge[data-group="pull"] { color: var(--blue); }
-.gym-group-badge[data-group="legs"] { color: var(--green); }
-.gym-group-badge[data-group="core"] { color: var(--yellow); }
+.gym-group-badge[data-group="pull"] { color: var(--c-water-ink); }
+.gym-group-badge[data-group="legs"] { color: var(--c-move-ink); }
+.gym-group-badge[data-group="core"] { color: var(--c-habit-ink); }
 
 .gym-focus {
   display: flex;
@@ -2720,9 +2723,9 @@ body {
 }
 .gym-focus-chip b { font-variant-numeric: tabular-nums; font-weight: 700; font-family: var(--font-mono); }
 .gym-focus-chip[data-group="push"] { color: var(--accent); }
-.gym-focus-chip[data-group="pull"] { color: var(--blue); }
-.gym-focus-chip[data-group="legs"] { color: var(--green); }
-.gym-focus-chip[data-group="core"] { color: var(--yellow); }
+.gym-focus-chip[data-group="pull"] { color: var(--c-water-ink); }
+.gym-focus-chip[data-group="legs"] { color: var(--c-move-ink); }
+.gym-focus-chip[data-group="core"] { color: var(--c-habit-ink); }
 .gym-focus-chip.is-unknown { color: var(--text-muted); }
 
 .gym-bw-label {
@@ -2867,7 +2870,7 @@ body {
   font-size: 12px;
   padding: 0 2px;
   line-height: 1;
-  opacity: 0.4;
+  opacity: 1;   /* was .4: 1.7:1, and it is a control */
   transition: opacity 0.15s;
 }
 
@@ -7018,8 +7021,13 @@ body.onboard-open { overflow: hidden; }
   transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* ========== Training shell (Gym + Cardio merged) ========== */
-/* Constant across both modes: only .training-pane swaps below it. */
+/* ==========================================================================
+   Training shell - v3 "Day Line" (BUILD_SPEC_v3.md section 7)
+   One header on every sub-tab, one segmented control, seven day chips.
+   The old chrome (a Strength/Cardio mode toggle crossed with a
+   Log/Progress/Coach tab row) is gone, and so is the desktop rail that
+   duplicated readiness and the consistency heatmap.
+   ========================================================================== */
 .training-shell {
   display: flex;
   flex-direction: column;
@@ -7027,136 +7035,83 @@ body.onboard-open { overflow: hidden; }
   margin-bottom: 18px;
 }
 
-.training-head {
+/* Screen header: eyebrow + display title on the left, one pill on the right.
+   Shared shape - Diet uses it too. */
+.dl-vhead {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+  min-height: 34px;
 }
+.dl-vhead-txt { display: grid; gap: 2px; min-width: 0; }
+.dl-vhead .dl-title { margin: 0; }
+.dl-vhead .dl-eyebrow { display: block; }
 
-/* Segmented Strength / Cardio control */
-.training-toggle {
-  display: inline-flex;
-  padding: 4px;
-  gap: 4px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-}
-.training-toggle[hidden] { display: none; }
-
-.training-mode-btn {
-  min-height: 40px;
-  padding: 8px 22px;
-  border: none;
-  border-radius: 9px;
-  background: transparent;
-  color: var(--text-secondary);
-  font-family: var(--font-body);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-.training-mode-btn:hover { color: var(--text-primary); }
-.training-mode-btn.active {
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
-  color: var(--accent-hover);
-}
-.training-mode-btn[hidden] { display: none; }
-
-/* Compact body-weight readout — replaces needing to scroll to the weight card */
-.training-weight {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  padding: 8px 10px 8px 14px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 11px;
-}
+/* Body weight: a tinted sleep-coloured pill that opens the one weigh-in sheet.
+   The whole pill is the button - it used to be a readout with a small "Log"
+   button wedged inside it, which is two targets for one job. */
 .training-weight[hidden] { display: none; }
-
-.training-weight-num {
-  font-family: var(--font-mono);
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--text-primary);
+.training-weight-pill {
+  border: 1px solid color-mix(in srgb, var(--c-sleep) 28%, transparent);
+  cursor: pointer;
+  font-family: var(--font-body);
+  min-height: 34px;
+}
+.training-weight-pill:hover { background: color-mix(in srgb, var(--c-sleep) 22%, transparent); }
+.training-weight-pill:active { transform: scale(0.98); }
+.training-weight-num { font-size: 15px; font-weight: 700; }
+.training-weight-unit { font-size: 11px; }   /* was opacity .8: 3.27:1 on the pill */
+.training-weight-delta {
+  font: 600 11px var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
-.training-weight-unit { font-size: 11px; color: var(--text-muted); }
-.training-weight-delta {
-  font-size: 12px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums; font-family: var(--font-mono);
-}
-.training-weight-delta.good { color: var(--green); }
-.training-weight-delta.bad { color: var(--red); }
+/* On the tinted chip these have to stay legible against the chip's own tint,
+   so they use the same darkened inks the chip text does rather than the vivid
+   hue (which measures ~3:1 by day). */
+.training-weight-delta.good { color: var(--c-move-ink); }
+.training-weight-delta.bad { color: var(--red-ink, var(--red)); }
 
-.training-weight-log {
-  min-height: 32px;
-  margin-left: 4px;
-  padding: 6px 12px;
-  border: none;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
-  color: var(--accent-hover);
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.training-weight-log:hover { background: color-mix(in srgb, var(--accent) 28%, transparent); }
-
-/* "This week  3 lifts · 4 runs · 🔥12" */
+/* Seven day chips, Monday first. A filled box means a FULL session
+   (isFullSession) - the daily push-ups/sit-ups habit must not fill it, or all
+   seven are always on and the row says nothing. */
 .training-week {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 16px;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.training-week[hidden] { display: none; }
+.training-day-chip {
+  display: grid;
+  gap: 3px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: center;
+}
+.training-day-chip .tdc-box {
+  height: 26px;
+  border-radius: 7px;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 12px;
 }
-.training-week-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
+.training-day-chip .tdc-lbl { font: 500 9px var(--font-mono); color: var(--text-muted); }
+.training-day-chip.is-session .tdc-box {
+  background: var(--c-move);
+  border-color: var(--c-move);
 }
-.training-week-chips { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.training-day-chip.is-future .tdc-box { background: transparent; border-style: dashed; }
+.training-day-chip.is-today .tdc-lbl { color: var(--text-primary); font-weight: 700; }
+.training-day-chip.is-viewed .tdc-box { outline: 2px solid var(--accent); outline-offset: 1px; }
+.training-day-chip:hover .tdc-box { border-color: var(--accent); }
 
-.training-week-chip {
-  padding: 5px 11px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--accent-hover);
-  font-size: 12px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums; font-family: var(--font-mono);
-}
-.training-week-chip.alt {
-  background: rgba(167, 139, 250, 0.14);
-  color: var(--purple);
-}
-.training-week-streak {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--yellow);
-  font-variant-numeric: tabular-nums; font-family: var(--font-mono);
-}
+/* "Log exercise": the pane's own primary action. */
+.training-log-btn { justify-content: center; margin: 4px 0 2px; }
 
 .training-pane[hidden] { display: none; }
-
-@media (max-width: 640px) {
-  .training-head { gap: 10px; }
-  .training-toggle { flex: 1; }
-  /* Full-width segments on phones so both stay ≥44px and easy to hit */
-  .training-mode-btn { flex: 1; padding: 10px 12px; min-height: 44px; }
-  .training-week { padding: 10px 12px; }
-  .training-week-label { display: none; }
-}
+.strength-sub[hidden] { display: none; }
 
 /* ========== Settings groups (handoff 8a/8b) ========== */
 .settings-group-label {
@@ -7927,59 +7882,13 @@ body.logfood-sheet-lock { overflow: hidden; }
 
 .ai-usage-note { font-size: 11px; color: var(--text-muted); line-height: 1.5; margin-top: 12px; }
 
-/* ========== Training desktop rail (ref 11c) ========== */
+/* Training is one column. The desktop rail (ref 11c) is gone: it duplicated
+   readiness and the consistency heatmap, and hid the in-pane originals -
+   which meant the same number was rendered twice from two code paths.
+   Spec v3 section 7: "The desktop rail duplicates are deleted." */
 .training-layout { display: block; }
-.training-rail { display: none; }
+.training-center { min-width: 0; }
 
-@media (min-width: 1024px) {
-  /* Center logs the active mode; rail carries the shared cross-mode cards. */
-  .training-layout {
-    display: grid;
-    grid-template-columns: 1.6fr 1fr;
-    gap: 20px;
-    align-items: start;
-  }
-  .training-center { min-width: 0; }
-  .training-rail {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    position: sticky;
-    top: 16px;
-  }
-  /* Consistency lives in the rail on desktop — drop the in-pane copy so it
-     isn't shown twice. */
-  #trainingStrength .streak-card { display: none; }
-  /* Same for the week summary: the rail carries "This week's training" tiles,
-     so the shell's "This week" strip would just repeat it. Mobile keeps the
-     strip, since the rail is hidden there. */
-  .training-shell .training-week { display: none; }
-}
-
-.training-rail-card { margin-bottom: 0; }
-
-.rail-week-tiles { display: flex; gap: 10px; }
-.rail-week-tile {
-  flex: 1;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 12px;
-  text-align: center;
-}
-.rail-week-val {
-  display: block;
-  font-family: var(--font-mono);
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--text-primary);
-  font-variant-numeric: tabular-nums;
-}
-.rail-week-lbl { font-size: 11px; color: var(--text-muted); }
-
-/* Rail heatmap is a touch smaller to fit the narrower column */
-.rail-heatmap { grid-auto-columns: 10px; grid-template-rows: repeat(7, 10px); }
-.rail-heatmap .streak-cell { width: 10px; height: 10px; }
 .cardio-zone-name { font-size: 12px; font-weight: 700; margin-left: 6px; }
 
 /* ========== Weight-trend sheet (ref 5b) ========== */
@@ -9389,8 +9298,7 @@ body.app-loading #syncProgress { opacity: 1; }
 .gym-date-today,
 .water-btn,
 .my-tasks-tab,
-.cardio-type-btn,
-.training-mode-btn {
+.cardio-type-btn {
   transition: border-color var(--dur-fast) var(--ease-out),
               background var(--dur-fast) var(--ease-out),
               color var(--dur-fast) var(--ease-out),
@@ -10383,52 +10291,6 @@ html.layout-editing .layout-item.is-dragging {
   .gym-log-sheet { transition: visibility 0.28s; }
   .gym-log-sheet-panel { animation: none; }
 }
-
-/* ---- Training section tabs ----
-   Eight stacked cards became three destinations. train-tab-off rather than
-   [hidden] so the Strength/Cardio pane switching stays independent of this. */
-.train-tab-off { display: none !important; }
-
-.training-tabs {
-  display: flex;
-  gap: 6px;
-  padding: 4px;
-  margin: 10px 0 14px;
-  border-radius: 999px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-}
-.training-tab {
-  flex: 1;
-  min-height: 40px;
-  padding: 8px 10px;
-  border: none;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 13.5px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.16s ease, color 0.16s ease;
-}
-.training-tab.active {
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-.training-tab:not(.active):hover { color: var(--text-primary); }
-
-@media (max-width: 600px) {
-  .training-tab { font-size: 13px; min-height: 44px; }
-}
-
-/* On desktop the rail already carries readiness and consistency; the tabs
-   still apply, so the centre column stays one screen rather than eight. */
-@media (min-width: 1024px) {
-  /* Stretched across a monitor the three buttons read as a banner rather
-     than a control. */
-  .training-tabs { max-width: 420px; }
-}
-
 
 /* ---- Meal combos ----
    A chip that writes five rows must not look like one that writes a single

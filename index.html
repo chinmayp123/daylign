@@ -310,43 +310,53 @@
            shell (weight readout, mode toggle, combined week) stays put; only the
            pane below it swaps, so neither mode feels heavier than it did alone. -->
       <div class="view" id="trainingView">
+        <!-- v3 section 7: one header on every sub-tab. The week's session count
+             is the first thing you want ("am I training enough?"), the
+             body-weight pill is the only weight readout left on this screen and
+             it opens the one weigh-in sheet. -->
         <div class="training-shell">
-          <div class="training-head">
-            <div class="training-toggle" id="trainingToggle" role="tablist" aria-label="Training mode">
-              <button class="training-mode-btn active" type="button" role="tab" data-mode="strength">Strength</button>
-              <button class="training-mode-btn" type="button" role="tab" data-mode="cardio">Cardio</button>
+          <!-- The mockup draws the screen title here because its phone frame has
+               no app header. The real app does: #viewTitle already reads
+               "Training" two rows up, so repeating it would be the same word
+               twice on one screen. The eyebrow and the weight pill are what this
+               header actually adds. -->
+          <div class="dl-vhead">
+            <div class="dl-vhead-txt">
+              <span class="dl-eyebrow" id="trainingWeekLine">This week</span>
             </div>
             <div class="training-weight" id="trainingWeight"></div>
           </div>
-          <div class="training-week" id="trainingWeek"></div>
-          <!-- Section tabs. The Strength pane stacked eight cards in one
-               scroll, so anything past the log needed a long thumb journey and
-               the page felt endless. Each tab is roughly one screen. -->
-          <div class="training-tabs" id="trainingTabs" role="tablist" aria-label="Training section">
-            <button type="button" class="training-tab active" role="tab" data-train-tab="log" aria-selected="true">Log</button>
-            <button type="button" class="training-tab" role="tab" data-train-tab="progress" aria-selected="false">Progress</button>
-            <button type="button" class="training-tab" role="tab" data-train-tab="coach" aria-selected="false">Coach</button>
+          <!-- Strength, Cardio, Coach, Sleep - remembered across visits.
+               The old control was two axes crossed (Strength/Cardio mode by
+               Log/Progress/Coach section), so Coach and Recovery lived inside
+               whichever mode happened to be selected and the same card could be
+               reached two ways or not at all. One axis now. -->
+          <div class="dl-seg full" id="trainingTabs" role="tablist" aria-label="Training section">
+            <button type="button" role="tab" data-train-tab="strength" aria-selected="true">Strength</button>
+            <button type="button" role="tab" data-train-tab="cardio" aria-selected="false">Cardio</button>
+            <button type="button" role="tab" data-train-tab="coach" aria-selected="false">Coach</button>
+            <button type="button" role="tab" data-train-tab="sleep" aria-selected="false">Sleep</button>
           </div>
-          <!-- Apple Watch sync freshness. Lives in the Log tab because
-               "did last night sync?" is a daily question. -->
+          <!-- Seven day chips. Filled only on a FULL session (isFullSession):
+               one set of push ups and one of sit ups is logged every single day
+               as a standing habit, so "anything logged" would paint all seven
+               chips and the row would say nothing at all. -->
+          <div class="training-week" id="trainingWeek"></div>
+          <!-- Apple Watch sync freshness - a daily question, so it sits with
+               the logging tabs. -->
           <div id="watchSync"></div>
         </div>
 
-        <!-- Desktop: center logs the active mode, right rail carries the shared
-             cross-mode cards (ref 11c). On mobile it's one column, rail below. -->
         <div class="training-layout">
         <div class="training-center">
 
         <div class="training-pane" id="trainingStrength">
-        <!-- Date Navigation -->
-        <div class="gym-date-bar">
-          <button class="gym-date-nav" id="gymPrevDay" aria-label="Previous day">&lt;</button>
-          <button class="gym-date-today" id="gymToday">Today</button>
-          <button class="gym-date-nav" id="gymNextDay" aria-label="Next day">&gt;</button>
-          <span class="gym-date-label" id="gymDateLabel"></span>
-          <input type="date" id="gymDate" class="gym-date-input">
+        <!-- Today logs; Progress answers "am I getting better?". That split
+             keeps the analytics off the logging path. -->
+        <div class="dl-seg" id="strengthSubSeg" role="tablist" aria-label="Strength view">
+          <button type="button" role="tab" data-strength-sub="today" aria-selected="true">Today</button>
+          <button type="button" role="tab" data-strength-sub="progress" aria-selected="false">Progress</button>
         </div>
-
         <!-- Logging sheet. On mobile this is a full-screen page opened from the
              primary action; on desktop it opens as a centered popup, like the
              New Task modal. Either way the form itself is identical — only the
@@ -373,6 +383,15 @@
         </div>
           </div>
         </div>
+        <div class="strength-sub" data-strength-pane="today">
+        <!-- Date Navigation -->
+        <div class="gym-date-bar">
+          <button class="gym-date-nav" id="gymPrevDay" aria-label="Previous day">&lt;</button>
+          <button class="gym-date-today" id="gymToday">Today</button>
+          <button class="gym-date-nav" id="gymNextDay" aria-label="Next day">&gt;</button>
+          <span class="gym-date-label" id="gymDateLabel"></span>
+          <input type="date" id="gymDate" class="gym-date-input">
+        </div>
 
         <!-- Today's log. The stats fold into this card's header instead of a
              standalone band, and the whole card sits at the top of the pane —
@@ -384,39 +403,10 @@
           </div>
         </div>
 
-        <!-- Activity breakdown: the watch's exercise minutes split into strength
-             (estimated from sets), logged cardio (real minutes) and walking.
-             Rendered by js/gym.js activityBreakdown(). -->
-        <div id="activityBreakdown"></div>
-
-        <!-- Coach: one card — the decision (js/coach.js → #coachPanel) plus the
-             burn/pace targets and recommendations (js/gym.js) that used to be a
-             separate "Targets & Coach" card. Sits under the log now. -->
-        <div class="card coach-card coach-merged">
-          <div id="coachPanel"></div>
-          <div class="coach-head coach-merged-head">
-            <h2>Targets</h2>
-            <span class="weight-goal-chip" id="burnGoalChip" title="Edit goals"></span>
-          </div>
-          <div class="coach-targets" id="coachTargets"></div>
-          <div class="coach-recs" id="coachRecs"></div>
-        </div>
-
-        <!-- Goal Progress: ties each logged session to WHY you train. Read from
-             existing data (js/gym.js goalProgress). Golf deferred. -->
-        <div class="card goal-progress-card collapsible" data-collapse="mobile" data-collapse-key="traingoals">
-          <div class="coach-head">
-            <h2>Goal Progress</h2>
-          </div>
-          <div id="goalProgressBody"></div>
-        </div>
-
-        <!-- Body Weight now lives in the weight-trend sheet (opened from the
-             shell's weight readout, ref 5a/5b) — not inline in the pane. -->
-
-        <!-- Strength analytics: 30-day summary + plateau insight, movement
-             list, progression curve, PRs. Rendered by js/strength.js. -->
-        <div id="strengthAnalytics"></div>
+        <!-- The primary action, spelled out in the pane (spec section 7). It
+             used to exist only as the header button and the thumb FAB, which is
+             invisible on a desktop screenshot and easy to miss on a phone. -->
+        <button type="button" class="dl-btn primary full training-log-btn" id="gymLogOpenBtn"><span class="ms" aria-hidden="true">add</span> Log exercise</button>
 
         <!-- Consistency -->
         <div class="card streak-card collapsible" data-collapse="mobile" data-collapse-key="trainstreak">
@@ -427,6 +417,13 @@
           <div class="streak-stats" id="streakStats"></div>
           <div class="gym-cal-wrap"><div class="gym-cal" id="streakHeatmap"></div></div>
         </div>
+        </div><!-- /Strength: Today -->
+
+        <div class="strength-sub" data-strength-pane="progress" hidden>
+        <!-- Strength analytics: 30-day summary + plateau insight, movement
+             list, progression curve, PRs. Rendered by js/strength.js. -->
+        <div id="strengthAnalytics"></div>
+        </div><!-- /Strength: Progress -->
         </div><!-- /#trainingStrength -->
 
         <div class="training-pane" id="trainingCardio" hidden>
@@ -524,17 +521,51 @@
             </div>
           </div>
         </div>
+        </div><!-- /#trainingCardio -->
+
+        <!-- Coach: one rule-based read on what to do next. These cards
+             used to be scattered across the Strength and Cardio panes, so
+             the same advice was reachable twice or not at all. -->
+        <div class="training-pane" id="trainingCoach" hidden>
+        <!-- Coach: one card — the decision (js/coach.js → #coachPanel) plus the
+             burn/pace targets and recommendations (js/gym.js) that used to be a
+             separate "Targets & Coach" card. Sits under the log now. -->
+        <div class="card coach-card coach-merged">
+          <div id="coachPanel"></div>
+          <div class="coach-head coach-merged-head">
+            <h2>Targets</h2>
+            <span class="weight-goal-chip" id="burnGoalChip" title="Edit goals"></span>
+          </div>
+          <div class="coach-targets" id="coachTargets"></div>
+          <div class="coach-recs" id="coachRecs"></div>
+        </div>
+
+        <!-- Goal Progress: ties each logged session to WHY you train. Read from
+             existing data (js/gym.js goalProgress). Golf deferred. -->
+        <div class="card goal-progress-card collapsible" data-collapse="mobile" data-collapse-key="traingoals">
+          <div class="coach-head">
+            <h2>Goal Progress</h2>
+          </div>
+          <div id="goalProgressBody"></div>
+        </div>
+
+        <!-- Activity breakdown: the watch's exercise minutes split into strength
+             (estimated from sets), logged cardio (real minutes) and walking.
+             Rendered by js/gym.js activityBreakdown(). -->
+        <div id="activityBreakdown"></div>
 
         <!-- Coach -->
         <div class="card cardio-card collapsible" data-collapse="mobile" data-collapse-key="cardiocoach">
           <h2>Coach</h2>
           <div class="cardio-coach" id="cardioCoach"></div>
         </div>
-        </div><!-- /#trainingCardio -->
+        </div><!-- /#trainingCoach -->
 
-          <!-- Moved off Today: these answer "how am I trending?",
-               which is a Training question, not a "what do I do now?" one.
-               The daily brief still states sleep and readiness in words. -->
+        <!-- Sleep is the only readiness surface (spec section 7). The
+             desktop rail carried a second readiness ring and a second
+             consistency heatmap; both are gone, along with the Weight Trend
+             card the weigh-in sheet already draws. -->
+        <div class="training-pane" id="trainingSleep" hidden>
           <!-- Recovery: Sleep + Readiness in one card (rendered by js/sleep.js).
                The two inner cards drop their own frame so they read as columns
                of a single Recovery card. -->
@@ -545,22 +576,9 @@
               <div id="readinessCard"></div>
             </div>
           </div>
-
-          <!-- Weight Trend — collapsed on mobile (reference) -->
-          <div class="card weight-trend-card collapsible" data-collapse="mobile" data-collapse-key="weighttrend">
-            <div class="weight-trend-head">
-              <h2>Weight Trend</h2>
-              <span class="weight-trend-meta" id="weightTrendMeta"></span>
-            </div>
-            <div id="weightTrendChart"></div>
-          </div>
+        </div><!-- /#trainingSleep -->
 
         </div><!-- /.training-center -->
-        <aside class="training-rail" id="trainingRail">
-          <div id="trainingRailWeek"></div>
-          <div id="trainingRailReadiness"></div>
-          <div id="trainingRailConsistency"></div>
-        </aside>
         </div><!-- /.training-layout -->
       </div><!-- /#trainingView -->
 

@@ -843,8 +843,8 @@ function renderStreak() {
 
   const checkIns = activeWeek - realWeek;
   $('#streakSummary').textContent = checkIns > 0
-    ? `${realWeek} session${realWeek === 1 ? '' : 's'} · ${checkIns} check-in${checkIns === 1 ? '' : 's'} this week`
-    : `${realWeek}/7 sessions this week`;
+    ? `${realWeek} session${realWeek === 1 ? '' : 's'} · ${checkIns} check-in${checkIns === 1 ? '' : 's'} in the last 7 days`
+    : `${realWeek} of the last 7 days`;
   $('#streakStats').innerHTML = `
     <div class="gym-stat"><span class="gym-stat-val">${streak}</span><span class="gym-stat-lbl">Day Streak</span></div>
     <div class="gym-stat"><span class="gym-stat-val">${realWeek}<small class="streak-stat-target"> / 4+</small></span><span class="gym-stat-lbl">Sessions This Week</span></div>
@@ -1330,7 +1330,7 @@ function renderGym() {
 
   // Exercise list
   if (!dayExercises.length) {
-    $('#gymTodayList').innerHTML = '<div class="gym-empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" opacity="0.4"><path d="M6.5 6.5h-3a1 1 0 00-1 1v9a1 1 0 001 1h3"/><path d="M17.5 6.5h3a1 1 0 011 1v9a1 1 0 01-1 1h-3"/><rect x="6.5" y="4" width="4" height="16" rx="1"/><rect x="13.5" y="4" width="4" height="16" rx="1"/><line x1="10.5" y1="12" x2="13.5" y2="12"/></svg><p>No exercises logged</p><p class="gym-empty-sub">Tap “+ Add Exercise” to start tracking</p></div>';
+    $('#gymTodayList').innerHTML = '<div class="gym-empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" opacity="0.4"><path d="M6.5 6.5h-3a1 1 0 00-1 1v9a1 1 0 001 1h3"/><path d="M17.5 6.5h3a1 1 0 011 1v9a1 1 0 01-1 1h-3"/><rect x="6.5" y="4" width="4" height="16" rx="1"/><rect x="13.5" y="4" width="4" height="16" rx="1"/><line x1="10.5" y1="12" x2="13.5" y2="12"/></svg><p>No exercises logged</p><p class="gym-empty-sub">Tap Log exercise to start tracking</p></div>';
   } else {
     $('#gymTodayList').innerHTML = sessionFocusRow(dayExercises) + dayExercises.map((ex, idx) => {
       const isBW = ex.bodyweight || isBodyweightExercise(ex.exercise);

@@ -302,7 +302,7 @@ function bindLine(hostArg) {
     const row = e.target.closest('[data-line-tap]');
     if (!row) return;
     const tap = row.dataset.lineTap;
-    if (tap === 'sleep') { switchView('training'); if (typeof setTrainingTab === 'function') setTrainingTab('coach'); }
+    if (tap === 'sleep') { switchView('training'); if (typeof setTrainingTab === 'function') setTrainingTab('sleep'); }
     else if (tap === 'water' || tap.startsWith('meal:')) switchView('diet');
     else if (tap === 'training') switchView('training');
     else if (tap === 'calendar') switchView('calendar');
