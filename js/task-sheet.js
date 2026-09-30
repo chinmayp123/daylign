@@ -144,63 +144,67 @@ function buildTaskSheet(d, isEdit) {
   const titleEl = wrap.querySelector('#taskSheetTitle');
   if (titleEl) titleEl.textContent = isEdit ? 'Task' : 'New task';
 
+  // Compact, as in the mockup: what almost every task needs sits above the
+  // fold, and the rest folds under More. More opens by itself when the task
+  // already has something in it, so opening a task never hides its notes.
+  const moreHasSomething = isEdit && (d.status !== 'todo' || !!d.project || !!d.description.trim() || tsSteps.length > 0);
+
   body.innerHTML = `
     <div class="ts-title">
       <input type="text" id="tsName" placeholder="What needs to be done?" value="${esc(d.name)}"
-             autocomplete="off" enterkeyhint="done">
+             autocomplete="off" enterkeyhint="done" aria-label="Task name">
       <div class="ts-suggest" id="tsSuggest" hidden></div>
     </div>
 
-    <div class="ts-group">
-      <span class="ts-label">Status</span>
-      ${seg('status', TASK_STATUSES, d.status)}
+    <div class="ts-row">
+      <label class="dl-field ts-f"><span class="dl-field-label">Category</span>
+        <select id="tsCategory">${cats}</select></label>
+      <label class="dl-field ts-f"><span class="dl-field-label">Due</span>
+        <input type="date" id="tsDue" value="${esc(d.dueDate)}"></label>
     </div>
+
+    <div class="ts-row ts-when" title="A time puts this task on your day line">
+      <label class="dl-field ts-f"><span class="dl-field-label">Time on your day</span>
+        <input type="time" id="tsTime" value="${esc(d.time)}"></label>
+      <label class="dl-field ts-f"><span class="dl-field-label">Length</span>
+        <select id="tsLen">${TASK_LENGTHS.map(l =>
+          `<option value="${l.v}"${l.v === d.duration ? ' selected' : ''}>${l.label}</option>`).join('')}</select></label>
+    </div>
+    <button type="button" class="ts-clear" id="tsClearTime"${d.time ? '' : ' hidden'}>Take it off the line</button>
 
     <div class="ts-group">
       <span class="ts-label">Priority</span>
       ${seg('priority', TASK_PRIORITIES, d.priority)}
     </div>
 
-    <div class="ts-row">
-      <label class="dl-field ts-f"><span class="dl-field-label">Category</span>
-        <select id="tsCategory">${cats}</select></label>
-      <label class="dl-field ts-f ts-projectf" id="tsProjectRow"><span class="dl-field-label">Project</span>
-        <select id="tsProject"><option value="">None</option>${projs}</select></label>
-    </div>
+    <details class="ts-more" id="tsMore"${moreHasSomething ? ' open' : ''}>
+      <summary><span>More</span><em>status, project, notes, steps</em><span class="ms" aria-hidden="true">expand_more</span></summary>
+      <div class="ts-more-body">
+        <div class="ts-group">
+          <span class="ts-label">Status</span>
+          ${seg('status', TASK_STATUSES, d.status)}
+        </div>
 
-    <div class="ts-row">
-      <label class="dl-field ts-f"><span class="dl-field-label">Due date</span>
-        <input type="date" id="tsDue" value="${esc(d.dueDate)}"></label>
-    </div>
+        <label class="dl-field ts-f ts-projectf" id="tsProjectRow"><span class="dl-field-label">Project</span>
+          <select id="tsProject"><option value="">None</option>${projs}</select></label>
 
-    <div class="ts-group ts-when">
-      <span class="ts-label">Time on your day</span>
-      <p class="ts-hint">A time puts this task on your line, between everything else.</p>
-      <div class="ts-row">
-        <label class="dl-field ts-f"><span class="dl-field-label">Time</span>
-          <input type="time" id="tsTime" value="${esc(d.time)}"></label>
-        <label class="dl-field ts-f"><span class="dl-field-label">Length</span>
-          <select id="tsLen">${TASK_LENGTHS.map(l =>
-            `<option value="${l.v}"${l.v === d.duration ? ' selected' : ''}>${l.label}</option>`).join('')}</select></label>
+        <div class="ts-group">
+          <span class="ts-label">Notes</span>
+          <textarea id="tsNotes" rows="3" placeholder="Anything worth keeping with it...">${esc(d.description)}</textarea>
+        </div>
+
+        <div class="ts-group">
+          <span class="ts-label">Steps <em id="tsStepCount"></em></span>
+          <div id="tsSteps"></div>
+          <div class="ts-stepadd">
+            <input type="text" id="tsStepInput" placeholder="Add a step..." autocomplete="off" aria-label="Add a step">
+            <button type="button" id="tsStepAdd" aria-label="Add step"><span class="ms">add</span></button>
+          </div>
+        </div>
+
+        ${d.created ? `<p class="ts-stamp">Created ${esc(formatDate(d.created))}</p>` : ''}
       </div>
-      <button type="button" class="ts-clear" id="tsClearTime"${d.time ? '' : ' hidden'}>Take it off the line</button>
-    </div>
-
-    <div class="ts-group">
-      <span class="ts-label">Notes</span>
-      <textarea id="tsNotes" rows="4" placeholder="Anything worth keeping with it...">${esc(d.description)}</textarea>
-    </div>
-
-    <div class="ts-group">
-      <span class="ts-label">Steps <em id="tsStepCount"></em></span>
-      <div id="tsSteps"></div>
-      <div class="ts-stepadd">
-        <input type="text" id="tsStepInput" placeholder="Add a step..." autocomplete="off">
-        <button type="button" id="tsStepAdd" aria-label="Add step"><span class="ms">add</span></button>
-      </div>
-    </div>
-
-    ${d.created ? `<p class="ts-stamp">Created ${esc(formatDate(d.created))}</p>` : ''}
+    </details>
 
     <div class="ts-actions">
       ${isEdit ? '<button type="button" class="dl-btn danger" id="tsDelete">Delete</button>' : ''}
