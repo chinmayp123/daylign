@@ -198,7 +198,7 @@ function mealSheetEntryRow(e, isIngredient) {
   if (dietEditFormIdx !== idx) return row;
   // Name and macros AS LOGGED, for the servings shown.
   return row + `
-    <form class="dl-card ms-edit" data-ms-form="${idx}">
+    <form class="dl-card ms-edit" data-ms-form="${idx}" data-sig="${esc(mealEntrySig(e))}">
       <h6 class="dl-card-h"><span>Edit ${name}</span><em>for ${serv}x</em></h6>
       <label class="dl-field"><span class="dl-field-label">Name</span>
         <input type="text" name="food" value="${name}" maxlength="80" autocomplete="off"></label>
@@ -215,9 +215,33 @@ function mealSheetEntryRow(e, isIngredient) {
     </form>`;
 }
 
+// Which entry an open editor belongs to. The editor is keyed by index into
+// state.diet, and a sync can reorder that array under it.
+function mealEntrySig(e) {
+  return [e.date, e.meal, e.food, e.group || ''].join('|');
+}
+
 function renderMealSheet() {
   const body = document.getElementById('mealSheetBody');
   if (!body || !dietSheetMeal) return;
+
+  // Every save and every sync echo re-renders this sheet. Whatever is being
+  // typed into the open editor, or an ingredient field, is carried across,
+  // and focus goes back where it was. If the entry under the editor is no
+  // longer the one being edited, the editor closes rather than showing that
+  // draft against another food.
+  const openForm = body.querySelector('[data-ms-form]');
+  const draft = openForm ? {
+    idx: Number(openForm.dataset.msForm), sig: openForm.dataset.sig,
+    fields: Array.from(openForm.elements).filter(el => el.name).map(el => [el.name, el.type === 'checkbox' ? el.checked : el.value]),
+  } : null;
+  const ingTyped = Array.from(body.querySelectorAll('[data-ing-input]')).map(el => [el.dataset.ingInput, el.value]);
+  const act = document.activeElement && body.contains(document.activeElement) ? document.activeElement : null;
+  const actKey = act ? (act.name ? 'form:' + act.name : act.dataset.ingInput ? 'ing:' + act.dataset.ingInput : null) : null;
+  if (draft && dietEditFormIdx === draft.idx) {
+    const cur = state.diet[draft.idx];
+    if (!cur || mealEntrySig(cur) !== draft.sig) dietEditFormIdx = null;
+  }
   const meal = dietSheetMeal;
   const label = DIET_MEAL_LABEL[meal];
   const entries = state.diet.filter(e => e.date === dietViewDate && e.meal === meal);
@@ -275,6 +299,23 @@ function renderMealSheet() {
   if (typed) {
     const input = document.getElementById('mealSheetInput');
     if (input) { input.value = typed; renderInlineResults(input.closest('.diet-meal-addwrap'), typed); }
+  }
+  const form = body.querySelector('[data-ms-form]');
+  if (form && draft && Number(form.dataset.msForm) === draft.idx) {
+    draft.fields.forEach(([name, v]) => {
+      const el = form.elements[name];
+      if (!el) return;
+      if (el.type === 'checkbox') el.checked = v; else el.value = v;
+    });
+  }
+  ingTyped.forEach(([gid, v]) => {
+    const el = body.querySelector('[data-ing-input="' + CSS.escape(gid) + '"]');
+    if (el && v) el.value = v;
+  });
+  if (actKey) {
+    const back = actKey.startsWith('form:') ? (form && form.elements[actKey.slice(5)])
+      : body.querySelector('[data-ing-input="' + CSS.escape(actKey.slice(4)) + '"]');
+    if (back) back.focus({ preventScroll: true });
   }
 }
 

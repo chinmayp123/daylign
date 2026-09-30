@@ -179,24 +179,13 @@ function moduleEnabled(key) {
 // into their cloud node. New profiles get this instead: no tasks, no demo
 // projects, everything empty. The default categories stay because task
 // creation needs at least one category to file under.
+// Every synced key, empty, from the one list that defines them, so a key added
+// later cannot survive Start fresh. The hand-written list this replaced had
+// no sleep, aiUsage or waist, so those came through an erase untouched.
 function starterState() {
-  return {
-    tasks: [],
-    categories: [...DEFAULT_CATEGORIES],
-    projects: [],
-    gym: [],
-    cardio: [],
-    modules: {},
-    diet: [],
-    customFoods: {},
-    water: {},
-    waterAt: {},
-    events: [],
-    removedFoods: [],
-    combos: [],
-    weight: {},
-    goals: {},
-  };
+  const fresh = JSON.parse(JSON.stringify(CLOUD_KEYS));
+  fresh.categories = DEFAULT_CATEGORIES.map(c => Object.assign({}, c));
+  return fresh;
 }
 
 // Reset THIS device's cached data and the in-memory state to a clean slate.
