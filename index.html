@@ -521,16 +521,10 @@
              consistency heatmap; both are gone, along with the Weight Trend
              card the weigh-in sheet already draws. -->
         <div class="training-pane" id="trainingSleep" hidden>
-          <!-- Recovery: Sleep + Readiness in one card (rendered by js/sleep.js).
-               The two inner cards drop their own frame so they read as columns
-               of a single Recovery card. -->
-          <div class="card recovery-card">
-            <div class="coach-head"><h2>Recovery</h2></div>
-            <div class="sleep-readiness-row">
-              <div id="sleepCard"></div>
-              <div id="readinessCard"></div>
-            </div>
-          </div>
+          <!-- Readiness ring and verdict, then last night and the week
+               (js/sleep.js). -->
+          <div id="readinessCard"></div>
+          <div id="sleepCard"></div>
         </div><!-- /#trainingSleep -->
 
         </div><!-- /.training-center -->

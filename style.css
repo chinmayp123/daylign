@@ -13329,3 +13329,29 @@ details[open] > summary .cd-more-chev { transform: rotate(180deg); }
 .co-goal-d { font: 500 11.5px var(--font-mono); color: var(--text-secondary); min-width: 0; overflow-wrap: anywhere; }
 .co-goal-m { grid-column: 1 / -1; display: block; }
 .co-activity { padding-top: 10px; border-top: 1px solid var(--border); }
+
+/* ---- Sleep (spec 7) ---- */
+.sl-ready { display: flex; align-items: center; gap: 14px; margin: 14px 0 12px; }
+.sl-ring .dl-ring { width: 96px; height: 96px; }
+.sl-ring .dl-ring-label { font-size: 24px; }
+.sl-ready-t { min-width: 0; }
+.sl-ready-t b { display: block; font-family: var(--font-display); font-weight: 700; font-size: 18px; letter-spacing: -0.02em; color: var(--text-primary); }
+.sl-ready-t p { margin: 3px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--text-secondary); }
+.sl-empty { margin: 14px 0 12px; padding: 14px; border: 1px dashed var(--border); border-radius: var(--radius); font-size: 12.5px; line-height: 1.45; color: var(--text-secondary); text-align: center; }
+.sl-empty b { display: block; color: var(--text-primary); }
+.sl-empty.is-note { margin-top: 0; }
+.sl-card { margin-bottom: 10px; }
+.sl-stepper { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid var(--border); border-radius: 12px; padding: 6px; background: var(--bg-primary); }
+.sl-stepper b { font: 700 22px var(--font-mono); letter-spacing: -0.03em; color: var(--text-primary); }
+.sl-stepper.is-blank b { color: var(--text-muted); }
+.sl-step { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-primary); cursor: pointer; }
+.sl-step:hover { background: var(--bg-hover); }
+.sl-step:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sl-q { margin: 10px 0; }
+.sl-bars { height: 64px; }
+.sl-bars > i.is-last { opacity: 1; }
+/* Over 12h: kept on the chart, drawn as an outline so it cannot be read as a
+   real night. */
+.sl-bars > i.is-odd { background: transparent; border: 1.5px dashed var(--c-food); box-sizing: border-box; opacity: 1; }
+.sl-days { display: flex; gap: 4px; margin-top: 4px; font: 500 9.5px var(--font-mono); color: var(--text-muted); }
+.sl-days span { flex: 1; text-align: center; }

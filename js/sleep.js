@@ -8,10 +8,13 @@
 // state.sleep = { '<date>': { hours, quality } } where date is the WAKE-UP
 // morning, matching how getExternalSleep keys Apple Health data.
 
+// Four steps (spec 7). 'okay' is new; nights logged before it read as they
+// always did, and readiness still only nudges on the two ends.
 const SLEEP_QUALITIES = [
-  { key: 'poor',  label: 'Poor',  icon: '😴' },
-  { key: 'good',  label: 'Good',  icon: '🙂' },
-  { key: 'great', label: 'Great', icon: '⚡' },
+  { key: 'poor',  label: 'Poor' },
+  { key: 'okay',  label: 'Okay' },
+  { key: 'good',  label: 'Good' },
+  { key: 'great', label: 'Great' },
 ];
 
 // Draft state for the stepper, so nothing is written until Save is pressed.
@@ -52,8 +55,8 @@ function sleepSourceFor(dateStr) {
 // given morning last night genuinely has not arrived yet, and the card should
 // say that rather than quietly show a default.
 function sleepFreshness(dateStr, source, sourceHours) {
-  if (source === 'logged') return 'Last night &middot; you logged it';
-  if (source === 'watch') return 'Last night &middot; ⌚ from your watch';
+  if (source === 'logged') return 'logged by you';
+  if (source === 'watch') return 'from your Watch';
 
   // Nothing for last night. Name the most recent night the watch DID send, so
   // the gap is visible instead of being papered over with a placeholder.
@@ -63,8 +66,15 @@ function sleepFreshness(dateStr, source, sourceHours) {
       .filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d) && d < dateStr).sort();
     newest = dates.length ? dates[dates.length - 1] : null;
   }
-  if (newest) return `Last night &middot; not synced yet (watch has ${formatDate(newest)})`;
-  return 'Last night &middot; nothing synced yet';
+  if (newest) return `not synced yet, Watch has ${formatDate(newest)}`;
+  return 'nothing logged yet';
+}
+
+// "7h 15m" for the stepper and the average. formatSleepHours ("7:15") stays
+// for the sentences that already use it.
+function sleepHM(h) {
+  const mins = Math.round((Number(h) || 0) * 60);
+  return Math.floor(mins / 60) + 'h ' + String(mins % 60).padStart(2, '0') + 'm';
 }
 
 function formatSleepHours(h) {
@@ -154,7 +164,10 @@ const WATCH_TRAINING_MINUTES = 20;
 
 function readinessBreakdown() {
   const goalHours = (typeof getGoals === 'function' && getGoals().sleep) || 8;
-  const nights = sleepRecentNights().slice(-3).filter(n => n.hours !== null);
+  // Plausible nights only. A double-counted 13h reading is kept in the record
+  // and flagged on the chart, but it was still being averaged in HERE: one bad
+  // night read as "sleep is holding at 8:45" and pushed readiness to 100.
+  const nights = sleepRecentNights().slice(-3).filter(n => isPlausibleSleep(n.hours));
   if (!nights.length) return null; // nothing to go on — say so rather than guess
 
   const avg = nights.reduce((n, x) => n + x.hours, 0) / nights.length;
@@ -254,6 +267,9 @@ function readinessBreakdown() {
     shortSleep: avg < goalHours - 1,
     // Only true when we had enough history to actually judge load.
     loadHigh: loadKnown && loadPart < 70,
+    // False until there are 6 training days in the fortnight: the score is the
+    // sleep read alone, and the Sleep tab says so.
+    loadKnown: loadKnown,
   };
 }
 
@@ -342,53 +358,46 @@ function renderSleepCard() {
   const max = Math.max(9, ...nights.map(n => isPlausibleSleep(n.hours) ? n.hours : 0));
   const source = sleepSourceFor(today);
 
+  const todayStr = today;
+  let flagged = null;
   const bars = nights.map(n => {
     const pct = n.hours ? Math.min(100, Math.round((n.hours / max) * 100)) : 0;
-    const dow = new Date(n.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'narrow' });
-    const q = n.entry && n.entry.quality ? n.entry.quality : '';
     // Shown, but named for what it is — silently dropping a reading would be
     // its own kind of lying about the data.
     const odd = n.hours !== null && !isPlausibleSleep(n.hours);
+    if (odd) flagged = n;
     const title = n.hours
-      ? `${formatSleepHours(n.hours)} on ${formatDate(n.date)}` + (odd ? ' — looks double-counted, not averaged' : '')
+      ? `${sleepHM(n.hours)} on ${formatDate(n.date)}` + (odd ? ', looks double-counted, not averaged' : '')
       : `No sleep logged for ${formatDate(n.date)}`;
-    return `<div class="sleep-bar-col" title="${title}">
-      <div class="sleep-bar-track"><div class="sleep-bar-fill ${q}${odd ? ' is-suspect' : ''}" style="height:${pct}%"></div></div>
-      <span class="sleep-bar-day">${dow}</span>
-    </div>`;
+    const cls = [n.hours ? '' : 'empty', odd ? 'is-odd' : '', n.date === todayStr ? 'is-last' : ''].filter(Boolean).join(' ');
+    return `<i class="${cls}" style="--h:${pct}%" title="${esc(title)}"></i>`;
   }).join('');
+  const days = nights.map(n => `<span>${new Date(n.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'narrow' })}</span>`).join('');
 
   host.innerHTML = `
-    <div class="card sleep-card">
-      <div class="coach-head">
-        <h2>Sleep</h2>
-        <span class="weight-goal-chip">${avg !== null ? formatSleepHours(avg) + ' avg' : 'no nights yet'}</span>
+    <div class="dl-card sl-card">
+      <h6 class="dl-card-h"><span>Last night</span><em>${esc(sleepFreshness(today, source, sourceHours))}</em></h6>
+      <div class="sl-stepper${source ? '' : ' is-blank'}">
+        <button type="button" class="sl-step" data-sleep-step="-0.25" aria-label="15 minutes less"><span class="ms" aria-hidden="true">remove</span></button>
+        <b id="sleepHoursVal">${sleepHM(sleepDraftHours)}</b>
+        <button type="button" class="sl-step" data-sleep-step="0.25" aria-label="15 minutes more"><span class="ms" aria-hidden="true">add</span></button>
       </div>
+      <div class="dl-seg full sl-q" role="group" aria-label="How it felt">
+        ${SLEEP_QUALITIES.map(q => `<button type="button" data-sleep-quality="${q.key}"${sleepDraftQuality === q.key ? ' aria-pressed="true"' : ''}>${q.label}</button>`).join('')}
+      </div>
+      <button type="button" class="dl-btn primary full" id="sleepSaveBtn">Save</button>
+    </div>
 
-      <div class="sleep-log">
-        <span class="sleep-log-label">${sleepFreshness(today, source, sourceHours)}</span>
-        <div class="sleep-stepper">
-          <button type="button" class="sleep-step-btn" data-sleep-step="-0.25" aria-label="Less sleep">−</button>
-          <span class="sleep-hours" id="sleepHoursVal">${formatSleepHours(sleepDraftHours)}</span>
-          <button type="button" class="sleep-step-btn" data-sleep-step="0.25" aria-label="More sleep">+</button>
-        </div>
-        <span class="sleep-hours-sub">hrs asleep</span>
-        <div class="sleep-quality">
-          ${SLEEP_QUALITIES.map(q => `
-            <button type="button" class="sleep-q-btn${sleepDraftQuality === q.key ? ' active ' + q.key : ''}" data-sleep-quality="${q.key}">
-              <span aria-hidden="true">${q.icon}</span> ${q.label}
-            </button>`).join('')}
-        </div>
-        <button type="button" class="btn-primary sleep-save-btn" id="sleepSaveBtn">Save</button>
-      </div>
-
-      <div class="sleep-trend">
-        <span class="sleep-trend-label">7-night trend</span>
-        <div class="sleep-bars">${bars}</div>
-      </div>
+    <div class="dl-card sl-card">
+      <h6 class="dl-card-h"><span>Last 7 nights</span><em>${avg !== null ? 'avg ' + sleepHM(avg) : 'no nights yet'}</em></h6>
+      <div class="dl-bars c-sleep sl-bars" role="img" aria-label="${avg !== null ? 'Sleep over the last 7 nights, averaging ' + sleepHM(avg) : 'No nights logged in the last 7'}">${bars}</div>
+      <div class="sl-days">${days}</div>
+      ${flagged ? `<p class="sp-note">${new Date(flagged.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' })} shows ${Math.round(flagged.hours)}h. It looks double-counted, so it is flagged and left out of the average, but kept.</p>` : ''}
     </div>`;
 }
 
+// Readiness: the ring, the verdict and why. This is the only place the score
+// is drawn (spec 7); the coach quotes it as a chip.
 function renderReadinessCard() {
   const host = document.getElementById('readinessCard');
   if (!host) return;
@@ -401,30 +410,26 @@ function renderReadinessCard() {
   const breakdown = readinessBreakdown();
   const score = breakdown ? breakdown.score : null;
   if (score === null) {
-    host.innerHTML = `
-      <div class="card readiness-card">
-        <div class="coach-head"><h2>Readiness</h2></div>
-        <p class="readiness-empty">Log a night's sleep and this turns into a single read on whether to push today or back off.</p>
-      </div>`;
+    host.innerHTML = `<div class="sl-empty"><b>No readiness yet.</b> Log a night's sleep and this becomes one read on whether to push today or back off.</div>`;
     return;
   }
   const verdict = readinessVerdict(score);
-  const deg = Math.round((score / 100) * 360);
 
   host.innerHTML = `
-    <div class="card readiness-card">
-      <div class="coach-head">
-        <h2>Readiness</h2>
-        <span class="readiness-chip ${verdict.tone}">${verdict.label}</span>
+    <div class="sl-ready">
+      <span class="dl-ring-wrap sl-ring">
+        <svg class="dl-ring c-sleep" viewBox="0 0 64 64" role="img" aria-label="Readiness ${score} out of 100">
+          <circle class="dl-ring-track" cx="32" cy="32" r="28"/>
+          <circle class="dl-ring-fill" cx="32" cy="32" r="28" pathLength="100" style="--pct:${score}"/>
+        </svg>
+        <span class="dl-ring-label">${score}</span>
+      </span>
+      <div class="sl-ready-t">
+        <b>${esc(verdict.label)}</b>
+        <p>${esc(readinessAdvice(breakdown))}</p>
       </div>
-      <div class="readiness-body">
-        <div class="readiness-ring ${verdict.tone}" style="--ready-deg:${deg}deg">
-          <span class="readiness-score">${score}</span>
-          <span class="readiness-unit">ready</span>
-        </div>
-        <p class="readiness-advice">${readinessAdvice(breakdown)}</p>
-      </div>
-    </div>`;
+    </div>
+    ${breakdown.loadKnown ? '' : `<div class="sl-empty is-note"><b>Sleep only, for now.</b> Training load joins the score once you have 6 training days in two weeks.</div>`}`;
 }
 
 function renderSleep() {
@@ -442,7 +447,9 @@ function bindSleepEvents() {
       sleepDraftDirty = true;
       sleepDraftHours = Math.max(0, Math.min(14, Math.round((sleepDraftHours + delta) * 100) / 100));
       const val = document.getElementById('sleepHoursVal');
-      if (val) val.textContent = formatSleepHours(sleepDraftHours);
+      if (val) val.textContent = sleepHM(sleepDraftHours);
+      const st = val && val.closest('.sl-stepper');
+      if (st) st.classList.remove('is-blank');
       return;
     }
     const q = e.target.closest('[data-sleep-quality]');
@@ -459,7 +466,7 @@ function bindSleepEvents() {
         quality: sleepDraftQuality || 'good',
       };
       saveData(state);
-      if (typeof showToast === 'function') showToast(`Sleep logged: ${formatSleepHours(sleepDraftHours)}`);
+      if (typeof showToast === 'function') showToast(`Sleep logged: ${sleepHM(sleepDraftHours)}`);
       renderSleep();
       // Sleep feeds the dashboard tile and the weekly report too.
       if (typeof renderDashboard === 'function') renderDashboard();
