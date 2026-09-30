@@ -12,7 +12,10 @@
 const LINE_SLOT = {
   breakfast: 8 * 60, lunch: 12 * 60 + 30, snack: 16 * 60, dinner: 19 * 60 + 30,
   brush_am: 7 * 60, morning: 7 * 60 + 5, brush_pm: 21 * 60 + 30,
-  cardio: 7 * 60 + 30, workout: 18 * 60 + 30,
+  cardio: 7 * 60 + 30,
+  // Settings, Workouts: the usual workout time, per device. Read each time,
+  // so changing it moves the planned session without a reload.
+  get workout() { return (typeof workoutSlotMin === 'function') ? workoutSlotMin() : 18 * 60 + 30; },
 };
 
 function lineMinutesNow() {

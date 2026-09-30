@@ -35,7 +35,11 @@ function getTodayStr() {
 function esc(str) {
   const div = document.createElement('div');
   div.textContent = str;
-  return div.innerHTML;
+  // innerHTML escapes & < > and leaves quotes alone, but most esc() calls in
+  // this app sit inside an attribute: value="${esc(name)}". A task called
+  // Read "Dune" ended the attribute at its second quote, and in a database
+  // anyone can write to, a name is not something to trust with that.
+  return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function formatDate(dateStr) {
@@ -340,16 +344,16 @@ function renderDiagnostics() {
   const host = document.getElementById('diagList');
   if (!host) return;
   if (!recentErrors.length) {
-    host.innerHTML = '<p class="diag-empty">No errors recorded this session.</p>';
+    host.innerHTML = '<p class="set-sub">No errors recorded this session.</p>';
     return;
   }
   // Newest first — the one you just hit is the one you came here to read.
   host.innerHTML = recentErrors.slice().reverse().map(e => {
     const t = new Date(e.at);
     const when = isNaN(t) ? e.at : t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
-    return `<div class="diag-row">
-      <div class="diag-row-head"><span class="diag-kind">${esc(e.kind)}</span><span class="diag-when">${esc(when)}</span></div>
-      <div class="diag-detail">${esc(e.detail)}</div>
+    return `<div class="set-diag">
+      <div class="set-diag-h"><span>${esc(e.kind)}</span><span>${esc(when)}</span></div>
+      <p>${esc(e.detail)}</p>
     </div>`;
   }).join('');
 }
@@ -364,11 +368,15 @@ function bindDiagnostics() {
   const clear = document.getElementById('diagClearBtn');
   if (copy) copy.addEventListener('click', () => {
     const txt = diagnosticsText();
-    if (navigator.clipboard) navigator.clipboard.writeText(txt).catch(() => {});
+    // Copy used to say nothing either way, so there was no telling whether
+    // the clipboard now held the errors or whatever was there before.
+    if (!navigator.clipboard) { showToast('Could not copy on this device'); return; }
+    navigator.clipboard.writeText(txt).then(() => showToast('Copied')).catch(() => showToast('Could not copy on this device'));
   });
   if (clear) clear.addEventListener('click', () => {
     recentErrors.length = 0;
     renderDiagnostics();
+    if (typeof renderSettingsIndex === 'function') renderSettingsIndex();
   });
 }
 

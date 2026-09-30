@@ -12,31 +12,40 @@
   const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
 
   // ---------- Theme ----------
-  function applyTheme(theme) {
-    const light = theme === 'light';
+  // daylign_theme holds 'light' or 'dark'; anything else (including nothing)
+  // means System, which follows the device and keeps following it. The one
+  // control is Settings, Appearance. The same three lines run inline in
+  // index.html's head so the first paint is already the right theme.
+  const sysDark = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function themePref() {
+    let v = null;
+    try { v = localStorage.getItem(THEME_KEY); } catch (e) {}
+    return v === 'light' || v === 'dark' ? v : 'system';
+  }
+  function applyTheme() {
+    const pref = themePref();
+    const light = pref === 'light' || (pref === 'system' && !(sysDark && sysDark.matches));
     document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
-    $$('.theme-nav-label').forEach(el => { el.textContent = light ? 'Dark mode' : 'Light mode'; });
-    const st = $('#moreThemeState'); if (st) st.textContent = light ? 'On' : 'Off';
-    // Keep Settings' Appearance control honest when the sidebar toggle is used.
+    // The browser chrome (status bar, task switcher) takes the page colour.
+    const meta = document.querySelector('meta[name="theme-color"]');
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg-primary').trim();
+    if (meta && bg) meta.setAttribute('content', bg);
     if (typeof window.renderThemeSegmented === 'function') window.renderThemeSegmented();
   }
-  function toggleTheme() {
-    const cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
-    const next = cur === 'light' ? 'dark' : 'light';
-    try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
-    applyTheme(next);
-  }
   function initTheme() {
-    let saved = 'dark';
-    try { saved = localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark'; } catch (e) {}
-    applyTheme(saved);
+    applyTheme();
+    if (!sysDark) return;
+    const follow = () => { if (themePref() === 'system') applyTheme(); };
+    if (sysDark.addEventListener) sysDark.addEventListener('change', follow);
+    else if (sysDark.addListener) sysDark.addListener(follow);
   }
-  // Settings' Appearance control needs to set an explicit theme rather than
-  // flip the current one. Exported so there is still exactly one theme path.
-  window.daylignSetTheme = function (theme) {
-    const next = theme === 'light' ? 'light' : 'dark';
-    try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
-    applyTheme(next);
+  window.daylignThemePref = themePref;
+  window.daylignSetTheme = function (pref) {
+    try {
+      if (pref === 'light' || pref === 'dark') localStorage.setItem(THEME_KEY, pref);
+      else localStorage.setItem(THEME_KEY, 'system');
+    } catch (e) {}
+    applyTheme();
   };
 
   // ---------- Avatar sheet (was the More sheet) ----------

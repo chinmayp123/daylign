@@ -9,6 +9,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Daylign</title>
   <meta name="theme-color" content="#0e0f0e">
+  <!-- The theme, before first paint. 'light' or 'dark' if one was chosen in
+       Settings, otherwise whatever the device is set to. js/enhancements.js
+       holds the same rule and keeps following the device afterwards. -->
+  <script>
+    try {
+      var t = localStorage.getItem('daylign_theme');
+      if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {}
+  </script>
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <!-- Both: the apple- prefix is deprecated but still what older iOS reads. -->
@@ -85,18 +95,16 @@
       <div class="sidebar-categories">
         <div class="sidebar-section-head">
           <h3>Categories</h3>
-          <button class="sidebar-manage-btn" data-manage-taxonomy title="Add, rename or delete">Manage</button>
+          <button class="sidebar-manage-btn" data-manage-taxonomy title="Add, rename, recolour or delete, in Settings">Manage</button>
         </div>
         <div class="category-list" id="categoryList"></div>
-        <button class="add-category-btn" id="addCategoryBtn">+ Add Category</button>
       </div>
       <div class="sidebar-projects">
         <div class="sidebar-section-head">
           <h3>Projects</h3>
-          <button class="sidebar-manage-btn" data-manage-taxonomy title="Add, rename or delete">Manage</button>
+          <button class="sidebar-manage-btn" data-manage-taxonomy title="Add, rename, recolour or delete, in Settings">Manage</button>
         </div>
         <div class="project-list" id="projectList"></div>
-        <button class="add-category-btn" id="addProjectBtn">+ Add Project</button>
       </div>
       <div class="sidebar-foot">
         <button class="nav-btn nav-btn-pinned" data-view="settings">
@@ -642,184 +650,197 @@
         <div id="insightsBody"></div>
       </div>
 
-      <!-- Settings View -->
+      <!-- Settings (spec 10.1): a grouped index with a page behind each row. The
+           index and the navigation are js/settings.js; each page is filled by
+           the module that owns it, which is why the ids in here are old ones. -->
       <div class="view" id="settingsView">
-        <div class="settings-wrap">
+        <div class="set-wrap" id="setWrap">
+          <nav class="set-index" id="setIndex" aria-label="Settings"></nav>
+          <div class="set-pages">
 
-
-          <section class="settings-group">
-
-            <h3 class="settings-group-label">Account</h3>
-          <section class="settings-card">
-            <div class="settings-sync" id="settingsSync"></div>
-            <h2>Who's using this device</h2>
-            <p class="settings-desc">Signed in as <strong id="profileCurrentName">—</strong>. Each person's tasks, workouts, meals and weight are stored separately in the cloud. Switching clears this device's local copy and reloads the other person's data — theirs stays untouched.</p>
-            <div class="settings-btn-row">
-              <button class="btn-secondary" id="switchProfileBtn">Switch profile</button>
-              <button class="btn-secondary settings-btn-danger" id="resetProfileBtn">Start fresh (erase this profile)</button>
-            </div>
-          </section>
-
-          <section class="settings-card">
-            <h2>Connect Apple Watch</h2>
-            <p class="settings-desc">Sync steps, active energy, exercise minutes, resting heart rate and sleep from Apple Health into Daylign — automatically, once a night. iPhone + Apple Watch only.</p>
-            <div class="watch-connect" id="watchConnect"></div>
-          </section>
-
-          </section>
-
-          <section class="settings-group">
-
-            <h3 class="settings-group-label">Daily goals</h3>
-          <section class="settings-card">
-            <h2>Your goals</h2>
-            <p class="settings-desc">Daily targets and your goal weight, in one place. These drive the rings, the coach and the weekly report.</p>
-            <div class="goals-summary" id="goalsSummary"></div>
-            <button class="btn-secondary" id="editGoalsSettingsBtn">Edit goals</button>
-          </section>
-
-          </section>
-
-          <section class="settings-group">
-
-            <h3 class="settings-group-label">Preferences</h3>
-          <section class="settings-card">
-            <div class="pref-row">
-              <div class="pref-row-text">
-                <span class="pref-row-title">Appearance</span>
-                <span class="pref-row-sub">Stored on this device</span>
+            <section class="set-page" data-set-page="profile" hidden>
+              <header class="set-head">
+                <button type="button" class="set-back" data-set-back aria-label="Back to Settings"><span class="ms" aria-hidden="true">arrow_back</span></button>
+                <div><span class="dl-eyebrow">Settings</span><h2>Profile and goals</h2></div>
+              </header>
+              <div class="dl-card set-who">
+                <span class="set-who-avatar" id="profileCurrentAvatar" aria-hidden="true">D</span>
+                <div>
+                  <b id="profileCurrentName">&mdash;</b>
+                  <p class="set-sub">Each person's tasks, workouts, meals and weight are kept separately in the cloud.</p>
+                </div>
               </div>
-              <div class="segmented" id="themeSegmented">
-                <button type="button" class="segmented-btn" data-theme="dark">Dark</button>
-                <button type="button" class="segmented-btn" data-theme="light">Light</button>
+              <div class="dl-card">
+                <div class="dl-card-h"><span>Goals</span><em>the rings and the coach</em></div>
+                <div class="set-kv" id="goalsSummary"></div>
+                <div class="set-btnrow"><button type="button" class="dl-btn" id="editGoalsSettingsBtn">Edit goals</button></div>
               </div>
-            </div>
-          </section>
+            </section>
 
-          <section class="settings-card">
-            <h2>Modules</h2>
-            <p class="settings-desc">Turn off the sections you don't use — they disappear from the menu. Nothing is deleted; switch a module back on and your data is exactly where you left it.</p>
-            <div class="module-toggles" id="moduleToggles"></div>
-          </section>
-
-          <section class="settings-card">
-            <h2>Categories &amp; Projects</h2>
-            <p class="settings-desc">Organize your tasks. These also appear in the sidebar on task views — this is the always-available place to add, rename or remove them.</p>
-            <div class="taxonomy-manager" id="taxonomyManager"></div>
-          </section>
-
-          </section>
-
-          <section class="settings-group">
-
-            <h3 class="settings-group-label">AI features</h3>
-          <section class="settings-card">
-            <h2>Anthropic API key</h2>
-            <p class="settings-desc">Powers photo food logging and voice commands. <strong>Stored only on this device</strong> — never committed to the repo and never synced to the cloud, so each device pays for its own usage. Leave it empty and both features stay dormant.</p>
-            <div class="ai-key-status" id="aiKeyStatus"></div>
-            <div class="ai-key-form">
-              <input type="password" id="aiKeyInput" class="ai-key-input" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
-              <button class="btn-primary" id="aiKeySaveBtn" type="button">Save key</button>
-              <button class="btn-secondary" id="aiKeyRemoveBtn" type="button" hidden>Remove</button>
-            </div>
-          </section>
-
-          <section class="settings-card">
-            <h2>AI usage &amp; cost</h2>
-            <p class="settings-desc">Every photo and voice call this app makes, with tokens and an estimated cost. Synced across your devices. This is an estimate from token usage — your billed total lives at console.anthropic.com → Usage.</p>
-            <div class="ai-usage-report" id="aiUsageReport"></div>
-          </section>
-
-          </section>
-
-                    </section>
-
-          <section class="settings-group">
-
-            <h3 class="settings-group-label">Appearance &amp; layout</h3>
-          <section class="settings-card">
-            <h2>Accent colour</h2>
-            <p class="settings-desc">Tints buttons, charts and highlights across the app. Saved on this device.</p>
-            <div class="accent-picker" id="accentPicker"></div>
-          </section>
-
-          <section class="settings-card">
-            <h2>Today sections</h2>
-            <p class="settings-desc">Uncheck anything you don't want on the Today screen. Nothing is deleted — the data stays and the section comes back the moment you re-check it. Reordering and saved layouts live in <strong>Arrange Today</strong>, at the end of the Today screen.</p>
-            <div class="pref-toggles" id="widgetToggles"></div>
-          </section>
-
-          <section class="settings-card">
-            <h2>Workout defaults</h2>
-            <p class="settings-desc">Starting values for the Strength logger.</p>
-            <div class="pref-fields">
-              <div class="pref-field">
-                <label for="prefRestSeconds">Rest timer (seconds)</label>
-                <input type="number" id="prefRestSeconds" min="10" max="600" step="5" inputmode="numeric">
+            <section class="set-page" data-set-page="watch" hidden>
+              <header class="set-head">
+                <button type="button" class="set-back" data-set-back aria-label="Back to Settings"><span class="ms" aria-hidden="true">arrow_back</span></button>
+                <div><span class="dl-eyebrow">Settings</span><h2>Apple Watch</h2></div>
+              </header>
+              <div class="dl-card">
+                <p class="set-sub">Steps, active energy, exercise minutes, resting heart rate and sleep from Apple Health, once a night. iPhone and Apple Watch only.</p>
+                <div class="set-watch" id="watchConnect"></div>
               </div>
-              <div class="pref-field">
-                <label for="prefDefaultSets">Set rows to start with</label>
-                <input type="number" id="prefDefaultSets" min="1" max="10" step="1" inputmode="numeric">
+            </section>
+
+            <section class="set-page" data-set-page="modules" hidden>
+              <header class="set-head">
+                <button type="button" class="set-back" data-set-back aria-label="Back to Settings"><span class="ms" aria-hidden="true">arrow_back</span></button>
+                <div><span class="dl-eyebrow">Settings</span><h2>Modules</h2></div>
+              </header>
+              <p class="set-lede">Turn off what you don't use and it leaves the menu. Nothing is deleted: switch it back on and your data is where you left it.</p>
+              <div class="set-list" id="moduleToggles"></div>
+            </section>
+
+            <section class="set-page" data-set-page="look" hidden>
+              <header class="set-head">
+                <button type="button" class="set-back" data-set-back aria-label="Back to Settings"><span class="ms" aria-hidden="true">arrow_back</span></button>
+                <div><span class="dl-eyebrow">Settings</span><h2>Appearance</h2></div>
+              </header>
+              <div class="dl-field">
+                <span class="dl-field-label" id="themeLabel">Theme</span>
+                <div class="dl-seg full" id="themeSeg" role="group" aria-labelledby="themeLabel">
+                  <button type="button" data-theme-pref="system">System</button>
+                  <button type="button" data-theme-pref="light">Light</button>
+                  <button type="button" data-theme-pref="dark">Dark</button>
+                </div>
               </div>
-            </div>
-          </section>
+              <div class="dl-field">
+                <span class="dl-field-label" id="accentLabel">Accent</span>
+                <div class="set-swatches" id="accentPicker" role="group" aria-labelledby="accentLabel"></div>
+              </div>
+              <div class="set-list">
+                <label class="set-togrow dl-toggle"><span class="set-togrow-t"><b>Larger text</b></span><input type="checkbox" id="prefLargeText"><span class="dl-toggle-track" aria-hidden="true"></span></label>
+                <label class="set-togrow dl-toggle"><span class="set-togrow-t"><b>Reduce motion</b><small>Your device's own setting is already respected</small></span><input type="checkbox" id="prefReduceMotion"><span class="dl-toggle-track" aria-hidden="true"></span></label>
+                <label class="set-togrow dl-toggle"><span class="set-togrow-t"><b>Always show delete buttons</b></span><input type="checkbox" id="prefShowActions"><span class="dl-toggle-track" aria-hidden="true"></span></label>
+                <label class="set-togrow dl-toggle"><span class="set-togrow-t"><b>Haptics</b><small>On iPhone this may do nothing</small></span><input type="checkbox" id="prefHaptics"><span class="dl-toggle-track" aria-hidden="true"></span></label>
+              </div>
+              <p class="set-note">Saved on this device only.</p>
+            </section>
 
-          <section class="settings-card">
-            <h2>Accessibility</h2>
-            <p class="settings-desc">Your device's own Reduce Motion setting is already respected — these are extra overrides.</p>
-            <div class="pref-toggles">
-              <label class="pref-toggle"><input type="checkbox" id="prefReduceMotion"><span>Reduce motion</span></label>
-              <label class="pref-toggle"><input type="checkbox" id="prefLargeText"><span>Larger text</span></label>
-              <label class="pref-toggle"><input type="checkbox" id="prefShowActions"><span>Always show delete buttons</span></label>
-              <label class="pref-toggle"><input type="checkbox" id="prefHaptics"><span>Haptic feedback</span></label>
-            </div>
-            <p class="settings-desc">Haptics work on Android. On iPhone the web has no vibration API, so Daylign borrows the tick from Apple's own switch control — it may do nothing on your device, in which case everything still behaves exactly as before.</p>
-          </section>
+            <section class="set-page" data-set-page="cats" hidden>
+              <header class="set-head">
+                <button type="button" class="set-back" data-set-back aria-label="Back to Settings"><span class="ms" aria-hidden="true">arrow_back</span></button>
+                <div><span class="dl-eyebrow">Settings</span><h2>Categories and projects</h2></div>
+              </header>
+              <p class="set-lede">Tap a name to rename it. The colour follows a task onto the line, the board and the calendar.</p>
+              <div class="set-tax-host" id="taxonomyManager"></div>
+            </section>
 
-<section class="settings-group">
+            <section class="set-page" data-set-page="workouts" hidden>
+              <header class="set-head">
+                <button type="button" class="set-back" data-set-back aria-label="Back to Settings"><span class="ms" aria-hidden="true">arrow_back</span></button>
+                <div><span class="dl-eyebrow">Settings</span><h2>Workout defaults</h2></div>
+              </header>
+              <div class="dl-card set-fields">
+                <div class="dl-field">
+                  <label for="prefWorkoutTime">Usual workout time</label>
+                  <input type="time" id="prefWorkoutTime">
+                </div>
+                <div class="dl-field">
+                  <label for="prefRestSeconds">Rest timer, seconds</label>
+                  <input type="number" id="prefRestSeconds" min="10" max="600" step="5" inputmode="numeric">
+                </div>
+                <div class="dl-field">
+                  <label for="prefDefaultSets">Set rows to start with</label>
+                  <input type="number" id="prefDefaultSets" min="1" max="10" step="1" inputmode="numeric">
+                </div>
+              </div>
+              <p class="set-note">The workout time is where a planned session sits on the line. Saved on this device only.</p>
+            </section>
 
-            <h3 class="settings-group-label">Your data</h3>
-          <section class="settings-card">
-            <h2>Backup your data</h2>
-            <p class="settings-desc">Your data syncs to the cloud automatically, but the cloud keeps no history. Download a backup regularly so you always have a copy you control. Save it somewhere safe (Files, iCloud, email).</p>
-            <button class="btn-primary" id="exportBtn">Download backup</button>
-          </section>
+            <section class="set-page" data-set-page="ai" hidden>
+              <header class="set-head">
+                <button type="button" class="set-back" data-set-back aria-label="Back to Settings"><span class="ms" aria-hidden="true">arrow_back</span></button>
+                <div><span class="dl-eyebrow">Settings</span><h2>AI</h2></div>
+              </header>
+              <div class="dl-card">
+                <div class="dl-card-h"><span>Anthropic key</span><em>photo and voice</em></div>
+                <div class="set-keyrow">
+                  <p class="set-sub" id="aiKeyStatus"></p>
+                  <button type="button" class="dl-btn danger" id="aiKeyRemoveBtn" hidden>Remove</button>
+                </div>
+                <div class="set-keyform" id="aiKeyForm">
+                  <div class="dl-field">
+                    <label for="aiKeyInput">Paste a key</label>
+                    <input type="password" id="aiKeyInput" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
+                  </div>
+                  <button type="button" class="dl-btn primary" id="aiKeySaveBtn">Save key</button>
+                </div>
+                <p class="set-note">Kept on this device only. It is never synced and never shown again, so each device pays for its own calls.</p>
+              </div>
+              <div class="set-ai" id="aiUsageReport"></div>
+            </section>
 
-          <section class="settings-card">
-            <h2>Import from a spreadsheet</h2>
-            <p class="settings-desc">UAT findings and bug lists usually start life in a sheet, where nothing moves through anything. Paste the rows and they become tasks on the board. Columns are matched by their headings &mdash; Title, Status, Due, Reported by &mdash; and you see exactly what will be created before anything is written.</p>
-            <button class="btn-secondary" id="csvImportBtn">Paste a spreadsheet</button>
-          </section>
+            <section class="set-page" data-set-page="data" hidden>
+              <header class="set-head">
+                <button type="button" class="set-back" data-set-back aria-label="Back to Settings"><span class="ms" aria-hidden="true">arrow_back</span></button>
+                <div><span class="dl-eyebrow">Settings</span><h2>Data and sync</h2></div>
+              </header>
+              <div class="dl-card set-sync" id="settingsSync"></div>
+              <div class="set-conflicts" id="syncConflicts"></div>
+              <div class="set-group" id="setBackup">
+                <h3 class="set-group-h">Backup</h3>
+                <div class="set-list">
+                  <button type="button" class="set-row" id="exportBtn"><span class="ms" aria-hidden="true">download</span><span class="set-row-t">Download a backup</span></button>
+                  <button type="button" class="set-row" id="importBtn"><span class="ms" aria-hidden="true">restore</span><span class="set-row-t">Restore from a backup</span><span class="set-row-v">type RESTORE</span></button>
+                </div>
+                <input type="file" id="importFile" accept="application/json,.json" hidden>
+                <p class="set-note">The cloud keeps no history, so a backup is the only copy you control. Restoring replaces everything, and saves a safety copy first.</p>
+              </div>
+            </section>
 
-          <!-- recordError() has been collecting the last 10 failures since it was
-               written, for a diagnostics panel that never got built — so the app
-               would say "Something went wrong" and then hide the one thing that
-               explained it. On an installed PWA there is no console to fall back
-               on. This is that panel. -->
-          <section class="settings-card">
-            <h2>Recent errors</h2>
-            <p class="settings-desc">When something says &ldquo;that action may not have saved&rdquo;, the reason lands here. There is no console on an installed app, so this is the only place to see it.</p>
-            <div class="diag-list" id="diagList"></div>
-            <div class="settings-btn-row">
-              <button class="btn-secondary" id="diagCopyBtn">Copy</button>
-              <button class="btn-secondary" id="diagClearBtn">Clear</button>
-            </div>
-          </section>
+            <section class="set-page" data-set-page="import" hidden>
+              <header class="set-head">
+                <button type="button" class="set-back" data-set-back aria-label="Back to Settings"><span class="ms" aria-hidden="true">arrow_back</span></button>
+                <div><span class="dl-eyebrow">Settings</span><h2>Import a spreadsheet</h2></div>
+              </header>
+              <div class="dl-card set-csv">
+                <div class="dl-field">
+                  <label for="csvText">Paste the sheet, header row included</label>
+                  <textarea id="csvText" class="set-csv-text" rows="7" spellcheck="false" placeholder="Title,Status,Due,Reported by&#10;Login fails on Safari,Open,2026-09-01,Rishi&#10;Sleep shows 15 hours,In Progress,,Ana"></textarea>
+                </div>
+                <div class="dl-field">
+                  <label for="csvProject">Into project</label>
+                  <select id="csvProject"></select>
+                </div>
+                <div class="set-csv-preview" id="csvPreviewBox" hidden></div>
+                <button type="button" class="dl-btn primary full" id="csvGo" disabled>Import</button>
+              </div>
+              <p class="set-note">Columns are matched by their headings: Title, Status, Due, Reported by. Nothing is added until you press Import.</p>
+            </section>
 
-          <section class="settings-card">
-            <h2>How the app is being used</h2>
-            <p class="settings-desc">A read-only look at what each profile is actually logging — useful for working out which parts of Daylign are worth improving. This never loads anyone else's data into the app, so it cannot change their numbers.</p>
-            <button class="btn-secondary" id="usageLoadBtn">Load usage</button>
-            <div class="usage-report" id="usageReport"></div>
-          </section>
+            <section class="set-page" data-set-page="errors" hidden>
+              <header class="set-head">
+                <button type="button" class="set-back" data-set-back aria-label="Back to Settings"><span class="ms" aria-hidden="true">arrow_back</span></button>
+                <div><span class="dl-eyebrow">Settings</span><h2>Recent errors</h2></div>
+              </header>
+              <p class="set-lede">When something says it may not have saved, the reason lands here. An installed app has no console, so this is the only place to see it.</p>
+              <div class="dl-card">
+                <div id="diagList"></div>
+                <div class="set-btnrow">
+                  <button type="button" class="dl-btn" id="diagCopyBtn">Copy</button>
+                  <button type="button" class="dl-btn" id="diagClearBtn">Clear</button>
+                </div>
+              </div>
+            </section>
 
-          <section class="settings-card settings-danger">
-            <h2>Restore from a backup</h2>
-            <p class="settings-desc"><strong>This replaces everything</strong> — on this device and in the cloud (all your devices) — with the contents of a backup file. Only use it to recover lost data. Restoring an older file will delete anything newer. A safety copy of your current data is downloaded first, and you'll be asked to type <code>RESTORE</code> to confirm.</p>
-            <button class="btn-danger" id="importBtn">Restore from file…</button>
-            <input type="file" id="importFile" accept="application/json,.json" style="display:none">
-          </section>
-        </section>
+            <section class="set-page" data-set-page="usage" hidden>
+              <header class="set-head">
+                <button type="button" class="set-back" data-set-back aria-label="Back to Settings"><span class="ms" aria-hidden="true">arrow_back</span></button>
+                <div><span class="dl-eyebrow">Settings</span><h2>How the app is used</h2></div>
+              </header>
+              <p class="set-lede">A read-only look at what each profile is logging, to see which parts of Daylign are worth improving. It never loads anyone else's data into the app.</p>
+              <div class="set-btnrow"><button type="button" class="dl-btn" id="usageLoadBtn">Load usage</button></div>
+              <div class="set-usage" id="usageReport"></div>
+            </section>
+
+          </div>
         </div>
       </div>
     </main>
@@ -877,6 +898,16 @@
       <div class="dl-grab"></div>
       <h4>Arrange Today</h4>
       <div id="arrangeBody"></div>
+    </div>
+  </div>
+
+  <!-- The one "are you sure" sheet, with an optional word to type. Filled by
+       askConfirm() in js/settings.js; it replaced confirm() and prompt(). -->
+  <div class="dl-sheet-wrap" id="confirmSheet">
+    <div class="dl-sheet" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" tabindex="-1">
+      <div class="dl-grab"></div>
+      <h4 id="confirmTitle"></h4>
+      <div id="confirmBody"></div>
     </div>
   </div>
 
@@ -959,27 +990,6 @@
   </div>
 
   <!-- Goals Modal -->
-  <!-- Categories & Projects manager, reachable from the sidebar on task views -->
-  <div class="modal-overlay" id="taxonomyModal" role="dialog" aria-modal="true">
-    <div class="modal">
-      <div class="modal-header">
-        <div class="modal-header-left">
-          <div class="modal-icon">
-            <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-          </div>
-          <div>
-            <h2>Categories &amp; Projects</h2>
-            <p class="modal-subtitle">Add, rename or delete — synced to all your devices</p>
-          </div>
-        </div>
-        <button class="modal-close" id="taxonomyModalClose" aria-label="Close">
-          <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-      <div class="taxonomy-manager" id="taxonomyManagerModal"></div>
-    </div>
-  </div>
-
   <div class="modal-overlay" id="goalsModal" role="dialog" aria-modal="true">
     <div class="modal goals-modal">
       <div class="modal-header">
@@ -1145,20 +1155,22 @@
 
   <!-- Profile gate: blocks the app until we know whose data to load -->
   <div class="profile-gate" id="profileGate" hidden>
-    <div class="profile-gate-card">
-      <div class="profile-gate-mark">D</div>
-      <h1>Who's using Daylign?</h1>
+    <div class="profile-gate-card" role="dialog" aria-modal="true" aria-labelledby="profileGateTitle">
+      <div class="profile-gate-mark" aria-hidden="true">D</div>
+      <h1 id="profileGateTitle">Who's using Daylign?</h1>
       <p class="profile-gate-desc">Your tasks, workouts, meals and weight are kept separate from everyone else's. You only pick once on this device.</p>
       <div class="profile-gate-list" id="profileList"></div>
       <div class="profile-gate-divider"><span>or start fresh</span></div>
-      <label class="profile-gate-label" for="profileNewName">Your first name</label>
-      <input type="text" id="profileNewName" class="profile-gate-input" placeholder="e.g. Arjun" autocomplete="given-name" maxlength="24">
-      <p class="profile-gate-error" id="profileGateError" hidden></p>
-      <button class="btn-secondary" id="profileCreateBtn">Create my profile</button>
+      <div class="dl-field">
+        <label for="profileNewName">Your first name</label>
+        <input type="text" id="profileNewName" placeholder="e.g. Arjun" autocomplete="given-name" maxlength="24">
+      </div>
+      <p class="profile-gate-error" id="profileGateError" role="alert" hidden></p>
+      <button type="button" class="dl-btn primary full" id="profileCreateBtn">Create my profile</button>
     </div>
   </div>
 
-  <!-- Onboarding: first-run flow for a newly created profile (rendered by js/onboarding.js) -->
+  <!-- Setup (spec 10.2): first run for a new profile, and Replay setup from Settings (js/onboarding.js) -->
   <div class="onboard" id="onboard" hidden></div>
 
   <!-- Firebase SDK -->
@@ -1204,6 +1216,7 @@
   <script src="js/voice.js"></script>
   <script src="js/inbox.js"></script>
   <script src="js/import-csv.js"></script>
+  <script src="js/settings.js"></script>
   <script src="js/app.js"></script>
   <script src="js/onboarding.js"></script>
   <script src="js/enhancements.js"></script>

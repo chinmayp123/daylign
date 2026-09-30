@@ -68,7 +68,16 @@ const PREF_DEFAULTS = {
   accentV3: true,      // accent key is already a v3 key (see migrateAccentPref)
   widgetsV3: true,     // widget keys are already v3 keys (see migratePrefsV3)
   tasksMode: 'list',   // Tasks: List or Board. Per device — it describes this screen, not the data.
+  workoutTime: '18:30', // where a planned session sits on the line
 };
+
+// The usual workout time as minutes past midnight. 18:30 when unset or unreadable.
+function workoutSlotMin() {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(readPrefs().workoutTime || ''));
+  if (!m) return 18 * 60 + 30;
+  const h = Number(m[1]), min = Number(m[2]);
+  return (h > 23 || min > 59) ? 18 * 60 + 30 : h * 60 + min;
+}
 
 function readPrefs() {
   try {
@@ -169,6 +178,7 @@ function setPref(key, value) {
   writePrefs(p);
   applyPrefs();
   renderSettingsPrefsPanel();
+  if (typeof renderSettingsIndex === 'function') renderSettingsIndex();
 }
 
 // Everything is applied by writing CSS variables / classes on the root, so a
@@ -215,26 +225,23 @@ function renderSettingsPrefsPanel() {
 
   const accentHost = document.getElementById('accentPicker');
   if (accentHost) {
-    accentHost.innerHTML = ACCENTS.map(a =>
-      '<button type="button" class="accent-dot' + (a.key === p.accent ? ' active' : '') + '"' +
-      ' data-accent="' + a.key + '" title="' + a.label + '" aria-label="' + a.label + ' accent"' +
+    const html = ACCENTS.map(a =>
+      '<button type="button" class="set-swatch" data-accent="' + a.key + '"' +
+      ' aria-pressed="' + (a.key === p.accent) + '" aria-label="' + a.label + '" title="' + a.label + '"' +
       ' style="--sw-day:' + a.day + ';--sw-night:' + a.night + '"></button>'
     ).join('');
+    if (accentHost._html !== html) { accentHost.innerHTML = html; accentHost._html = html; }
   }
 
-  const widgetHost = document.getElementById('widgetToggles');
-  if (widgetHost) {
-    widgetHost.innerHTML = DASH_WIDGETS.map(w => {
-      const on = (p.hidden || []).indexOf(w.key) === -1;
-      return '<label class="pref-toggle"><input type="checkbox" data-widget="' + w.key + '"' +
-        (on ? ' checked' : '') + '><span>' + esc(w.label) + '</span></label>';
-    }).join('');
-  }
-
-  const rest = document.getElementById('prefRestSeconds');
-  if (rest) rest.value = p.restSeconds;
-  const sets = document.getElementById('prefDefaultSets');
-  if (sets) sets.value = p.defaultSets;
+  // A field being typed in is left alone: render() runs on every sync echo,
+  // and putting the saved value back mid-keystroke eats the keystroke.
+  const fill = (id, v) => {
+    const el = document.getElementById(id);
+    if (el && document.activeElement !== el) el.value = v;
+  };
+  fill('prefRestSeconds', p.restSeconds);
+  fill('prefDefaultSets', p.defaultSets);
+  fill('prefWorkoutTime', lineWorkoutTimeValue(p));
 
   [['prefReduceMotion', 'reduceMotion'], ['prefLargeText', 'largeText'], ['prefShowActions', 'alwaysShowActions'], ['prefHaptics', 'haptics']]
     .forEach(function (pair) {
@@ -243,32 +250,40 @@ function renderSettingsPrefsPanel() {
     });
 }
 
+// HH:MM for the time field, whatever is stored.
+function lineWorkoutTimeValue() {
+  const m = workoutSlotMin();
+  return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+}
+
 function bindSettingsPrefs() {
   const accentHost = document.getElementById('accentPicker');
   if (accentHost) accentHost.addEventListener('click', (e) => {
     const b = e.target.closest('[data-accent]');
-    if (b) setPref('accent', b.dataset.accent);
-  });
-
-  const widgetHost = document.getElementById('widgetToggles');
-  if (widgetHost) widgetHost.addEventListener('change', (e) => {
-    const cb = e.target.closest('[data-widget]');
-    if (!cb) return;
-    const p = readPrefs();
-    const hidden = new Set(p.hidden || []);
-    if (cb.checked) hidden.delete(cb.dataset.widget); else hidden.add(cb.dataset.widget);
-    setPref('hidden', Array.from(hidden));
+    if (!b) return;
+    setPref('accent', b.dataset.accent);
+    const again = accentHost.querySelector('[data-accent="' + b.dataset.accent + '"]');
+    if (again) again.focus({ preventScroll: true });
   });
 
   const rest = document.getElementById('prefRestSeconds');
   if (rest) rest.addEventListener('change', () => {
     const v = Math.max(10, Math.min(600, Number(rest.value) || 60));
+    rest.value = v;
     setPref('restSeconds', v);
   });
   const sets = document.getElementById('prefDefaultSets');
   if (sets) sets.addEventListener('change', () => {
     const v = Math.max(1, Math.min(10, Number(sets.value) || 1));
+    sets.value = v;
     setPref('defaultSets', v);
+  });
+  const time = document.getElementById('prefWorkoutTime');
+  if (time) time.addEventListener('change', () => {
+    // An emptied field goes back to the default rather than storing nothing.
+    setPref('workoutTime', /^\d{1,2}:\d{2}$/.test(time.value) ? time.value : PREF_DEFAULTS.workoutTime);
+    // The line draws the planned session at this time, and the brief says it.
+    if (typeof render === 'function') render();
   });
 
   [['prefReduceMotion', 'reduceMotion'], ['prefLargeText', 'largeText'], ['prefShowActions', 'alwaysShowActions'], ['prefHaptics', 'haptics']]

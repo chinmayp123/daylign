@@ -251,6 +251,7 @@ function refreshFromCloud() {
           seedSyncBaseline(v);
           applyFirebaseData(v);
           suppressFirebaseWrite = false;
+          clearSyncConflicts();
         }
       }).catch(() => {}));
     } catch (e) { /* offline */ }
@@ -277,11 +278,126 @@ function shouldApplyCloudData(data) {
   if (!data || !data.lastUpdated) return false;
   // A write of ours is still in flight. Anything the cloud can return right now
   // was written before it, so applying it would undo changes already on screen.
-  if (pendingWrites > 0 && data.lastUpdated <= lastWriteStamp) return false;
+  if (pendingWrites > 0 && data.lastUpdated <= lastWriteStamp) { noteSyncConflicts(data); return false; }
   const localTimestamp = parseInt(localStorage.getItem('tf_last_updated') || '0', 10) || 0;
   // The 1s margin absorbs clock skew between this device and the write it just
   // made; without it a device can keep re-applying its own echo.
-  return data.lastUpdated > localTimestamp + 1000;
+  if (data.lastUpdated > localTimestamp + 1000) return true;
+  noteSyncConflicts(data);
+  return false;
+}
+
+// ---- Sync conflicts ----
+// Skipping a snapshot protects what was just typed, but it has a cost. Writes
+// go up per key, so a snapshot that is skipped can still be carrying another
+// device's change to a key this device never touched. Nothing re-applies it
+// later: the cloud's clock is now this device's own, so it never looks newer.
+// This device goes on showing the old value, and the next edit to that key
+// here overwrites the other device's.
+//
+// So a skipped snapshot is compared, key by key, with what this device last
+// knew the cloud held. A key that differs from that AND from what is on screen
+// is another device's change that did not land here. It is recorded, in memory
+// only, and Settings asks which copy to keep (js/settings.js).
+let syncConflicts = [];   // { key, local, remote, at, untouched, extra }
+
+// Keys that only ever change together with another, and are decided with it.
+const SYNC_COMPANIONS = { water: ['waterAt'], customFoods: ['removedFoods'] };
+
+// Firebase does not hand data back the way it was sent: empty arrays and
+// objects vanish, keys come back sorted, and an array can return as an object
+// with numeric keys. Comparing raw JSON would call every one of those a
+// conflict, so both sides are reduced to the same shape first.
+function syncCanon(v) {
+  if (v === null || v === undefined) return undefined;
+  if (typeof v !== 'object') return v;
+  const out = {};
+  Object.keys(v).sort().forEach(k => {
+    const c = syncCanon(v[k]);
+    if (c !== undefined) out[k] = c;
+  });
+  return Object.keys(out).length ? out : undefined;
+}
+
+function syncCanonStr(v) {
+  const c = syncCanon(v);
+  return c === undefined ? '' : JSON.stringify(c);
+}
+
+function syncCopy(v) {
+  return v === undefined ? undefined : JSON.parse(JSON.stringify(v));
+}
+
+function noteSyncConflicts(data) {
+  // No baseline means nothing has been read or sent yet this session, so there
+  // is no telling another device's change from this device's own.
+  if (!lastSentByKey || typeof state === 'undefined' || !state) return;
+  try {
+    const companions = [].concat.apply([], Object.keys(SYNC_COMPANIONS).map(k => SYNC_COMPANIONS[k]));
+    const cloud = (k) => (data[k] !== undefined && data[k] !== null ? data[k] : SYNC_KEYS[k]);
+    const fresh = [];
+    let changed = false;
+    Object.keys(SYNC_KEYS).forEach(k => {
+      if (companions.indexOf(k) !== -1) return;
+      const base = lastSentByKey[k];
+      if (base === null || base === undefined) return;
+      const remote = cloud(k);
+      const had = syncConflicts.findIndex(c => c.key === k);
+      let differs = false, untouched = false, rc = '';
+      // Most keys, most of the time, are exactly what the cloud already held.
+      if (JSON.stringify(remote) !== base) {
+        rc = syncCanonStr(remote);
+        const lc = syncCanonStr(state[k]);
+        const bc = syncCanonStr(JSON.parse(base));
+        differs = rc !== bc && rc !== lc;
+        untouched = lc === bc;
+      }
+      if (!differs) {
+        // Settled by itself: the two copies agree again.
+        if (had !== -1) { syncConflicts.splice(had, 1); changed = true; }
+        return;
+      }
+      if (had !== -1 && syncConflicts[had].rc === rc) return;   // already waiting, unchanged
+      const rec = { key: k, local: syncCopy(state[k]), remote: syncCopy(remote), at: Date.now(), untouched: untouched, rc: rc, extra: {} };
+      (SYNC_COMPANIONS[k] || []).forEach(x => { rec.extra[x] = syncCopy(cloud(x)); });
+      if (had === -1) { syncConflicts.push(rec); fresh.push(k); } else syncConflicts[had] = rec;
+      changed = true;
+    });
+    if (changed && typeof onSyncConflictsChanged === 'function') onSyncConflictsChanged(fresh);
+  } catch (e) {
+    // A notice is a nicety. It must never be the reason a sync callback dies.
+    console.warn('[daylign] could not compare a skipped snapshot:', e);
+  }
+}
+
+// Use theirs: take the other device's copy of this key. Keep mine: send this
+// device's copy up over it. Either way the two agree afterwards.
+function resolveSyncConflict(key, useTheirs) {
+  const c = syncConflicts.find(x => x.key === key);
+  if (!c) return false;
+  const keys = [key].concat(SYNC_COMPANIONS[key] || []);
+  keys.forEach(k => {
+    if (useTheirs) {
+      const v = k === key ? c.remote : c.extra[k];
+      state[k] = syncCopy(v !== undefined && v !== null ? v : SYNC_KEYS[k]);
+      // This is what the cloud holds, so the save below has nothing to send.
+      if (lastSentByKey) lastSentByKey[k] = JSON.stringify(state[k]);
+    } else if (lastSentByKey) {
+      // Unknown baseline = changed, so the save below sends this key.
+      lastSentByKey[k] = null;
+    }
+  });
+  syncConflicts = syncConflicts.filter(x => x !== c);
+  if (typeof saveData === 'function') saveData(state);
+  if (typeof render === 'function') render();
+  return true;
+}
+
+// Cloud data was applied whole: this device now holds what the cloud holds.
+function clearSyncConflicts() {
+  if (!syncConflicts.length) return;
+  syncConflicts = [];
+  if (typeof onSyncConflictsChanged === 'function') onSyncConflictsChanged([]);
 }
 
 // Sync state
@@ -301,11 +417,26 @@ let appReconciled = false;
 // no way whatsoever to find out why or to do anything about it.
 let lastSyncError = null;
 let syncRetryTimer = null;
+// The same state the header pill shows, kept as data so Settings can describe
+// it in a sentence without reading class names back off the pill.
+let syncState = 'connecting';
+let lastSyncedAt = 0;
+
+const SYNC_STATE_LABELS = { connecting: 'Connecting…', saving: 'Saving…', synced: 'Synced', error: 'Not saving', offline: 'On this device' };
+
+function syncStatusInfo() {
+  return { state: syncState, label: SYNC_STATE_LABELS[syncState] || SYNC_STATE_LABELS.connecting, message: lastSyncError, at: lastSyncedAt };
+}
 
 function setSyncStatus(state, message) {
   const el = document.getElementById('syncStatus');
   lastSyncError = state === 'error' ? (message || 'Cloud sync failed.') : null;
+  syncState = SYNC_STATE_LABELS[state] ? state : 'connecting';
+  if (state === 'synced') lastSyncedAt = Date.now();
   if (state === 'error') scheduleSyncRetry(); else cancelSyncRetry();
+  if (typeof onSyncStatusChanged === 'function') {
+    try { onSyncStatusChanged(); } catch (e) { console.warn(e); }
+  }
   const detail = document.getElementById('syncDetail');
   if (detail && state !== 'error') detail.hidden = true;
   if (!el) return;
@@ -495,6 +626,9 @@ function initFirebaseSync(onDataReceived) {
     setSyncStatus('offline');
     document.body.classList.remove('app-loading');
     if (typeof render === 'function') render();
+    // A profile created with no SDK still gets its setup, as it does when the
+    // first read fails (below). It saves on this device like everything else.
+    if (typeof maybeStartOnboarding === 'function') maybeStartOnboarding();
     return;
   }
   setSyncStatus('connecting');
@@ -573,6 +707,7 @@ function startFirebaseSync(onDataReceived) {
       seedSyncBaseline(data);
       onDataReceived(data);
       suppressFirebaseWrite = false;
+      clearSyncConflicts();
       console.log('Received real-time update from Firebase');
     }
   });

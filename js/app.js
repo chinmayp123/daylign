@@ -16,8 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (typeof bindSyncStatusUI === 'function') bindSyncStatusUI();
   if (typeof bindDiagnostics === 'function') bindDiagnostics();
   if (typeof startInboxWatch === 'function') startInboxWatch();
-  const csvBtn = document.getElementById('csvImportBtn');
-  if (csvBtn && typeof openCsvImport === 'function') csvBtn.addEventListener('click', openCsvImport);
+  if (typeof bindCsvImport === 'function') bindCsvImport();
   // The date format is breakpoint-dependent, so it has to be re-derived when
   // the viewport crosses 600px (rotation, or a resized desktop window).
   window.matchMedia('(max-width: 600px)').addEventListener('change', setHeaderDate);
@@ -223,46 +222,18 @@ function bindEvents() {
       });
     });
 
-  // Add category / project
-  $('#addCategoryBtn').addEventListener('click', handleAddCategory);
-  $('#addProjectBtn').addEventListener('click', handleAddProject);
-
   // Profile
-  const switchProfileBtn = $('#switchProfileBtn');
-  if (switchProfileBtn) switchProfileBtn.addEventListener('click', switchProfile);
   const sidebarProfile = $('#sidebarProfile');
   if (sidebarProfile) sidebarProfile.addEventListener('click', () => switchView('settings'));
-  // Quick access to the category/project manager from the sidebar (task views).
-  $$('[data-manage-taxonomy]').forEach(btn => btn.addEventListener('click', openTaxonomyModal));
-  const taxClose = $('#taxonomyModalClose');
-  if (taxClose) taxClose.addEventListener('click', closeTaxonomyModal);
-  const taxModal = $('#taxonomyModal');
-  if (taxModal) taxModal.addEventListener('click', e => { if (e.target === taxModal) closeTaxonomyModal(); });
-  const editGoalsSettingsBtn = $('#editGoalsSettingsBtn');
-  if (editGoalsSettingsBtn && typeof openGoalsModal === 'function') editGoalsSettingsBtn.addEventListener('click', openGoalsModal);
+  // The sidebar's Manage links open the one categories manager, in Settings.
+  // Everything inside Settings itself is bound in js/settings.js.
+  $$('[data-manage-taxonomy]').forEach(btn => btn.addEventListener('click', () => openSettingsPage('cats')));
 
-  renderModuleToggles();
-  const usageBtn = $('#usageLoadBtn');
-  if (usageBtn) usageBtn.addEventListener('click', loadUsageReport);
-  const resetProfileBtn = $('#resetProfileBtn');
-  if (resetProfileBtn) resetProfileBtn.addEventListener('click', resetCurrentProfileData);
-
-  // Backup / Restore
-  $('#exportBtn').addEventListener('click', () => exportBackup());
-  $('#importBtn').addEventListener('click', () => {
-    // Deliberate first step so a stray tap can't even open the file picker.
-    // Names the common mix-up: people mean "Backup" (download) and hit "Restore".
-    if (!confirm('Restore from a backup file?\n\nThis is only for recovering lost data — it will REPLACE everything on this device and in the cloud.\n\nDid you mean "Backup" instead? Tap Cancel if so.')) return;
-    $('#importFile').click();
-  });
-  $('#importFile').addEventListener('change', importBackup);
-
-  // Keyboard. Escape used to close only the task modal, leaving the goals,
-  // taxonomy and voice overlays dismissable by mouse alone.
+  // Keyboard. Escape used to close only the task modal, leaving the goals and
+  // voice overlays dismissable by mouse alone.
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     if (typeof closeGoalsModal === 'function') closeGoalsModal();
-    if (typeof closeTaxonomyModal === 'function') closeTaxonomyModal();
     const voice = document.getElementById('voicePanel');
     if (voice && !voice.hidden && typeof closeVoicePanel === 'function') closeVoicePanel();
     // Mobile sidebar is an overlay too — Escape should back out of it.
@@ -324,96 +295,111 @@ function lastExternalSyncDate() {
   return latest;
 }
 
-function renderWatchConnect() {
-  const wrap = $('#watchConnect');
+// One component, two hosts: the Apple Watch page in Settings and the Watch step
+// of setup. Nothing in it has an id, so both can be on the page at once.
+function renderWatchConnect(target) {
+  const wrap = target || $('#watchConnect');
   if (!wrap) return;
   const dbUrl = (typeof firebaseConfig !== 'undefined' && firebaseConfig.databaseURL) ? firebaseConfig.databaseURL.replace(/\/$/, '') : '';
   const path = (typeof profileExternalPath === 'function') ? profileExternalPath() : 'external';
   const base = dbUrl + '/' + path;
-  const id = (typeof currentProfile === 'function' && currentProfile()) ? currentProfile().id : '';
+  const prof = (typeof currentProfile === 'function') ? currentProfile() : null;
+  const id = prof ? prof.id : '';
   const last = lastExternalSyncDate();
-  const status = last
-    ? `<div class="watch-status ok"><span class="watch-dot"></span>Connected — last synced ${esc(last)}</div>`
-    : `<div class="watch-status"><span class="watch-dot"></span>Not synced yet — add a shortcut below</div>`;
 
-  wrap.innerHTML = `
-    ${status}
-    <ol class="watch-steps">
-      ${(!currentProfile() || !currentProfile().legacy) ? `
-        <li class="watch-warn">
-          <strong>Point the shortcut at your own path first.</strong>
-          The shared shortcut posts to the account it was built for. Every
-          <em>Get Contents of URL</em> step must use
-          <code>${esc(base)}/&lt;metric&gt;/&lt;date&gt;.json</code> instead, or your
-          health data overwrites someone else's and never reaches your own.
-        </li>` : ''}
+  const html = `
+    <p class="set-watch-status${last ? ' is-ok' : ''}"><span class="dl-dot" aria-hidden="true"></span>${last
+      ? 'Connected. Last synced ' + esc(formatDate(last))
+      : 'Not synced yet. Add the shortcut below.'}</p>
+    ${(!prof || !prof.legacy) ? `
+      <div class="dl-card tint c-food set-watch-warn">
+        <div class="dl-card-h"><span>Point the shortcut at your own path first</span></div>
+        <p class="set-sub">The shared shortcut posts to the account it was built for. Every
+          <em>Get Contents of URL</em> step must use this instead, or your health data
+          overwrites someone else's and never reaches your own.</p>
+        <code>${esc(base)}/&lt;metric&gt;/&lt;date&gt;.json</code>
+      </div>` : ''}
+    <ol class="set-steps">
       <li>
-        <strong>Add the shortcuts</strong> to your iPhone (tap, then “Add Shortcut”):
-        <div class="watch-shortcut-btns">
-          ${HEALTH_SHORTCUTS.map(s => `<a class="btn-secondary watch-shortcut" href="${s.url}" target="_blank" rel="noopener">＋ ${esc(s.label)}</a>`).join('')}
+        <b>Add the shortcut</b> to your iPhone (tap, then “Add Shortcut”).
+        <div class="set-btnrow">
+          ${HEALTH_SHORTCUTS.map(s => `<a class="dl-btn" href="${esc(s.url)}" target="_blank" rel="noopener"><span class="ms" aria-hidden="true">add</span>${esc(s.label)}</a>`).join('')}
         </div>
       </li>
       <li>
-        <strong>If a shortcut asks for your Daylign ID,</strong> paste this:
-        <div class="watch-copy"><code id="watchId">${esc(id || '—')}</code><button class="btn-secondary" data-copy="#watchId">Copy</button></div>
+        <b>If it asks for your Daylign ID,</b> paste this.
+        <div class="set-copy"><code>${esc(id || '—')}</code><button type="button" class="dl-btn" data-copy>Copy</button></div>
       </li>
-      <li><strong>Run each one once</strong> to grant Health access. Then in the Shortcuts app add an <em>Automation → Time of Day → nightly</em> that runs them, so it syncs on its own.</li>
+      <li><b>Run it once</b> to grant Health access. Then add an Automation in the Shortcuts app (Time of Day, nightly) that runs it, so it syncs on its own.</li>
     </ol>
-    <details class="watch-adv">
+    <details class="set-adv">
       <summary>Advanced: your full sync URL</summary>
-      <div class="watch-copy"><code id="watchUrl">${esc(base)}</code><button class="btn-secondary" data-copy="#watchUrl">Copy</button></div>
-      <p class="settings-desc">Shortcuts post each metric to <code>&lt;this&gt;/&lt;metric&gt;/&lt;date&gt;.json</code>. Full walkthrough in <code>HEALTH-SYNC.md</code>.</p>
+      <div class="set-copy"><code>${esc(base)}</code><button type="button" class="dl-btn" data-copy>Copy</button></div>
+      <p class="set-sub">The shortcut posts each metric to <code>&lt;this&gt;/&lt;metric&gt;/&lt;date&gt;.json</code>. The full walkthrough is in <code>HEALTH-SYNC.md</code>.</p>
     </details>`;
+  // Unchanged markup is left alone, so an opened "Advanced" stays open across
+  // the re-render every save causes.
+  if (wrap._html !== html) { wrap.innerHTML = html; wrap._html = html; }
 
-  wrap.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', () => {
-    const el = wrap.querySelector(b.dataset.copy);
-    const txt = el ? el.textContent : '';
-    if (navigator.clipboard && txt) navigator.clipboard.writeText(txt).then(() => showToast('Copied')).catch(() => {});
-  }));
+  if (wrap._copyBound) return;
+  wrap._copyBound = true;
+  wrap.addEventListener('click', e => {
+    const btn = e.target.closest('[data-copy]');
+    if (!btn) return;
+    const code = btn.parentElement.querySelector('code');
+    const txt = code ? code.textContent : '';
+    if (!navigator.clipboard || !txt) { showToast('Could not copy. Select the text instead'); return; }
+    navigator.clipboard.writeText(txt).then(() => showToast('Copied')).catch(() => showToast('Could not copy. Select the text instead'));
+  });
 }
 
 function renderGoalsSummary() {
   const wrap = $('#goalsSummary');
   if (!wrap || typeof getGoals !== 'function') return;
   const g = getGoals();
+  const n = (v) => Number(v).toLocaleString('en-US');
   const rows = [
-    { label: 'Goal weight', val: g.weight + ' lbs' },
-    { label: 'Daily calories', val: g.calories + ' cal' },
-    { label: 'Protein', val: g.protein + ' g' },
-    { label: 'Carbs', val: g.carbs + ' g' },
-    { label: 'Fat', val: g.fat + ' g' },
-    { label: 'Water', val: g.water + ' oz' },
-    { label: 'Exercise burn', val: g.burn + ' cal/day' },
+    ['Goal weight', g.weight + ' lb'],
+    ['Daily calories', n(g.calories) + ' kcal'],
+    ['Protein', g.protein + ' g'],
+    ['Carbs', g.carbs + ' g'],
+    ['Fat', g.fat + ' g'],
+    ['Water', g.water + ' oz'],
+    ['Exercise burn', n(g.burn) + ' kcal a day'],
   ];
-  wrap.innerHTML = rows.map(r => `
-    <div class="goals-summary-row">
-      <span class="goals-summary-label">${r.label}</span>
-      <span class="goals-summary-val">${r.val}</span>
-    </div>`).join('');
+  const html = rows.map(r => `<div><span>${r[0]}</span><b>${esc(r[1])}</b></div>`).join('');
+  if (wrap._html !== html) { wrap.innerHTML = html; wrap._html = html; }
 }
 
 function renderModuleToggles() {
   const wrap = $('#moduleToggles');
   if (!wrap || typeof TOGGLEABLE_MODULES === 'undefined') return;
-  wrap.innerHTML = TOGGLEABLE_MODULES.map(m => `
-    <label class="module-toggle">
-      <span class="module-toggle-text">
-        <span class="module-toggle-label">${m.label}</span>
-        <span class="module-toggle-desc">${m.desc}</span>
-      </span>
-      <input type="checkbox" class="module-toggle-input" data-module="${m.key}" ${moduleEnabled(m.key) ? 'checked' : ''}>
-      <span class="module-toggle-switch" aria-hidden="true"></span>
-    </label>`).join('');
+  const html = TOGGLEABLE_MODULES.map(m => `
+    <label class="set-togrow dl-toggle">
+      <span class="set-togrow-t"><b>${m.label}</b><small>${m.desc}</small></span>
+      <input type="checkbox" data-module="${m.key}" ${moduleEnabled(m.key) ? 'checked' : ''}>
+      <span class="dl-toggle-track" aria-hidden="true"></span>
+    </label>`).join('') + `
+    <div class="set-togrow">
+      <span class="set-togrow-t"><b>Tasks and Calendar</b><small>Always on</small></span>
+      <span class="ms" aria-hidden="true">lock</span>
+    </div>`;
+  if (wrap._html !== html) { wrap.innerHTML = html; wrap._html = html; }
 
-  wrap.querySelectorAll('.module-toggle-input').forEach(input => {
-    input.addEventListener('change', () => {
-      state.modules = state.modules || {};
-      state.modules[input.dataset.module] = input.checked;
-      saveData(state);
-      applyModuleNav();
-      // If we just turned off the module we're standing in, step back to Dashboard.
-      if (!input.checked && currentView === input.dataset.module) switchView('today');
-    });
+  // #moduleToggles outlives its rows, so this is bound once.
+  if (wrap._bound) return;
+  wrap._bound = true;
+  wrap.addEventListener('change', e => {
+    const input = e.target.closest('[data-module]');
+    if (!input) return;
+    const key = input.dataset.module;
+    state.modules = state.modules || {};
+    state.modules[key] = input.checked;
+    saveData(state);
+    render();
+    // render() rewrote the rows; keep the keyboard where it was.
+    const again = wrap.querySelector('[data-module="' + key + '"]');
+    if (again) again.focus({ preventScroll: true });
   });
 }
 
@@ -485,6 +471,9 @@ function switchView(view) {
   // Leaving Today puts the line back on today: this app stays open for days,
   // and coming back to find last Tuesday is a wrong-day bug waiting to happen.
   if (view !== 'today' && typeof lineResetDay === 'function') lineResetDay();
+  // Same for Settings: coming back should open the list, not the page you
+  // were on last week.
+  if (view !== 'settings' && typeof settingsPage !== 'undefined') settingsPage = null;
   currentView = view;
   localStorage.setItem('tf_view', view);
   $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
@@ -535,15 +524,7 @@ function applyModuleNav() {
 function render() {
   applyModuleNav();
   if (typeof updateProfileSettingsCard === 'function') updateProfileSettingsCard();
-  if (typeof renderGoalsSummary === 'function') renderGoalsSummary();
-  if (typeof renderWatchConnect === 'function') renderWatchConnect();
-  if (typeof renderDiagnostics === 'function') renderDiagnostics();
-  if (typeof renderTaxonomyManager === 'function') {
-    renderTaxonomyManager();
-    // Keep the popup in sync while it's open (add/delete/rename call render()).
-    const modal = $('#taxonomyModal');
-    if (modal && modal.classList.contains('active')) renderTaxonomyManager($('#taxonomyManagerModal'));
-  }
+  if (typeof renderSettings === 'function') renderSettings();
   renderSidebarCategories();
   renderSidebarProjects();
   renderDashboard();
@@ -559,8 +540,6 @@ function render() {
   if (typeof renderTodayCardio === 'function') renderTodayCardio();
   if (typeof renderTraining === 'function') renderTraining();
   if (typeof renderSleep === 'function') renderSleep();
-  if (typeof renderSettingsPrefs === 'function') renderSettingsPrefs();
-  if (typeof renderAiUsageReport === 'function') renderAiUsageReport();
   renderDiet();
   populateCategoryDropdowns();
   if (typeof initCollapsibles === 'function') initCollapsibles();
@@ -569,25 +548,19 @@ function render() {
   if (typeof enhanceKeyboardAccess === 'function') enhanceKeyboardAccess();
 }
 
+// The sidebar lists are for looking and filtering. Adding, renaming, recolouring
+// and deleting live in Settings, Categories and projects (the Manage link).
 function renderSidebarCategories() {
   const list = $('#categoryList');
   list.innerHTML = state.categories.map(cat => {
     const count = state.tasks.filter(t => t.category === cat.id).length;
     return `
-      <div class="category-item" data-cat="${cat.id}">
+      <div class="category-item" data-cat="${esc(cat.id)}">
         <span class="category-dot" style="background:${taxColor(cat)}"></span>
-        ${cat.name}
+        ${esc(cat.name)}
         <span class="category-count">${count}</span>
-        <button class="sidebar-del-btn" data-del-cat="${cat.id}">&times;</button>
       </div>`;
   }).join('');
-
-  $$('.sidebar-del-btn[data-del-cat]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      deleteCategoryById(btn.dataset.delCat);
-    });
-  });
 }
 
 function renderSidebarProjects() {
@@ -596,38 +569,24 @@ function renderSidebarProjects() {
     const count = state.tasks.filter(t => t.project === proj.id && t.status !== 'done').length;
     const active = activeProject === proj.id;
     return `
-      <div class="project-item ${active ? 'active' : ''}" data-proj="${proj.id}">
+      <div class="project-item ${active ? 'active' : ''}" data-proj="${esc(proj.id)}">
         <span class="category-dot" style="background:${taxColor(proj)}"></span>
-        ${proj.name}
+        ${esc(proj.name)}
         <span class="category-count">${count}</span>
-        <button class="sidebar-del-btn" data-del-proj="${proj.id}">&times;</button>
       </div>`;
   }).join('');
 
   $$('.project-item').forEach(el => {
-    el.addEventListener('click', (e) => {
-      if (e.target.closest('.sidebar-del-btn')) return;
+    el.addEventListener('click', () => {
       const id = el.dataset.proj;
       activeProject = activeProject === id ? null : id;
       render();
     });
   });
-
-  $$('.sidebar-del-btn[data-del-proj]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      deleteProjectById(btn.dataset.delProj);
-    });
-  });
 }
 
-function handleAddProject() {
-  const name = prompt('Project name:');
-  addProjectNamed(name);
-}
-
-// ---- Shared category/project mutations, used by both the sidebar and the
-// Settings manager so add/rename/delete behave identically everywhere. ----
+// ---- Category/project mutations. Rename, recolour and delete are in
+// js/settings.js, with the manager that calls them. ----
 // The v2 auto palette, kept only so migrateTaxonomyColors() can map a stored
 // hex to the v3 key in the same position (indigo→meet, green→move, red→food,
 // yellow→habit, blue→water, violet→sleep, then round again).
@@ -673,138 +632,17 @@ function addProjectNamed(name) {
   return true;
 }
 
-function deleteCategoryById(id) {
-  const cat = state.categories.find(c => c.id === id);
-  if (!cat) return;
-  const count = state.tasks.filter(t => t.category === id).length;
-  const msg = count ? `Delete "${cat.name}"? ${count} task(s) will become uncategorized.` : `Delete "${cat.name}"?`;
-  if (!confirm(msg)) return;
-  state.categories = state.categories.filter(c => c.id !== id);
-  state.tasks.forEach(t => { if (t.category === id) t.category = ''; });
-  saveData(state);
-  render();
-}
-
-function deleteProjectById(id) {
-  const proj = state.projects.find(p => p.id === id);
-  if (!proj) return;
-  const count = state.tasks.filter(t => t.project === id).length;
-  const msg = count ? `Delete "${proj.name}"? ${count} task(s) will be unassigned.` : `Delete "${proj.name}"?`;
-  if (!confirm(msg)) return;
-  state.projects = state.projects.filter(p => p.id !== id);
-  state.tasks.forEach(t => { if (t.project === id) t.project = null; });
-  if (activeProject === id) activeProject = null;
-  saveData(state);
-  render();
-}
-
-function renameCategoryById(id) {
-  const cat = state.categories.find(c => c.id === id);
-  if (!cat) return;
-  const name = prompt('Rename category:', cat.name);
-  if (!name || !name.trim()) return;
-  cat.name = name.trim(); // keep the id stable so existing tasks stay linked
-  saveData(state);
-  render();
-}
-
-function renameProjectById(id) {
-  const proj = state.projects.find(p => p.id === id);
-  if (!proj) return;
-  const name = prompt('Rename project:', proj.name);
-  if (!name || !name.trim()) return;
-  proj.name = name.trim();
-  saveData(state);
-  render();
-}
-
-function openTaxonomyModal() {
-  renderTaxonomyManager($('#taxonomyManagerModal'));
-  const m = $('#taxonomyModal');
-  if (m) m.classList.add('active');
-}
-function closeTaxonomyModal() {
-  const m = $('#taxonomyModal');
-  if (m) m.classList.remove('active');
-}
-
-// The always-available manager in Settings, so add/delete never depends on
-// being on a task view or discovering a hover-only × in the sidebar.
-function renderTaxonomyManager(target) {
-  const wrap = target || $('#taxonomyManager');
-  if (!wrap) return;
-  const row = (item, kind, count) => `
-    <div class="tax-row">
-      <span class="tax-dot" style="background:${taxColor(item)}"></span>
-      <span class="tax-name">${esc(item.name)}</span>
-      <span class="tax-count">${count}</span>
-      <button class="tax-btn" data-tax-edit="${kind}" data-id="${item.id}" title="Rename">✎</button>
-      <button class="tax-btn tax-btn-del" data-tax-del="${kind}" data-id="${item.id}" title="Delete">&times;</button>
-    </div>`;
-
-  wrap.innerHTML = `
-    <div class="tax-group">
-      <h3>Categories</h3>
-      <div class="tax-list">${state.categories.map(c => row(c, 'cat', state.tasks.filter(t => t.category === c.id).length)).join('') || '<p class="settings-desc">No categories yet.</p>'}</div>
-      <div class="tax-add">
-        <input type="text" class="tax-add-input" data-tax-add="cat" placeholder="New category name" maxlength="30">
-        <button class="btn-secondary" data-tax-add-btn="cat">Add</button>
-      </div>
-    </div>
-    <div class="tax-group">
-      <h3>Projects</h3>
-      <div class="tax-list">${state.projects.map(p => row(p, 'proj', state.tasks.filter(t => t.project === p.id && t.status !== 'done').length)).join('') || '<p class="settings-desc">No projects yet.</p>'}</div>
-      <div class="tax-add">
-        <input type="text" class="tax-add-input" data-tax-add="proj" placeholder="New project name" maxlength="30">
-        <button class="btn-secondary" data-tax-add-btn="proj">Add</button>
-      </div>
-    </div>`;
-
-  // Everything is scoped to `wrap` (not global $) so the same markup can render
-  // in both the Settings card and the popup without id collisions.
-  wrap.querySelectorAll('[data-tax-del]').forEach(b => b.addEventListener('click', () => {
-    b.dataset.taxDel === 'cat' ? deleteCategoryById(b.dataset.id) : deleteProjectById(b.dataset.id);
-  }));
-  wrap.querySelectorAll('[data-tax-edit]').forEach(b => b.addEventListener('click', () => {
-    b.dataset.taxEdit === 'cat' ? renameCategoryById(b.dataset.id) : renameProjectById(b.dataset.id);
-  }));
-  const addFrom = (kind) => {
-    const el = wrap.querySelector(`[data-tax-add="${kind}"]`);
-    if (!el) return;
-    const ok = kind === 'cat' ? addCategoryNamed(el.value) : addProjectNamed(el.value);
-    if (ok) el.value = '';
-  };
-  wrap.querySelectorAll('[data-tax-add-btn]').forEach(b => b.addEventListener('click', () => addFrom(b.dataset.taxAddBtn)));
-  wrap.querySelectorAll('[data-tax-add]').forEach(inp => inp.addEventListener('keydown', e => { if (e.key === 'Enter') addFrom(inp.dataset.taxAdd); }));
-}
-
 // ========== Backup / Restore ==========
 // Optional `prefix` names the file (used for the automatic pre-restore safety copy).
 function exportBackup(prefix) {
   const namePrefix = (typeof prefix === 'string' && prefix) ? prefix : 'daylign-backup';
-  const payload = {
-    tasks: state.tasks,
-    categories: state.categories,
-    projects: state.projects,
-    gym: state.gym,
-    diet: state.diet,
-    customFoods: state.customFoods,
-    water: state.water,
-    events: state.events,
-    removedFoods: state.removedFoods,
-    weight: state.weight,
-    goals: state.goals,
-    // These four were missing while restore overwrites "everything on this
-    // device AND in the cloud" — so restoring a backup silently destroyed all
-    // cardio sessions, sleep logs, module settings and AI usage, including in
-    // the automatic pre-restore safety copy.
-    cardio: state.cardio,
-    modules: state.modules,
-    sleep: state.sleep,
-    aiUsage: state.aiUsage,
-    exportedAt: new Date().toISOString(),
-    version: 3,
-  };
+  // Every key the cloud holds, taken from the one list that defines them. This
+  // was a hand-written list, and it had drifted: saved meals and the times
+  // water was logged were never exported, so restoring a backup lost them.
+  const payload = {};
+  Object.keys(CLOUD_KEYS).forEach(k => { payload[k] = state[k] !== undefined ? state[k] : CLOUD_KEYS[k]; });
+  payload.exportedAt = new Date().toISOString();
+  payload.version = 4;
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const d = new Date();
@@ -818,76 +656,33 @@ function exportBackup(prefix) {
   URL.revokeObjectURL(url);
 }
 
-function importBackup(e) {
-  const input = e.target;
-  const file = input.files && input.files[0];
-  input.value = ''; // reset now so the same file can be re-selected later
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    let data;
-    try {
-      data = JSON.parse(reader.result);
-    } catch (err) {
-      alert('Could not read that backup file: ' + err.message);
-      return;
-    }
-    if (typeof data !== 'object' || data === null) {
-      alert('That does not look like a valid backup file.');
-      return;
-    }
+// Replace everything with the contents of a backup. Reached only through the
+// restore sheet in js/settings.js, after RESTORE has been typed.
+function applyBackup(data) {
+  // Always download what is here now first, so any restore can be undone.
+  exportBackup('daylign-autosave-before-restore');
 
-    // Summarize what this restore would replace, so it's an informed choice.
-    const dietOf = arr => (Array.isArray(arr) ? arr : []);
-    const curDiet = dietOf(state.diet).length;
-    const newDiet = dietOf(data.diet).length;
-    const curDays = new Set(dietOf(state.diet).map(x => x && x.date)).size;
-    const newDays = new Set(dietOf(data.diet).map(x => x && x.date)).size;
-    const when = data.exportedAt ? new Date(data.exportedAt).toLocaleString() : 'an unknown date';
+  // In every backup ever made, so a missing one means empty. The rest arrived
+  // later: a backup from before they were exported must not wipe what is here.
+  const CORE = ['tasks', 'categories', 'projects', 'gym', 'diet', 'customFoods', 'water', 'events'];
+  Object.keys(CLOUD_KEYS).forEach(k => {
+    const has = data[k] !== undefined && data[k] !== null && typeof data[k] === 'object';
+    // Cardio, sleep, modules and AI usage were exported but never read back
+    // here, so a restore kept today's copies of those beside yesterday's
+    // everything else. Every key in the file is restored now.
+    if (has) state[k] = data[k];
+    else if (CORE.indexOf(k) !== -1) state[k] = JSON.parse(JSON.stringify(CLOUD_KEYS[k]));
+  });
+  // The times belong to the water entries they were logged with. A backup
+  // with water but no times must not keep the times of the entries it replaced.
+  if (data.waterAt === undefined || data.waterAt === null) state.waterAt = {};
 
-    // Always download the CURRENT data first, so any restore is undoable.
-    exportBackup('daylign-autosave-before-restore');
-
-    let msg =
-      `Restore this backup?\n\n` +
-      `• Backup created: ${when}\n` +
-      `• Backup has ${newDiet} diet entries across ${newDays} day(s)\n` +
-      `• You currently have ${curDiet} entries across ${curDays} day(s)\n\n` +
-      `This REPLACES everything on this device AND in the cloud (all your devices).\n` +
-      `A safety copy of your current data was just downloaded so you can undo this.`;
-
-    if (newDiet < curDiet || newDays < curDays) {
-      msg = `⚠️ This looks like an OLDER / smaller backup — you would LOSE ` +
-        `${Math.max(0, curDiet - newDiet)} diet entries and ` +
-        `${Math.max(0, curDays - newDays)} day(s) of history.\n\n` + msg;
-    }
-
-    // Require typing the word — a stray tap or reflexive "OK" can't get through.
-    const answer = prompt(msg + `\n\nType RESTORE (all caps) to confirm:`);
-    if (!answer || answer.trim().toUpperCase() !== 'RESTORE') {
-      alert('Restore cancelled — your data is unchanged.');
-      return;
-    }
-
-    state.tasks = data.tasks || [];
-    state.categories = data.categories || [];
-    state.projects = data.projects || [];
-    state.gym = data.gym || [];
-    state.diet = data.diet || [];
-    state.customFoods = data.customFoods || {};
-    state.water = data.water || {};
-    state.events = data.events || [];
-    // Only overwrite these when the backup actually contains them, so restoring
-    // an older backup (made before these were exported) can't wipe them.
-    if ('removedFoods' in data) state.removedFoods = data.removedFoods || [];
-    if ('weight' in data) state.weight = data.weight || {};
-    if ('goals' in data) state.goals = data.goals || {};
-    saveData(state);
-    populateCategoryDropdowns();
-    render();
-    alert('Backup restored successfully.');
-  };
-  reader.readAsText(file);
+  saveData(state);
+  populateCategoryDropdowns();
+  render();
+  // An old backup can still hold v2 hex colours on its categories.
+  if (typeof migrateTaxonomyColors === 'function') migrateTaxonomyColors();
+  showToast('Backup restored');
 }
 
 // The task sheet builds its own category select on every open, and the Tasks

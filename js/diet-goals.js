@@ -412,6 +412,25 @@ function undoWater() {
 }
 
 // ========== Goals Modal ==========
+// The one place goals are written. The goals editor's Save and the setup
+// wizard both come through here, so there is a single rule for what a valid
+// goal is: a positive number, or whatever was there before. `extra` carries
+// flags that ride along (_onboarded).
+function saveGoalValues(values, extra) {
+  const prev = getGoals();
+  const pick = (k) => {
+    const v = Number(values && values[k]);
+    return v > 0 ? v : prev[k];
+  };
+  // Spread prev so cardio race targets (raceKey/raceDate/weeklyMiles) and the
+  // _onboarded marker survive — rebuilding the object from scratch dropped them.
+  state.goals = Object.assign({}, prev, {
+    calories: pick('calories'), protein: pick('protein'), carbs: pick('carbs'), fat: pick('fat'),
+    water: pick('water'), weight: pick('weight'), burn: pick('burn'),
+  }, extra || {});
+  saveData(state);
+}
+
 function openGoalsModal() {
   const g = getGoals();
   $('#goalCalories').value = g.calories;
@@ -438,24 +457,10 @@ function bindGoalsEvents() {
     if (e.target === $('#goalsModal')) closeGoalsModal();
   });
   $('#goalsSaveBtn').addEventListener('click', () => {
-    const read = (id, fallback) => {
-      const v = Number($(id).value);
-      return v > 0 ? v : fallback;
-    };
-    const prev = getGoals();
-    // Spread prev so cardio race targets (raceKey/raceDate/weeklyMiles) and the
-    // _onboarded marker survive — rebuilding the object from scratch dropped them.
-    state.goals = {
-      ...prev,
-      calories: read('#goalCalories', prev.calories),
-      protein: read('#goalProtein', prev.protein),
-      carbs: read('#goalCarbs', prev.carbs),
-      fat: read('#goalFat', prev.fat),
-      water: read('#goalWater', prev.water),
-      weight: read('#goalWeight', prev.weight),
-      burn: read('#goalBurn', prev.burn),
-    };
-    saveData(state);
+    saveGoalValues({
+      calories: $('#goalCalories').value, protein: $('#goalProtein').value, carbs: $('#goalCarbs').value,
+      fat: $('#goalFat').value, water: $('#goalWater').value, weight: $('#goalWeight').value, burn: $('#goalBurn').value,
+    });
     closeGoalsModal();
     if (typeof render === 'function') render();
     showToast('Goals updated');

@@ -2,7 +2,7 @@
 // The task modal itself is gone: spec 5 replaces it with the v3 task sheet in
 // js/task-sheet.js, which is the single editor reached from a list row, a board
 // card, a calendar dot, the line, Ctrl K and voice. What stays here is what was
-// never really the modal's: toggling a task done, adding a category, and the
+// never really the modal's: toggling a task done, and the
 // drag-to-dismiss behaviour every remaining `.modal` sheet relies on.
 
 function toggleTaskDone(id) {
@@ -13,15 +13,6 @@ function toggleTaskDone(id) {
   // Completing something is the one action in this app that deserves to be
   // felt. Un-completing gets the lighter tick.
   if (typeof haptic === 'function') haptic(task.status === 'done' ? 'success' : 'light');
-  saveData(state);
-  render();
-}
-
-function handleAddCategory() {
-  const name = prompt('Category name:');
-  if (!name || !name.trim()) return;
-  const color = nextCategoryColor(state.categories);
-  state.categories.push({ id: name.trim().toLowerCase().replace(/\s+/g, '-'), name: name.trim(), color });
   saveData(state);
   render();
 }
