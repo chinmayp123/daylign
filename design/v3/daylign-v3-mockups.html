@@ -1,0 +1,859 @@
+<meta charset="utf-8">
+<title>Daylign Day Line</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..24,400,0..1,0&display=block">
+<style>
+/* Page chrome follows the viewer's theme. The mockups have their own Day / Night switch. */
+:root{
+  --p-bg:#ecede9; --p-surface:#f6f6f3; --p-ink:#141514; --p-muted:#5a5e59; --p-line:#d6d8d2; --p-accent:#2446f0;
+  --disp:'Bricolage Grotesque','Segoe UI',sans-serif; --ui:'Geist','Segoe UI',-apple-system,sans-serif; --mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){color-scheme:dark;--p-bg:#111211;--p-surface:#191a19;--p-ink:#ececea;--p-muted:#9ea29c;--p-line:#2a2c29;--p-accent:#7a92ff;}}
+:root[data-theme="dark"]{color-scheme:dark;--p-bg:#111211;--p-surface:#191a19;--p-ink:#ececea;--p-muted:#9ea29c;--p-line:#2a2c29;--p-accent:#7a92ff;}
+body{background:var(--p-bg);color:var(--p-ink);font-family:var(--ui);font-size:15px;line-height:1.55}
+.wrap{max-width:1300px;margin:0 auto;padding-inline:16px;padding-block:30px 70px}
+h1{font-family:var(--disp);font-weight:800;font-size:clamp(34px,5vw,54px);letter-spacing:-.035em;line-height:1;margin:0;text-wrap:balance}
+.lede{color:var(--p-muted);max-width:64ch;margin:12px 0 0;font-size:16px}
+.idea{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:22px;margin:28px 0 8px;border-top:1px solid var(--p-line);padding-top:20px}
+.idea h3{font-family:var(--disp);font-weight:600;font-size:18px;letter-spacing:-.01em;margin:0 0 4px}
+.idea p{margin:0;color:var(--p-muted);font-size:14px}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:28px 0 16px;position:sticky;top:env(safe-area-inset-top,0px);background:var(--p-bg);padding-block:8px;z-index:6}
+.bar button{font:600 14px var(--ui);padding:8px 14px;border-radius:10px;border:1px solid var(--p-line);background:var(--p-surface);color:var(--p-muted);cursor:pointer;transition:transform .15s}
+.bar button:active{transform:scale(.98)}
+.bar button[aria-pressed="true"]{background:var(--p-ink);color:var(--p-bg);border-color:var(--p-ink)}
+.bar button:focus-visible{outline:2px solid var(--p-accent);outline-offset:2px}
+.bar .sp{flex:1}
+.stage{display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap}
+.cap{font:500 12px var(--mono);color:var(--p-muted);margin:0 0 8px}
+.notes{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;margin-top:28px}
+@media (max-width:960px){.notes{grid-template-columns:1fr}}
+.notes h3{font-family:var(--disp);font-weight:600;font-size:19px;margin:0 0 8px}
+.notes ul{margin:0;padding-left:18px;font-size:14px}.notes li{margin:5px 0}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{text-align:left;font:500 11px var(--mono);color:var(--p-muted);padding:6px 8px;border-bottom:1px solid var(--p-line)}
+td{padding:6px 8px;vertical-align:top}
+tr+tr td{border-top:1px solid var(--p-line)}
+.foot{color:var(--p-muted);font-size:13px;margin-top:30px;max-width:78ch}
+.mini-row{display:flex;gap:22px;flex-wrap:wrap;margin-top:18px}
+
+/* ================= Day Line app (mockup) ================= */
+.app{--bg:#eceee9;--surf:#f7f8f5;--ink:#121412;--sub:#4f544e;--mute:#8a8f88;--line:#d5d8d1;--accent:#2446f0;--accent-ink:#ffffff;--soft:rgba(36,70,240,.09);--warn:#c2410c;--c-sleep:#5a5fd8;--c-food:#e8730c;--c-water:#0891b2;--c-move:#15a34a;--c-meet:#d9366e;--c-habit:#c48a00;
+  background:var(--bg);color:var(--ink);font-family:var(--ui)}
+.app.night{--bg:#0e0f0e;--surf:#171917;--ink:#eeefeb;--sub:#aeb2ab;--mute:#737872;--line:#262925;--accent:#6c86ff;--accent-ink:#0e0f0e;--soft:rgba(108,134,255,.13);--warn:#fb923c;--c-sleep:#8f93ff;--c-food:#ff9a3d;--c-water:#35c6e6;--c-move:#3ddc7a;--c-meet:#ff6b9d;--c-habit:#f2bd2c}
+.ms{font-family:'Material Symbols Rounded';font-weight:400;font-style:normal;font-size:15px;line-height:1;display:inline-block;vertical-align:-3px;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+.phone{width:320px;border-radius:34px;border:7px solid #1b1c1b;box-shadow:0 30px 70px rgba(20,24,20,.28);overflow:hidden;position:relative;flex:none}
+.desk{width:900px;border-radius:14px;border:1px solid #2a2c29;box-shadow:0 30px 70px rgba(20,24,20,.22);overflow:hidden;position:relative;flex:none;display:grid;grid-template-columns:230px 1fr 240px}
+/* header */
+.hd{display:flex;align-items:flex-end;padding:16px 16px 8px}
+.date{font-family:var(--disp);font-weight:800;font-size:40px;letter-spacing:-.045em;line-height:.9}
+.date small{display:block;font:500 11px var(--mono);letter-spacing:0;color:var(--mute);margin-bottom:4px}
+.hd .r{margin-left:auto;display:flex;gap:8px;align-items:center}
+.avatar{width:30px;height:30px;border-radius:10px;background:var(--ink);color:var(--bg);display:grid;place-items:center;font:600 11px var(--ui)}
+.iconbtn{width:30px;height:30px;border-radius:10px;border:1px solid var(--line);display:grid;place-items:center;color:var(--sub)}
+/* now readout (sticky) */
+.now{margin:4px 12px 0;padding:12px 14px 12px;border-radius:18px;background:var(--ink);color:var(--bg);position:relative}
+.now .k{display:flex;align-items:baseline;gap:8px}
+.now .big{font:700 34px var(--mono);letter-spacing:-.04em;line-height:1}
+.now .of{font:500 11px var(--mono);opacity:.6}
+.now .left{margin-left:auto;font:500 11px var(--mono);opacity:.75;text-align:right}
+.now .row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+.now .m b{display:block;font:600 13px var(--mono)}
+.now .m span{font-size:10px;opacity:.6}
+.ticks{display:flex;gap:2px;margin-top:4px}
+.ticks i{height:3px;flex:1;border-radius:1px;background:currentColor;opacity:.22}
+.ticks i.on{opacity:1;background:var(--c,currentColor)}
+.now .more{display:flex;justify-content:space-between;margin-top:10px;padding-top:8px;border-top:1px solid rgba(128,128,128,.28);font:500 10px var(--mono);opacity:.72}
+.pin{position:absolute;top:-7px;right:14px;font:600 9px var(--mono);background:var(--accent);color:var(--accent-ink);padding:2px 7px;border-radius:6px}
+/* brief */
+.say{padding:14px 16px 4px}
+.say p{margin:0;font-family:var(--disp);font-weight:600;font-size:19px;letter-spacing:-.02em;line-height:1.18}
+.say p span{color:var(--mute)}
+.act{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.act>span{font:600 11px var(--ui);padding:7px 11px;border-radius:11px;border:1px solid var(--line);background:var(--surf)}
+.act>span.p{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+/* the line */
+.line{position:relative;padding:14px 14px 18px 64px}
+.line::before{content:"";position:absolute;left:52px;top:18px;bottom:18px;width:2px;background:linear-gradient(var(--c-sleep) 0,var(--c-habit) 16%,var(--c-food) 45%,var(--c-water) var(--cut),var(--ink) var(--cut) 100%)}
+.it{position:relative;display:flex;gap:9px;align-items:center;padding:7px 0}
+.it .t{position:absolute;left:-62px;width:38px;text-align:right;font:500 10px var(--mono);color:var(--mute)}
+.it .n{position:absolute;left:-17px;width:12px;height:12px;border-radius:50%;background:var(--bg);border:2px solid var(--mute);display:grid;place-items:center}
+.it.past{color:var(--sub)}
+.it{--c:var(--mute)}
+.it .n{border-color:var(--c)}
+.it.past .n{background:var(--c);border-color:var(--c)}
+.it.fut .n{border-color:var(--c)!important}
+.it .ico{width:24px;height:24px;border-radius:8px;display:grid;place-items:center;flex:none;background:color-mix(in srgb,var(--c) 15%,transparent)}
+.it .ico .ms{color:var(--c);font-size:15px}
+.it .val{color:var(--c)!important;font-weight:700}
+.it.fut .n{border-color:var(--ink)}
+.it.hl .n{border-color:var(--accent);background:var(--accent)}
+.it .ms{color:var(--mute);font-size:16px}
+.it .body{flex:1;min-width:0;font-size:12.5px;line-height:1.25}
+.it .body em{display:block;font-style:normal;font-size:10.5px;color:var(--mute)}
+.it .val{font:500 11px var(--mono);color:var(--sub);white-space:nowrap}
+.it.card{padding:9px 11px;border-radius:14px;background:color-mix(in srgb,var(--c) 10%,var(--surf));border:1px solid color-mix(in srgb,var(--c) 45%,var(--line));margin:4px 0}
+.it.card .n{left:-28px}
+.it.card .t{left:-73px}
+.it.focus{box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 18%,transparent)}
+.nowmark{position:relative;margin:10px 0 10px -12px;display:flex;align-items:center;gap:8px;font:600 10.5px var(--mono);color:var(--accent)}
+.nowmark::before{content:"";position:absolute;left:-40px;right:0;top:50%;border-top:2px solid var(--accent)}
+.nowmark span{position:relative;background:var(--bg);padding-right:8px}
+.tray{margin:6px 0 8px;padding:10px 11px;border-radius:14px;border:1.5px dashed var(--line)}
+.tray h6{margin:0 0 6px;font:600 11px var(--ui);display:flex;justify-content:space-between}
+.tray h6 em{font-style:normal;font:500 10px var(--mono);color:var(--mute)}
+.tk{display:flex;gap:8px;align-items:center;font-size:12px;padding:5px 0}
+.cb{width:14px;height:14px;border-radius:5px;border:1.5px solid var(--sub);flex:none}
+.cb.on{background:var(--ink);border-color:var(--ink)}
+.tk.done span{text-decoration:line-through;color:var(--mute)}
+.tk .est{margin-left:auto;font:500 10px var(--mono);color:var(--mute)}
+.triage{font-size:11px;color:var(--sub);padding:4px 0 2px}
+.triage b{font-family:var(--mono);color:var(--warn)}
+.triage u{text-decoration:none;color:var(--accent);font-weight:600}
+.later{padding:4px 16px 16px}
+.later h5{font-family:var(--disp);font-weight:600;font-size:15px;margin:0 0 6px;letter-spacing:-.01em}
+.lt{display:flex;gap:10px;align-items:baseline;font-size:12px;padding:6px 0}
+.lt+.lt{border-top:1px solid var(--line)}
+.lt .d{font:500 10.5px var(--mono);color:var(--mute);width:42px}
+.lt .d.od{color:var(--warn)}
+.lt em{margin-left:auto;font-style:normal;font:600 10px var(--ui);padding:2px 7px;border-radius:6px;color:var(--c);background:color-mix(in srgb,var(--c) 14%,transparent)}
+.wk div i{background:var(--c-move)!important}
+.wk div.t{border-color:var(--c-move)}
+.nav{display:flex;justify-content:space-around;align-items:center;margin:0 12px 12px;padding:8px 6px;border-radius:18px;background:var(--surf);border:1px solid var(--line)}
+.nav div{display:grid;justify-items:center;gap:1px;font:500 9px var(--ui);color:var(--mute);padding:2px 6px}
+.nav div.on{color:var(--ink)}
+.nav div.on .ms{font-variation-settings:'FILL' 1}
+.nav .plus{width:40px;height:40px;border-radius:14px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center}
+.nav .plus .ms{font-size:22px;color:var(--accent-ink)}
+.nav .ms{font-size:19px}
+.fold{position:absolute;left:0;right:0;border-top:1.5px dashed #e0452b;z-index:5;pointer-events:none}
+.fold span{position:absolute;right:8px;top:-17px;font:600 9px var(--mono);color:#fff;background:#e0452b;padding:1px 6px;border-radius:4px}
+/* desktop columns */
+.dcol{padding:18px 16px;min-width:0}
+.dcol.left{border-right:1px solid var(--line);display:flex;flex-direction:column;gap:14px}
+.dcol.right{border-left:1px solid var(--line)}
+.dnav{display:grid;gap:2px;font:500 12.5px var(--ui)}
+.dnav div{padding:7px 9px;border-radius:10px;color:var(--sub);display:flex;gap:9px;align-items:center}
+.dnav div.on{background:var(--ink);color:var(--bg)}
+.dnav div.on .ms{color:var(--bg)}
+.dnav .ms{color:var(--mute)}
+.search{display:flex;gap:6px;align-items:center;font:500 11px var(--ui);color:var(--mute);padding:8px 10px;border-radius:11px;border:1px solid var(--line);background:var(--surf)}
+.search kbd{margin-left:auto;font:500 10px var(--mono)}
+.wk{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:6px}
+.wk div{height:44px;border-radius:7px;background:var(--surf);border:1px solid var(--line);position:relative;overflow:hidden}
+.wk div i{position:absolute;left:0;right:0;bottom:0;background:var(--ink);opacity:.85}
+.wk div.t{border-color:var(--accent)}
+.wk div.t i{background:var(--accent)}
+.wkl{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font:500 9.5px var(--mono);color:var(--mute);text-align:center;margin-top:3px}
+.sec-t{font-family:var(--disp);font-weight:600;font-size:15px;margin:0 0 6px;letter-spacing:-.01em}
+/* mini screens */
+.miniph{width:250px;border-radius:28px;border:6px solid #1b1c1b;overflow:hidden;flex:none;box-shadow:0 20px 50px rgba(20,24,20,.2)}
+.mhd{padding:14px 14px 6px;font-family:var(--disp);font-weight:800;font-size:28px;letter-spacing:-.04em;line-height:.95}
+.mhd small{display:block;font:500 10px var(--mono);color:var(--mute);letter-spacing:0;margin-bottom:3px}
+.mb{padding:4px 14px 14px;display:grid;gap:10px}
+.seg{display:inline-flex;padding:2px;border-radius:10px;background:var(--surf);border:1px solid var(--line);width:max-content}
+.seg span{font:600 10.5px var(--ui);padding:4px 10px;border-radius:8px;color:var(--mute)}
+.seg span.on{background:var(--ink);color:var(--bg)}
+.grp h6{margin:0 0 3px;font:600 10px var(--mono);color:var(--mute)}
+.bign{font:700 44px var(--mono);letter-spacing:-.05em;line-height:.9}
+.bign small{font:500 11px var(--mono);letter-spacing:0;color:var(--mute);margin-left:6px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ---------- tabs ---------- */
+.tabsrow{flex-basis:100%;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding-top:4px}
+.tabsrow::-webkit-scrollbar{display:none}
+.bar .tabsrow button{border:none;background:transparent;border-radius:9px;padding:7px 12px;white-space:nowrap}
+.bar .tabsrow button[aria-selected="true"]{background:var(--p-surface);color:var(--p-ink);box-shadow:inset 0 0 0 1px var(--p-line)}
+.tabv[hidden]{display:none}
+.tabv .intro{max-width:70ch;color:var(--p-muted);margin:4px 0 18px}
+.fig{display:flex;flex-direction:column}
+.stage2{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+.deskwrap{margin-top:26px}
+.notes2{margin-top:24px;max-width:90ch}
+.notes2 h3{font-family:var(--disp);font-weight:600;font-size:19px;margin:0 0 8px}
+.notes2 ul{margin:0;padding-left:18px;font-size:14px}.notes2 li{margin:5px 0}
+.new{font:700 9px var(--mono);color:#fff;background:#e0452b;padding:1px 5px;border-radius:4px;margin-left:4px;vertical-align:1px}
+/* ---------- shared app pieces ---------- */
+.scr{min-height:600px;display:flex;flex-direction:column}
+.scr .grow{flex:1}
+.mhd2{display:flex;align-items:flex-end;gap:8px;padding:16px 14px 8px}
+.mhd2>div:first-child{font-family:var(--disp);font-weight:800;font-size:30px;letter-spacing:-.04em;line-height:.95}
+.mhd2 small{display:block;font:500 10.5px var(--mono);color:var(--mute);letter-spacing:0;margin-bottom:4px}
+.mhd2 .r{margin-left:auto;display:flex;gap:6px}
+.pad{padding:0 14px 12px;display:grid;gap:10px;align-content:start}
+.seg{display:inline-flex;padding:2px;border-radius:10px;background:var(--surf);border:1px solid var(--line);width:max-content;max-width:100%}
+.seg span{font:600 10.5px var(--ui);padding:4px 10px;border-radius:8px;color:var(--mute);white-space:nowrap}
+.seg span.on{background:var(--ink);color:var(--bg)}
+.seg.full{width:100%;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;text-align:center}
+.chip{display:inline-flex;align-items:center;gap:3px;font:600 9.5px var(--ui);padding:2px 6px;border-radius:6px;color:var(--c);background:color-mix(in srgb,var(--c) 14%,transparent);white-space:nowrap}
+.chip .ms{font-size:11px}
+.fchips{display:flex;gap:5px;overflow:hidden}
+.fc{font:500 10.5px var(--ui);padding:5px 9px;border-radius:9px;border:1px solid var(--line);background:var(--surf);white-space:nowrap;color:var(--sub)}
+.fc.on{border-color:var(--ink);color:var(--ink)}
+.gh{font:600 10px var(--mono);color:var(--mute);margin:4px 0 0;display:flex;justify-content:space-between}
+.gh.od{color:var(--warn)}
+.trow{display:flex;gap:9px;align-items:flex-start;padding:7px 0;border-top:1px solid var(--line);font-size:12.5px}
+.trow .cb{margin-top:2px}
+.trow .tb{flex:1;min-width:0}
+.trow .meta{display:flex;gap:5px;flex-wrap:wrap;margin-top:3px;align-items:center}
+.trow .due{font:500 10px var(--mono);color:var(--sub)}
+.trow .due.od{color:var(--warn)}
+.trow .mut{font:500 10px var(--mono);color:var(--mute)}
+.trow.done .tb>span{text-decoration:line-through;color:var(--mute)}
+.flag .ms{font-size:14px;font-variation-settings:'FILL' 1}
+.flag.p3{color:var(--warn)}.flag.p2{color:var(--c-habit)}.flag.p1{color:var(--mute)}
+.card2{background:var(--surf);border:1px solid var(--line);border-radius:16px;padding:11px 12px}
+.card2 h6{margin:0 0 6px;font:600 11.5px var(--ui);display:flex;justify-content:space-between;align-items:center;gap:6px}
+.card2 h6 em{font-style:normal;font:500 10px var(--mono);color:var(--mute)}
+.tint{background:color-mix(in srgb,var(--c) 9%,var(--surf));border-color:color-mix(in srgb,var(--c) 40%,var(--line))}
+.btn{box-sizing:border-box;display:inline-flex;align-items:center;gap:4px;font:600 11px var(--ui);padding:7px 11px;border-radius:11px;border:1px solid var(--line);background:var(--surf);color:var(--ink);white-space:nowrap}
+.btn.p{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.d{color:var(--warn);border-color:transparent;background:transparent;padding-left:0}
+.btn.w{width:100%;justify-content:center}
+.btnrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.small{font-size:10.5px;color:var(--mute)}
+.mono{font-family:var(--mono)}
+.li{display:flex;align-items:center;gap:9px;padding:8px 0;font-size:12px;border-top:1px solid var(--line)}
+.li:first-of-type{border-top:none}
+.li .v{margin-left:auto;font:500 10.5px var(--mono);color:var(--sub);text-align:right}
+.li .ms{color:var(--mute)}
+.li .sw{width:12px;height:12px;border-radius:4px;background:var(--c);flex:none}
+.fld{display:grid;gap:3px}
+.fld label{font:600 9.5px var(--mono);color:var(--mute)}
+.fld .in{box-sizing:border-box;font-size:12px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--surf);display:flex;align-items:center;gap:6px;min-height:16px}
+.fld .in.big{font:700 26px var(--mono);letter-spacing:-.03em}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.tile{border-radius:12px;background:var(--surf);border:1px solid var(--line);padding:8px}
+.tile b{display:block;font:700 16px var(--mono);letter-spacing:-.03em}
+.tile span{font-size:9.5px;color:var(--mute)}
+.tog{width:28px;height:16px;border-radius:9px;background:var(--line);position:relative;flex:none;margin-left:auto}
+.tog::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#fff;transition:left .2s}
+.tog.on{background:var(--accent)}.tog.on::after{left:14px}
+.chart{width:100%;height:70px;display:block}
+.bar2{height:7px;border-radius:4px;background:var(--line);overflow:hidden}
+.bar2 i{display:block;height:100%;border-radius:4px;background:var(--c)}
+.banner{display:flex;gap:6px;align-items:center;font-size:10.5px;padding:7px 10px;border-radius:10px;background:color-mix(in srgb,var(--c-water) 12%,var(--surf));color:var(--sub)}
+.banner .ms{color:var(--c-water)}
+.banner u{margin-left:auto;text-decoration:none;color:var(--accent);font-weight:600}
+.dnav2{display:flex;align-items:center;justify-content:space-between;font:600 12px var(--ui)}
+.dnav2 .ms{color:var(--mute)}
+.heat{display:grid;grid-template-columns:repeat(16,1fr);grid-auto-flow:column;grid-template-rows:repeat(7,1fr);gap:2px}
+.heat i{aspect-ratio:1;border-radius:2px;background:var(--c-move)}
+.swatches{display:flex;gap:6px}
+.swatches i{width:20px;height:20px;border-radius:7px;background:var(--c)}
+.swatches i.sel{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--c)}
+/* sheets */
+.sh{position:relative;height:640px;overflow:hidden}
+.sh .under{pointer-events:none}
+.sh .dim{position:absolute;inset:0;background:rgba(10,12,10,.5)}
+.sh .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--bg);border-radius:24px 24px 0 0;padding:8px 14px 16px;display:grid;gap:10px;align-content:start;max-height:90%;overflow:hidden}
+.grab{width:36px;height:4px;border-radius:2px;background:var(--line);margin:0 auto}
+.sheet h4{margin:0;font-family:var(--disp);font-weight:700;font-size:20px;letter-spacing:-.02em}
+/* board */
+.colsw{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.colsw span{font:600 10.5px var(--ui);text-align:center;padding:6px;border-radius:9px;background:var(--surf);border:1px solid var(--line);color:var(--sub)}
+.colsw span.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.folder{font:600 10.5px var(--ui);display:flex;align-items:center;gap:5px;color:var(--sub);margin-top:2px}
+.folder .sw{width:8px;height:8px;border-radius:3px;background:var(--c)}
+.bcard{padding:9px 10px 9px 12px;border-radius:12px;background:var(--surf);border:1px solid var(--line);font-size:12px;position:relative;display:grid;gap:5px}
+.bcard::before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:3px;border-radius:2px;background:var(--c)}
+.bcard .meta{display:flex;gap:5px;align-items:center}
+.dropzone{border:1.5px dashed var(--accent);background:var(--soft);border-radius:12px;padding:10px;font:600 10.5px var(--ui);color:var(--accent);text-align:center}
+.inbox{border-radius:14px;padding:10px;background:color-mix(in srgb,var(--c-meet) 9%,var(--surf));border:1px solid color-mix(in srgb,var(--c-meet) 35%,var(--line));display:grid;gap:8px;font-size:11.5px}
+.inbox b{font-size:11.5px;display:flex;gap:5px;align-items:center}
+.inbox .rep{display:flex;gap:8px}
+.inbox .shot{width:34px;height:52px;border-radius:6px;background:linear-gradient(160deg,var(--c-water),var(--c-sleep));flex:none}
+/* calendar */
+.mgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+.mgrid .dh{font:600 9px var(--mono);color:var(--mute);padding-bottom:3px}
+.mgrid .d{font:500 11px var(--mono);padding:5px 0 4px;border-radius:9px;min-height:30px;display:grid;justify-items:center;align-content:start;gap:3px}
+.mgrid .d.o{color:var(--line)}
+.mgrid .d.t{background:var(--ink);color:var(--bg)}
+.mgrid .d.s{box-shadow:inset 0 0 0 1.5px var(--accent)}
+.mgrid .dots{display:flex;gap:2px}
+.mgrid .dots i{width:4px;height:4px;border-radius:50%;background:var(--c)}
+.mgrid .hol{font:600 7px var(--ui);color:var(--c-meet)}
+.wkg{display:grid;grid-template-columns:34px repeat(7,1fr);font-size:10px}
+.wkg .hh{font:500 9px var(--mono);color:var(--mute);height:34px;border-top:1px solid var(--line)}
+.wkg .col{position:relative;border-left:1px solid var(--line)}
+.wkg .col .ln{height:34px;border-top:1px solid var(--line)}
+.ev{position:absolute;left:3px;right:3px;border-radius:7px;padding:3px 5px;font:600 9.5px var(--ui);color:var(--c);background:color-mix(in srgb,var(--c) 16%,var(--surf));border-left:3px solid var(--c);overflow:hidden}
+.ev em{display:block;font:500 8.5px var(--mono);font-style:normal;opacity:.8}
+.wkhd{display:grid;grid-template-columns:34px repeat(7,1fr);font:600 10px var(--ui);text-align:center;padding-bottom:4px}
+.wkhd .t{color:var(--accent)}
+.unsch{display:grid;grid-template-columns:34px repeat(7,1fr);gap:3px;margin-bottom:6px;font-size:9px}
+.unsch span{border-radius:6px;padding:3px 4px;border:1px dashed var(--line);color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* sidebar for desktop pages */
+.side{padding:18px 14px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:12px;min-width:0}
+.side .lbl{font:600 9.5px var(--mono);color:var(--mute);margin-top:6px}
+.side .cat{display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 6px}
+.side .cat .sw{width:9px;height:9px;border-radius:3px;background:var(--c)}
+.side .cat em{margin-left:auto;font:500 10px var(--mono);color:var(--mute);font-style:normal}
+.side .cat.on{background:var(--surf);border-radius:8px}
+.main{padding:18px 18px;min-width:0;display:grid;gap:12px;align-content:start}
+.cols3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;align-items:start}
+.cols3>div{display:grid;gap:7px;padding:10px;border-radius:14px;background:color-mix(in srgb,var(--ink) 3%,transparent)}
+.colh{font:600 11px var(--ui);display:flex;justify-content:space-between}
+.colh em{font:500 10px var(--mono);color:var(--mute);font-style:normal}
+/* palette, toasts, states */
+.pal{position:absolute;left:50%;top:70px;transform:translateX(-50%);width:460px;background:var(--bg);border-radius:18px;border:1px solid var(--line);box-shadow:0 30px 80px rgba(0,0,0,.35);padding:10px;display:grid;gap:4px;z-index:3}
+.pal .q{font:500 15px var(--ui);padding:8px 10px;border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:center}
+.pal .q kbd{margin-left:auto;font:500 10px var(--mono);color:var(--mute)}
+.pal .g{font:600 9.5px var(--mono);color:var(--mute);padding:6px 10px 2px}
+.pal .r{display:flex;gap:9px;align-items:center;padding:7px 10px;border-radius:10px;font-size:12.5px}
+.pal .r.on{background:var(--soft)}
+.pal .r em{margin-left:auto;font:500 10px var(--mono);color:var(--mute);font-style:normal}
+.statewall{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;padding:18px;border-radius:18px}
+.statewall h6{margin:0 0 8px;font:600 10px var(--mono);color:var(--mute)}
+.toast{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:14px;background:var(--ink);color:var(--bg);font-size:12px;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+.toast u{margin-left:auto;text-decoration:none;font-weight:700;color:color-mix(in srgb,var(--accent) 60%,#fff)}
+.pill{display:inline-flex;align-items:center;gap:5px;font:600 10.5px var(--ui);padding:4px 9px;border-radius:999px;background:var(--surf);border:1px solid var(--line)}
+.pill i{width:7px;height:7px;border-radius:50%;background:var(--c)}
+.empty{display:grid;justify-items:start;gap:6px;padding:14px;border-radius:14px;border:1.5px dashed var(--line);font-size:12px}
+.empty b{font-family:var(--disp);font-size:15px}
+.actgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.actgrid div{display:grid;justify-items:center;gap:5px;font:600 10px var(--ui);text-align:center}
+.actgrid div span.ic{width:46px;height:46px;border-radius:15px;display:grid;place-items:center;background:color-mix(in srgb,var(--c) 15%,var(--surf));border:1px solid color-mix(in srgb,var(--c) 30%,var(--line))}
+.actgrid .ms{color:var(--c);font-size:20px}
+.mic{width:64px;height:64px;border-radius:50%;background:var(--accent);display:grid;place-items:center;margin:4px auto;box-shadow:0 0 0 10px var(--soft),0 0 0 20px color-mix(in srgb,var(--accent) 6%,transparent)}
+.mic .ms{color:var(--accent-ink);font-size:28px}
+.vres{display:flex;gap:8px;align-items:center;font-size:12px;padding:7px 0;border-top:1px solid var(--line)}
+.vres .ms{color:var(--c-move)}
+.vres u{margin-left:auto;text-decoration:none;font-weight:700;color:var(--accent);font-size:11px}
+.stepper{display:flex;align-items:center;justify-content:space-between;padding:6px;border-radius:14px;border:1px solid var(--line);background:var(--surf)}
+.stepper b{font:700 26px var(--mono);letter-spacing:-.03em}
+.stepper span{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--bg);border:1px solid var(--line);font:600 16px var(--mono)}
+.ladder{display:grid;gap:4px}
+.ladder div{display:flex;gap:8px;align-items:center;font-size:11.5px;color:var(--mute)}
+.ladder div i{width:9px;height:9px;border-radius:50%;border:2px solid var(--c-move)}
+.ladder div.d i{background:var(--c-move)}
+.ladder div.d{color:var(--sub)}
+.ladder div.c{color:var(--ink);font-weight:600}
+.ladder div.c i{box-shadow:0 0 0 3px color-mix(in srgb,var(--c-move) 25%,transparent)}
+/* coverage table (page chrome) */
+.covtop{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 14px}
+.covtop input,.covtop select{font:500 14px var(--ui);padding:8px 10px;border-radius:10px;border:1px solid var(--p-line);background:var(--p-surface);color:var(--p-ink);min-width:0}
+.covtop input{flex:1 1 220px}
+.covchips{display:flex;gap:6px;flex-wrap:wrap}
+.covchips button{font:600 13px var(--ui);padding:7px 11px;border-radius:10px;border:1px solid var(--p-line);background:var(--p-surface);color:var(--p-muted);cursor:pointer}
+.covchips button[aria-pressed="true"]{background:var(--p-ink);color:var(--p-bg);border-color:var(--p-ink)}
+.covsum{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:0 0 16px}
+.covsum div{padding:12px;border-radius:12px;background:var(--p-surface);border:1px solid var(--p-line)}
+.covsum b{display:block;font:700 26px var(--mono)}
+.covsum span{font-size:12px;color:var(--p-muted)}
+.covtbl{overflow-x:auto}
+.covtbl table{min-width:720px}
+.st{font:700 10.5px var(--mono);padding:2px 6px;border-radius:5px}
+.st.kept{background:color-mix(in srgb,#15a34a 16%,transparent);color:#15803d}
+.st.merged{background:color-mix(in srgb,#2446f0 14%,transparent);color:var(--p-accent)}
+.st.added{background:color-mix(in srgb,#e8730c 18%,transparent);color:#c2410c}
+.st.removed{background:color-mix(in srgb,#888 18%,transparent);color:var(--p-muted)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .st.kept{color:#4ade80}:root:not([data-theme="light"]) .st.added{color:#fb923c}}
+:root[data-theme="dark"] .st.kept{color:#4ade80}:root[data-theme="dark"] .st.added{color:#fb923c}
+</style>
+
+<div class="wrap">
+  <h1>Your day, on one line.</h1>
+  <p class="lede">A new direction for Daylign. The Today screen stops being a dashboard of tiles and becomes the day itself: one time line where meals, water, habits, meetings, workouts and tasks sit at the moment they happen, with your numbers riding at "now".</p>
+
+  <div class="idea">
+    <div><h3>Time is the layout</h3><p>Past above, future below, a blue line at now. Tasks with no time wait in a tray on the line. Nothing is a floating card.</p></div>
+    <div><h3>Numbers stay pinned</h3><p>The dark block at the top follows you as you scroll, so your data is always visible. Tap it for all eight numbers.</p></div>
+    <div><h3>Colour means something</h3><p>Every kind of event has its own colour: sleep, food, water, movement, meetings and habits. The line runs from night into day. Blue is kept for now and for buttons.</p></div>
+    <div><h3>Type with a voice</h3><p>Bricolage Grotesque for the day and the brief, JetBrains Mono for every number, Geist for the rest.</p></div>
+  </div>
+
+  <div class="bar" id="bar">
+    <button type="button" id="b-day" aria-pressed="true" data-mode="day">Day</button>
+    <button type="button" id="b-night" aria-pressed="false" data-mode="night">Night</button>
+    <span class="sp"></span>
+    <a href="v3.html" style="font:600 14px var(--ui);color:var(--p-accent)">Compare with the previous version</a>
+  </div>
+
+  <div id="tabhost"><section class="tabv" data-tab="today">
+  <div class="stage">
+    <div><p class="cap">Today, phone (whole screen; the dashed line is the fold on a 390 x 844 iPhone)</p><div id="phone"></div></div>
+  </div>
+  <div style="margin-top:26px"><p class="cap">Today, desktop</p><div id="deskfit" class="deskfit"><div id="desk"></div></div></div>
+
+  <div class="stage2" id="todayextra" style="margin-top:26px"></div>
+
+  <div class="notes">
+    <div>
+      <h3>What's different from today's app</h3>
+      <ul>
+        <li>No tiles. The eight health numbers become one pinned "now" block: calories large, then protein, water and steps with tick scales, then burn, exercise, sleep and weight on one line.</li>
+        <li>The brief is one big sentence in plain words, with its actions right under it (these replace the reminder cards).</li>
+        <li>Meals, water, sleep and habits are logged events on the line, so Today and Diet read the same way.</li>
+        <li>Timed tasks and meetings sit at their time; the Anytime tray and the triage nudge sit at "now"; due-soon tasks close the page.</li>
+        <li>The bottom bar floats and puts the + button in the middle: task, food, water, weight, workout, event or voice.</li>
+        <li>Nothing in the feature list is lost. Every item keeps the home mapped in the inventory (weigh-in, goals, theme and categories each get one home).</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Where today's Today sections go</h3>
+      <table><thead><tr><th>Now</th><th>In Day Line</th></tr></thead><tbody>
+        <tr><td>Health strip (8 tiles)</td><td>Pinned "now" block, tap for all eight</td></tr>
+        <tr><td>Daily brief</td><td>The big sentence and its evidence, under the date</td></tr>
+        <tr><td>Reminder cards</td><td>Actions under the brief, habits as events on the line</td></tr>
+        <tr><td>Today plan + Schedule card</td><td>The line itself (one timeline)</td></tr>
+        <tr><td>Anytime lane, triage nudge</td><td>The tray at "now"</td></tr>
+        <tr><td>Daily ride</td><td>A habit event on the line, one tap to log</td></tr>
+        <tr><td>My Tasks, Deadlines, project filter</td><td>"Due soon" at the end, filters on the Tasks screen</td></tr>
+        <tr><td>Edit layout</td><td>Kept for the brief and the later sections; the line and "now" are fixed</td></tr>
+      </tbody></table>
+    </div>
+  </div>
+  </section><section class="tabv" data-tab="coverage" hidden></section></div>
+  <p class="foot">Demo data only. Every screen is drawn in the Day Line language; the Coverage tab checks each inventory feature against its new home. BUILD_SPEC_v3.md follows from this page. Built with the taste and redesign design skills against Charlie's full feature inventory.</p>
+</div>
+
+<script>
+const ico=n=>`<span class="ms" aria-hidden="true">${n}</span>`;
+const now=`<div class="now"><span class="pin">PINNED</span>
+ <div class="k"><span class="big" style="color:var(--c-food)">1,640</span><span class="of">/ 2,000 kcal eaten</span><span class="left">360<br>left</span></div>
+ <div class="row">${[["112g","protein, of 150",7,"food"],["54 oz","water, of 80",7,"water"],["7.9k","steps",8,"move"]].map(m=>`<div class="m" style="--c:var(--c-${m[3]})"><b>${m[0]}</b><span>${m[1]}</span><div class="ticks">${Array.from({length:10},(_,i)=>`<i class="${i<m[2]?"on":""}"></i>`).join("")}</div></div>`).join("")}</div>
+ <div class="more"><span style="color:var(--c-move)">420 burned</span><span style="color:var(--c-move)">30 min exercise</span><span style="color:var(--c-sleep)">7h10 sleep</span><span>weigh in</span></div></div>`;
+const say=`<div class="say"><p>Push day at 6:30. <span>Food is on pace, 38g of protein to go.</span></p>
+ <div class="act"><span class="p">${ico("fitness_center")} Log workout</span><span>${ico("water_drop")} Water</span><span>${ico("monitor_weight")} Weigh in</span></div></div>`;
+const it=(cls,t,icon,body,sub,val,cat)=>`<div class="it ${cls}" style="--c:var(--c-${cat||"meet"})"><span class="t">${t}</span><span class="n"></span><span class="ico">${ico(icon)}</span><div class="body">${body}${sub?`<em>${sub}</em>`:""}</div>${val?`<span class="val">${val}</span>`:""}</div>`;
+const line=`<div class="line" style="--cut:46%">
+ ${it("past","11:10p","bedtime","Slept","last night, quality good","7h10","sleep")}
+ ${it("past","7:05","self_improvement","Morning routine","push-ups, sit-ups","done","habit")}
+ ${it("past","7:30","directions_bike","Daily ride","your usual loop","8 mi","move")}
+ ${it("past","8:10","breakfast_dining","Breakfast","oats bowl, coffee","420","food")}
+ ${it("past","9:00","groups","Stand-up","","30m","meet")}
+ ${it("past","11:00","event","Dentist","Google Calendar","","meet")}
+ ${it("past","12:40","lunch_dining","Lunch","chicken wrap, apple","610","food")}
+ ${it("past","1:15","water_drop","Water","3 glasses so far","54 oz","water")}
+ <div class="nowmark"><span>now 3:40</span></div>
+ <div class="tray"><h6>No time needed <em>2 left</em></h6>
+  <div class="tk"><span class="cb"></span><span>Invoice review</span><span class="est">15m</span></div>
+  <div class="tk"><span class="cb"></span><span>Reply to landlord</span><span class="est">5m</span></div>
+  <div class="tk done"><span class="cb on"></span><span>Order protein</span></div>
+  <div class="triage"><b>4</b> tasks have no date. <u>Pull into today</u></div></div>
+ ${it("fut card focus","6:30","fitness_center","Push day","bench, overhead press, dips","55m","move")}
+ ${it("fut","7:45","dinner_dining","Dinner","nothing logged yet","","food")}
+ ${it("fut","9:30","dentistry","Teeth","evening","","habit")}
+ </div>`;
+const later=`<div class="later"><h5>Due soon</h5>
+ <div class="lt"><span class="d od">Sep 27</span>Tax form<em style="--c:var(--c-meet)">Work</em></div>
+ <div class="lt"><span class="d">Sep 30</span>Invoice review<em style="--c:var(--c-meet)">Work</em></div>
+ <div class="lt"><span class="d">Oct 2</span>Renew permit<em style="--c:var(--c-habit)">Home</em></div></div>`;
+const nav=(on)=>`<div class="nav">${[["today","Today"],["check_circle","Tasks"],["plus",""],["fitness_center","Training"],["restaurant","Diet"]].map(n=>n[0]==="plus"?`<div class="plus">${ico("add")}</div>`:`<div class="${n[1]===on?"on":""}">${ico(n[0])}${n[1]}</div>`).join("")}</div>`;
+const phone=`<div class="phone app" id="ph"><div class="fold" style="top:560px"><span>FOLD</span></div>
+ <div class="hd"><div class="date"><small>Tuesday, September</small>29</div><div class="r"><div class="iconbtn">${ico("search")}</div><div class="avatar">CP</div></div></div>
+ ${now}${say}${line}${later}${nav("Today")}</div>`;
+const desk=`<div class="desk app" id="dk">
+ <div class="dcol left"><div class="date"><small>Tuesday, September</small>29</div>
+  <div class="search">${ico("search")} Search <kbd>Ctrl K</kbd></div>
+  <div class="dnav">${[["today","Today",1],["check_circle","Tasks"],["calendar_month","Calendar"],["fitness_center","Training"],["restaurant","Diet"],["insights","Insights"]].map(n=>`<div class="${n[2]?"on":""}">${ico(n[0])}${n[1]}</div>`).join("")}</div>
+  <div style="margin-top:auto" class="dnav"><div>${ico("settings")}Settings</div></div></div>
+ <div class="dcol" style="padding:10px 12px">${now}${say}${line}</div>
+ <div class="dcol right"><p class="sec-t">This week</p><div class="wk">${[52,70,40,88,62,0,0].map((h,i)=>`<div class="${i===1?"t":""}"><i style="height:${h}%"></i></div>`).join("")}</div><div class="wkl">${"MTWTFSS".split("").map(d=>`<span>${d}</span>`).join("")}</div>
+  <div style="height:16px"></div>${later.replace('class="later"','class="later" style="padding:0"')}
+  <div style="height:10px"></div><div class="act" style="margin:0"><span class="p">${ico("add")} New</span><span>${ico("mic")} Say it</span></div></div></div>`;
+const minis=[
+ {h:"Tasks",s:"17 open",b:`<div class="seg"><span class="on">List</span><span>Board</span></div>
+   ${[["Today",[["Invoice review","15m"],["Reply to landlord","5m"]]],["This week",[["Tax form","overdue"],["Renew permit","Fri"]]],["Someday",[["Pick theme",""],["Call plumber",""]]]].map(g=>`<div class="grp"><h6>${g[0]}</h6>${g[1].map(t=>`<div class="tk"><span class="cb"></span><span>${t[0]}</span><span class="est">${t[1]}</span></div>`).join("")}</div>`).join("")}`},
+ {h:"Training",s:"Strength, this week",b:`<div class="seg"><span class="on">Strength</span><span>Cardio</span></div><div><div class="bign">82<small>readiness</small></div><div style="font-size:11px;color:var(--sub);margin-top:4px">Good to push. 3 sessions so far.</div></div>
+   <div class="wk" style="margin:0">${[52,70,40,88,62,0,0].map((h,i)=>`<div class="${i===1?"t":""}" style="height:36px"><i style="height:${h}%"></i></div>`).join("")}</div>
+   <div class="tk"><span class="cb"></span><span>Bench press</span><span class="est">3x8 155</span></div><div class="tk"><span class="cb"></span><span>Dips</span><span class="est">PR</span></div>`},
+ {h:"Diet",s:"Tuesday",b:`<div><div class="bign">1,640<small>/ 2,000</small></div></div>
+   <div class="search" style="background:var(--surf)">${ico("search")} Add food <span style="margin-left:auto">${ico("mic")} ${ico("photo_camera")}</span></div>
+   <div class="line" style="--cut:100%;padding:4px 0 0 52px">${it("past","8:10","breakfast_dining","Breakfast","oats bowl, coffee","420","food")}${it("past","12:40","lunch_dining","Lunch","chicken wrap, apple","610","food")}${it("fut","7:45","dinner_dining","Dinner","tap to log","","food")}</div>`}
+].map(m=>`<div class="miniph app"><div class="mhd"><small>${m.s}</small>${m.h}</div><div class="mb">${m.b}</div></div>`).join("");
+
+document.getElementById("phone").innerHTML=phone;
+document.getElementById("desk").innerHTML=desk;
+function fit(){const box=document.getElementById("deskfit"),inner=document.getElementById("desk");inner.style.transform="none";const w=902,h=inner.offsetHeight;const s=Math.min(1,box.parentElement.clientWidth/w);
+ box.style.width=w*s+"px";box.style.height=h*s+"px";inner.style.transform=`scale(${s})`;inner.style.transformOrigin="top left";box.style.overflow="hidden"}
+function mode(m){document.querySelectorAll(".app").forEach(a=>a.classList.toggle("night",m==="night"));
+ document.querySelectorAll("#bar button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.mode===m)));try{localStorage.setItem("dayline-mode",m)}catch(e){}}
+document.getElementById("bar").addEventListener("click",e=>{const b=e.target.closest("button[data-mode]");if(b)mode(b.dataset.mode)});
+let m="day";try{m=localStorage.getItem("dayline-mode")||"day"}catch(e){}
+mode(m);window.addEventListener("resize",fit);fit();
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fit);
+</script>
+<script id="cov" type="application/json">[{"area": "Today", "feature": "Calories tile", "home": "Today > now block", "status": "kept", "note": ""}, {"area": "Today", "feature": "Activity/burn tile", "home": "Today > now block", "status": "kept", "note": ""}, {"area": "Today", "feature": "Protein tile", "home": "Today > now block", "status": "kept", "note": ""}, {"area": "Today", "feature": "Water tile", "home": "Today > now block", "status": "kept", "note": ""}, {"area": "Today", "feature": "Steps tile (conditional)", "home": "Today > now block", "status": "kept", "note": ""}, {"area": "Today", "feature": "Exercise minutes tile (conditional)", "home": "Today > now block", "status": "kept", "note": ""}, {"area": "Today", "feature": "Sleep tile (conditional)", "home": "Today > now block", "status": "kept", "note": ""}, {"area": "Today", "feature": "Weight tile plus quick weigh in modal", "home": "Global > weigh-in sheet", "status": "kept", "note": "opened from the weight in the now block"}, {"area": "Today", "feature": "Daily Brief card", "home": "Today > brief", "status": "kept", "note": ""}, {"area": "Today", "feature": "Brief readiness badge", "home": "Today > brief", "status": "merged", "note": "folded into one-sentence brief"}, {"area": "Today", "feature": "Brief training row", "home": "Today > brief", "status": "merged", "note": "folded into one-sentence brief, dup of Training Coach panel"}, {"area": "Today", "feature": "Brief nutrition row", "home": "Today > now block", "status": "merged", "note": "restates Calories/Protein tiles"}, {"area": "Today", "feature": "Brief tasks row", "home": "Today > due-soon list", "status": "merged", "note": "restates due-soon/triage content"}, {"area": "Today", "feature": "Brief this week stat grid", "home": "Insights > weekly report", "status": "merged", "note": "dup of Weekly Report/Insights trends"}, {"area": "Today", "feature": "Dateless task triage nudge", "home": "Today > triage nudge", "status": "kept", "note": ""}, {"area": "Today", "feature": "Triage plus Today chip", "home": "Today > triage nudge", "status": "kept", "note": ""}, {"area": "Today", "feature": "Triage see all N", "home": "Today > triage nudge", "status": "kept", "note": ""}, {"area": "Today", "feature": "Scheduled lane", "home": "Today > time line", "status": "kept", "note": ""}, {"area": "Today", "feature": "Anytime lane", "home": "Today > no-time tray", "status": "kept", "note": ""}, {"area": "Today", "feature": "Anytime schedule via clock button", "home": "Today > no-time tray", "status": "kept", "note": ""}, {"area": "Today", "feature": "Anytime drag to schedule", "home": "Today > time line", "status": "merged", "note": "dup of Daily Schedule drag-to-hour-slot"}, {"area": "Today", "feature": "Empty lane suppression", "home": "Today > time line", "status": "kept", "note": ""}, {"area": "Today", "feature": "Dashboard project filter", "home": "Tasks > project filter", "status": "merged", "note": "consolidated with Board/Tasks project filters"}, {"area": "Today", "feature": "Daily cardio one tap", "home": "Training > Cardio", "status": "merged", "note": "dup of Cardio quick-log card; survives as Today action chip"}, {"area": "Today", "feature": "Reminder brush teeth AM/PM", "home": "Today > due-soon list", "status": "kept", "note": ""}, {"area": "Today", "feature": "Reminder morning routine", "home": "Today > due-soon list", "status": "kept", "note": ""}, {"area": "Today", "feature": "Reminder gym gap", "home": "Today > due-soon list", "status": "kept", "note": ""}, {"area": "Today", "feature": "Reminder water (2 tiers)", "home": "Today > now block", "status": "merged", "note": "dup of Water tile"}, {"area": "Today", "feature": "Reminder calories (3 variants)", "home": "Today > now block", "status": "merged", "note": "dup of Calories tile"}, {"area": "Today", "feature": "Reminder weigh in", "home": "Global > weigh-in sheet", "status": "merged", "note": "third weigh-in entry point"}, {"area": "Today", "feature": "Reminder protein", "home": "Today > now block", "status": "merged", "note": "dup of Protein tile"}, {"area": "Today", "feature": "Reminders bar empty state", "home": "Today > due-soon list", "status": "kept", "note": ""}, {"area": "Today", "feature": "My Tasks board card", "home": "Today > due-soon list", "status": "merged", "note": "consolidated into due-soon list widget"}, {"area": "Today", "feature": "Upcoming deadlines card", "home": "Today > due-soon list", "status": "merged", "note": "dup of due-soon list content"}, {"area": "Today", "feature": "Daily schedule card", "home": "Today > time line", "status": "kept", "note": ""}, {"area": "Today", "feature": "Layout editor entry button", "home": "Today > Edit layout sheet", "status": "kept", "note": ""}, {"area": "Today", "feature": "Weight trend chart dead render", "home": "Removed", "status": "removed", "note": "dead render, no host div in Today; trend lives in Insights"}, {"area": "Today", "feature": "Weekly report card dead render", "home": "Removed", "status": "removed", "note": "dead render on Today; card lives in Insights weekly report"}, {"area": "Today", "feature": "Wide widget span toggle", "home": "Removed", "status": "removed", "note": "dead feature flag, no UI ever shipped"}, {"area": "Tasks", "feature": "Add task header button/FAB", "home": "Global > + sheet", "status": "kept", "note": ""}, {"area": "Tasks", "feature": "Task row read view", "home": "Tasks > List view", "status": "kept", "note": ""}, {"area": "Tasks", "feature": "Check off/uncheck task", "home": "Tasks > List view", "status": "kept", "note": ""}, {"area": "Tasks", "feature": "Search tasks", "home": "Tasks > List view", "status": "kept", "note": ""}, {"area": "Tasks", "feature": "Filter by status", "home": "Tasks > List view", "status": "kept", "note": ""}, {"area": "Tasks", "feature": "Filter by category", "home": "Tasks > List view", "status": "kept", "note": ""}, {"area": "Tasks", "feature": "Sort tasks", "home": "Tasks > List view", "status": "kept", "note": ""}, {"area": "Tasks", "feature": "Filter by active project sidebar", "home": "Tasks > project filter", "status": "merged", "note": "dup with Board/sidebar project filters"}, {"area": "Tasks", "feature": "Task row chips, dates, stamps, badge", "home": "Tasks > List view", "status": "kept", "note": ""}, {"area": "Tasks", "feature": "Auto archive done 7+ days", "home": "Tasks > List view", "status": "kept", "note": ""}, {"area": "Tasks", "feature": "Archived section toggle", "home": "Tasks > List view", "status": "kept", "note": ""}, {"area": "Tasks", "feature": "View archived via status filter", "home": "Tasks > List view", "status": "merged", "note": "dup of archived section toggle"}, {"area": "Tasks", "feature": "Empty state no matches", "home": "Tasks > List view", "status": "kept", "note": ""}, {"area": "Tasks", "feature": "Empty state no archived", "home": "Tasks > List view", "status": "kept", "note": ""}, {"area": "Tasks", "feature": "Manage categories/projects sidebar", "home": "Settings > Categories", "status": "merged", "note": "identical manager consolidated to Settings"}, {"area": "Tasks", "feature": "Delete category/project", "home": "Settings > Categories", "status": "kept", "note": ""}, {"area": "Tasks", "feature": "Category/project color picker gap", "home": "Settings > Categories", "status": "added", "note": "new custom color picker, no picker existed before"}, {"area": "Board", "feature": "Three column layout plus counts", "home": "Tasks > Board view", "status": "kept", "note": ""}, {"area": "Board", "feature": "Category filter tabs", "home": "Tasks > Board view", "status": "kept", "note": ""}, {"area": "Board", "feature": "Project filter sidebar", "home": "Tasks > project filter", "status": "merged", "note": "dup with Tasks project filter"}, {"area": "Board", "feature": "Grouping by category vs project", "home": "Tasks > Board view", "status": "kept", "note": ""}, {"area": "Board", "feature": "Collapsible group folders per column", "home": "Tasks > Board view", "status": "kept", "note": ""}, {"area": "Board", "feature": "Board card open", "home": "Tasks > Board view", "status": "kept", "note": ""}, {"area": "Board", "feature": "Drag card between columns", "home": "Tasks > Board view", "status": "kept", "note": ""}, {"area": "Board", "feature": "Drop target highlight", "home": "Tasks > Board view", "status": "kept", "note": ""}, {"area": "Board", "feature": "Mobile column switcher", "home": "Tasks > Board view", "status": "kept", "note": ""}, {"area": "Board", "feature": "Auto archive hides done cards", "home": "Tasks > Board view", "status": "kept", "note": ""}, {"area": "Board", "feature": "Empty column state", "home": "Tasks > Board view", "status": "kept", "note": ""}, {"area": "Board", "feature": "Inbox/tester report panel on Board", "home": "Tasks > Board > tester reports", "status": "kept", "note": "top of the Board; also in the avatar sheet"}, {"area": "Board", "feature": "No board native add card", "home": "Global > + sheet", "status": "merged", "note": "uses shared add flow"}, {"area": "Calendar", "feature": "Month/Week toggle", "home": "Calendar", "status": "kept", "note": ""}, {"area": "Calendar", "feature": "Prev/Next navigation", "home": "Calendar", "status": "kept", "note": ""}, {"area": "Calendar", "feature": "Month grid plus today highlight", "home": "Calendar", "status": "kept", "note": ""}, {"area": "Calendar", "feature": "US holidays", "home": "Calendar", "status": "kept", "note": ""}, {"area": "Calendar", "feature": "Task due date dots priority colored", "home": "Calendar", "status": "kept", "note": ""}, {"area": "Calendar", "feature": "Custom event dots", "home": "Calendar", "status": "kept", "note": ""}, {"area": "Calendar", "feature": "Create event via double click day", "home": "Calendar > Add event button", "status": "merged", "note": "undiscoverable dup of Add-event button"}, {"area": "Calendar", "feature": "Create event via Add event button", "home": "Calendar", "status": "kept", "note": ""}, {"area": "Calendar", "feature": "Event modal name/date/time/desc/color", "home": "Calendar", "status": "kept", "note": ""}, {"area": "Calendar", "feature": "Edit/delete event", "home": "Calendar", "status": "kept", "note": ""}, {"area": "Calendar", "feature": "Week view grid", "home": "Calendar", "status": "kept", "note": ""}, {"area": "Calendar", "feature": "Week view double click to add event", "home": "Calendar > Add event button", "status": "merged", "note": "same undiscoverable dup as month view"}, {"area": "Calendar", "feature": "Week view task/event click", "home": "Calendar", "status": "kept", "note": ""}, {"area": "Calendar", "feature": "Week view empty state", "home": "Calendar", "status": "kept", "note": ""}, {"area": "Calendar", "feature": "Agenda view on phone", "home": "Calendar", "status": "kept", "note": ""}, {"area": "Calendar", "feature": "Task priority border in week view", "home": "Calendar", "status": "kept", "note": ""}, {"area": "Training Shell", "feature": "Strength/Cardio mode toggle", "home": "Training", "status": "kept", "note": ""}, {"area": "Training Shell", "feature": "Body weight readout", "home": "Global > weigh-in sheet", "status": "merged", "note": "third weigh-in entry point"}, {"area": "Training Shell", "feature": "This week summary chips", "home": "Training", "status": "kept", "note": ""}, {"area": "Training Shell", "feature": "Log/Progress/Coach tabs", "home": "Training", "status": "kept", "note": ""}, {"area": "Training Shell", "feature": "Apple Watch sync freshness banner", "home": "Training", "status": "kept", "note": ""}, {"area": "Training Shell", "feature": "Desktop rail week tiles", "home": "Training", "status": "merged", "note": "responsive dup of week summary chips"}, {"area": "Training Shell", "feature": "Desktop rail readiness ring", "home": "Training > Sleep", "status": "merged", "note": "dup of mobile Recovery/Readiness card"}, {"area": "Training Shell", "feature": "Desktop rail consistency mini heatmap", "home": "Training > Strength", "status": "merged", "note": "dup of Gym streak heatmap"}, {"area": "Strength/Gym", "feature": "Day navigation", "home": "Training > Strength", "status": "kept", "note": ""}, {"area": "Strength/Gym", "feature": "Log exercise sheet", "home": "Training > Strength", "status": "kept", "note": ""}, {"area": "Strength/Gym", "feature": "Bodyweight auto detection", "home": "Training > Strength", "status": "kept", "note": ""}, {"area": "Strength/Gym", "feature": "Ranked exercise suggestions", "home": "Training > Strength", "status": "kept", "note": ""}, {"area": "Strength/Gym", "feature": "Beat last time chip", "home": "Training > Strength", "status": "kept", "note": ""}, {"area": "Strength/Gym", "feature": "Rest timer 60s/90s", "home": "Training > Strength", "status": "kept", "note": ""}, {"area": "Strength/Gym", "feature": "Set add/remove", "home": "Training > Strength", "status": "kept", "note": ""}, {"area": "Strength/Gym", "feature": "Todays log list plus edit/delete", "home": "Training > Strength", "status": "kept", "note": ""}, {"area": "Strength/Gym", "feature": "Session focus row", "home": "Training > Strength", "status": "kept", "note": ""}, {"area": "Strength/Gym", "feature": "PR badge per entry", "home": "Training > Strength > analytics", "status": "merged", "note": "dup of personal records shelf"}, {"area": "Strength/Gym", "feature": "Day stats", "home": "Training > Strength", "status": "kept", "note": ""}, {"area": "Strength/Gym", "feature": "Body weight/waist logging plus spark", "home": "Global > weigh-in sheet", "status": "merged", "note": "another weigh-in entry point"}, {"area": "Strength/Gym", "feature": "Calorie burn tile MET vs Watch", "home": "Training > Strength", "status": "kept", "note": ""}, {"area": "Strength/Gym", "feature": "Weigh in pace vs goal", "home": "Training > Strength", "status": "kept", "note": ""}, {"area": "Strength/Gym", "feature": "Gym coach recommendations", "home": "Training > Coach", "status": "kept", "note": ""}, {"area": "Strength/Gym", "feature": "Goal progress rows", "home": "Training > Strength", "status": "kept", "note": ""}, {"area": "Strength/Gym", "feature": "Activity breakdown strength/cardio/walk", "home": "Training > Strength", "status": "kept", "note": ""}, {"area": "Strength/Gym", "feature": "Calisthenics progression ladder suggestion", "home": "Training > Strength", "status": "kept", "note": ""}, {"area": "Strength/Gym", "feature": "Bodyweight stall detection", "home": "Training > Coach", "status": "kept", "note": ""}, {"area": "Strength/Gym", "feature": "16 week/30 day heatmap plus streak", "home": "Training > Strength", "status": "kept", "note": ""}, {"area": "Strength/Gym", "feature": "Next training day recommendation", "home": "Training > Coach", "status": "kept", "note": ""}, {"area": "Strength Analytics", "feature": "Last 30 days summary tiles", "home": "Training > Strength > analytics", "status": "kept", "note": ""}, {"area": "Strength Analytics", "feature": "Plateau insight plus try 3xN CTA", "home": "Training > Strength > analytics", "status": "kept", "note": ""}, {"area": "Strength Analytics", "feature": "Muscle balance card", "home": "Training > Strength > analytics", "status": "kept", "note": ""}, {"area": "Strength Analytics", "feature": "Movement list with sparkline", "home": "Training > Strength > analytics", "status": "kept", "note": ""}, {"area": "Strength Analytics", "feature": "Per movement progression curve", "home": "Training > Strength > analytics", "status": "kept", "note": ""}, {"area": "Strength Analytics", "feature": "Personal records shelf", "home": "Training > Strength > analytics", "status": "kept", "note": ""}, {"area": "Strength Analytics", "feature": "Estimated 1RM Epley computation", "home": "Training > Strength > analytics", "status": "kept", "note": ""}, {"area": "Cardio", "feature": "Day navigation", "home": "Training > Cardio", "status": "kept", "note": ""}, {"area": "Cardio", "feature": "One tap log your usual plus streak", "home": "Training > Cardio", "status": "kept", "note": ""}, {"area": "Cardio", "feature": "Sport tabs run/ride/swim", "home": "Training > Cardio", "status": "kept", "note": ""}, {"area": "Cardio", "feature": "Session add form distance/duration/pace", "home": "Training > Cardio", "status": "kept", "note": ""}, {"area": "Cardio", "feature": "Run intensity chips", "home": "Training > Cardio", "status": "kept", "note": ""}, {"area": "Cardio", "feature": "Run detail HR/elevation/RPE/zone bar", "home": "Training > Cardio", "status": "kept", "note": ""}, {"area": "Cardio", "feature": "Apple Watch cross check chip", "home": "Training > Cardio", "status": "kept", "note": ""}, {"area": "Cardio", "feature": "Apple Watch workout import list", "home": "Training > Cardio", "status": "kept", "note": ""}, {"area": "Cardio", "feature": "Days session list plus delete", "home": "Training > Cardio", "status": "kept", "note": ""}, {"area": "Cardio", "feature": "Day calorie burn total", "home": "Training > Cardio", "status": "kept", "note": ""}, {"area": "Cardio", "feature": "Weekly volume tiles plus mileage ring", "home": "Training > Cardio", "status": "kept", "note": ""}, {"area": "Cardio", "feature": "Race countdown plus projected finish", "home": "Training > Cardio", "status": "kept", "note": ""}, {"area": "Cardio", "feature": "Race target settings", "home": "Training > Cardio", "status": "kept", "note": ""}, {"area": "Cardio", "feature": "Cardio coach recommendations", "home": "Training > Coach", "status": "kept", "note": ""}, {"area": "Coach", "feature": "Headline verdict", "home": "Training > Coach", "status": "kept", "note": ""}, {"area": "Coach", "feature": "Evidence chips", "home": "Training > Coach", "status": "kept", "note": ""}, {"area": "Coach", "feature": "Do this workout pick", "home": "Training > Coach", "status": "kept", "note": ""}, {"area": "Coach", "feature": "Volume call", "home": "Training > Coach", "status": "kept", "note": ""}, {"area": "Coach", "feature": "Recovery lever", "home": "Training > Sleep", "status": "merged", "note": "same readinessAdvice text as Recovery card"}, {"area": "Coach", "feature": "Cardio coach 4 message types", "home": "Training > Coach", "status": "merged", "note": "duplicate listing of Cardio coach recommendations"}, {"area": "Diet", "feature": "Built in food database", "home": "Diet", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Date navigation", "home": "Diet", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Week strip", "home": "Diet", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Calorie ring", "home": "Diet", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Macro bars", "home": "Diet", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Activity/burn caption", "home": "Diet", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Edit goals modal", "home": "Global > goals sheet", "status": "merged", "note": "same state as Settings goals editor"}, {"area": "Diet", "feature": "Food recommendations", "home": "Diet", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Yesterdays advice", "home": "Diet", "status": "kept", "note": ""}, {"area": "Diet", "feature": "End of day review", "home": "Diet", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Water quick add buttons", "home": "Diet", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Water custom amount", "home": "Diet", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Water undo", "home": "Diet", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Meal grouped log", "home": "Diet", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Log bar inline search plus one tap add", "home": "Diet", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Log by voice", "home": "Diet", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Log by photo", "home": "Diet", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Add unmatched term as new food inline", "home": "Diet", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Your usuals quick add tiles", "home": "Diet", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Saved meal combo quick add tile", "home": "Diet", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Save meal as combo", "home": "Diet", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Edit/delete saved combo", "home": "Diet", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Logged combo group expand/collapse", "home": "Diet", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Add ingredient to logged combo", "home": "Diet", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Delete whole logged combo group", "home": "Diet", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Servings stepper", "home": "Diet", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Row editor fix name plus macros", "home": "Diet", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Delete logged entry", "home": "Diet", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Food library toggle", "home": "Diet > Food Library", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Manual add to bank form", "home": "Diet > Food Library", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Live search OFF plus USDA fallback", "home": "Diet > Food Library", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Community food bank", "home": "Diet > Food Library", "status": "kept", "note": ""}, {"area": "Diet", "feature": "My food bank list plus filter", "home": "Diet > Food Library", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Edit/remove bank food", "home": "Diet > Food Library", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Recent foods list per meal", "home": "Diet > Food Library", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Saved meals section", "home": "Diet > Food Library", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Diet history 14 days", "home": "Insights > weekly report", "status": "merged", "note": "dup of Insights weekly report"}, {"area": "Diet", "feature": "Auto remember/backfill logged foods", "home": "Diet", "status": "kept", "note": ""}, {"area": "Diet", "feature": "Empty states", "home": "Diet", "status": "kept", "note": ""}, {"area": "Insights", "feature": "Range selector week/month/year/all", "home": "Insights", "status": "kept", "note": ""}, {"area": "Insights", "feature": "Export CSV", "home": "Insights", "status": "kept", "note": ""}, {"area": "Insights", "feature": "Summary tiles", "home": "Insights", "status": "kept", "note": ""}, {"area": "Insights", "feature": "Eight trend charts", "home": "Insights > trends", "status": "kept", "note": ""}, {"area": "Insights", "feature": "Sets by muscle group", "home": "Insights", "status": "kept", "note": ""}, {"area": "Insights", "feature": "Tasks card", "home": "Insights", "status": "kept", "note": ""}, {"area": "Insights", "feature": "Weekly report card", "home": "Insights > weekly report", "status": "kept", "note": ""}, {"area": "Insights", "feature": "Chart hover/tap tooltip", "home": "Insights", "status": "kept", "note": ""}, {"area": "Insights", "feature": "Not enough data growing state", "home": "Insights", "status": "kept", "note": ""}, {"area": "Settings", "feature": "Sync status indicator mirrored", "home": "Global > sync indicator", "status": "merged", "note": "mirrors header sync status"}, {"area": "Settings", "feature": "Whos using this device", "home": "Settings > Account", "status": "kept", "note": ""}, {"area": "Settings", "feature": "Switch profile", "home": "Settings > Account", "status": "kept", "note": ""}, {"area": "Settings", "feature": "Start fresh erase profile", "home": "Settings > Account", "status": "kept", "note": ""}, {"area": "Settings", "feature": "Connect Apple Watch", "home": "Settings > Data & sync", "status": "kept", "note": ""}, {"area": "Settings", "feature": "Goals summary plus edit goals modal", "home": "Settings > Profile & goals", "status": "kept", "note": "Edit opens the one goals sheet"}, {"area": "Settings", "feature": "Theme segmented control", "home": "Settings > Appearance", "status": "kept", "note": ""}, {"area": "Settings", "feature": "Modules on/off gym/cardio/diet", "home": "Settings > Modules", "status": "kept", "note": ""}, {"area": "Settings", "feature": "Categories and projects manager", "home": "Settings > Categories", "status": "kept", "note": ""}, {"area": "Settings", "feature": "Anthropic API key set/remove", "home": "Settings > AI usage", "status": "kept", "note": ""}, {"area": "Settings", "feature": "AI usage and cost report", "home": "Settings > AI usage", "status": "kept", "note": ""}, {"area": "Settings", "feature": "Accent color picker", "home": "Settings > Appearance", "status": "kept", "note": ""}, {"area": "Settings", "feature": "Dashboard widgets visibility", "home": "Settings > Today layout", "status": "kept", "note": ""}, {"area": "Settings", "feature": "Saved layouts save/apply/delete", "home": "Settings > Today layout", "status": "kept", "note": ""}, {"area": "Settings", "feature": "Workout defaults rest timer/sets", "home": "Settings > Workouts", "status": "kept", "note": ""}, {"area": "Settings", "feature": "Accessibility reduce motion/text/haptics", "home": "Settings > Appearance", "status": "kept", "note": ""}, {"area": "Settings", "feature": "Backup your data export", "home": "Settings > Data & sync", "status": "kept", "note": ""}, {"area": "Settings", "feature": "Import from a spreadsheet CSV", "home": "Settings > Import CSV", "status": "kept", "note": ""}, {"area": "Settings", "feature": "Recent errors diagnostics", "home": "Settings > Data & sync", "status": "kept", "note": ""}, {"area": "Settings", "feature": "How the app is being used engagement", "home": "Settings > Account", "status": "kept", "note": ""}, {"area": "Settings", "feature": "Restore from a backup", "home": "Settings > Data & sync", "status": "kept", "note": ""}, {"area": "Sleep", "feature": "Sleep hours stepper", "home": "Training > Sleep", "status": "kept", "note": ""}, {"area": "Sleep", "feature": "Sleep quality picker", "home": "Training > Sleep", "status": "kept", "note": ""}, {"area": "Sleep", "feature": "Save sleep entry", "home": "Training > Sleep", "status": "kept", "note": ""}, {"area": "Sleep", "feature": "Freshness label", "home": "Training > Sleep", "status": "kept", "note": ""}, {"area": "Sleep", "feature": "Seven night trend bars", "home": "Training > Sleep", "status": "kept", "note": ""}, {"area": "Sleep", "feature": "Readiness score ring plus verdict", "home": "Training > Sleep", "status": "kept", "note": ""}, {"area": "Sleep", "feature": "Readiness advice text", "home": "Training > Sleep", "status": "kept", "note": ""}, {"area": "Sleep", "feature": "Empty state", "home": "Training > Sleep", "status": "kept", "note": ""}, {"area": "Onboarding", "feature": "Welcome step", "home": "Settings > Onboarding replay", "status": "kept", "note": ""}, {"area": "Onboarding", "feature": "Skip setup", "home": "Settings > Onboarding replay", "status": "kept", "note": ""}, {"area": "Onboarding", "feature": "Pick modules step", "home": "Settings > Onboarding replay", "status": "kept", "note": ""}, {"area": "Onboarding", "feature": "Set goals step", "home": "Global > goals sheet", "status": "merged", "note": "subset of full goals modal"}, {"area": "Onboarding", "feature": "Connect Apple Watch step", "home": "Settings > Data & sync", "status": "merged", "note": "dup of Settings watch connect card"}, {"area": "Onboarding", "feature": "Done step", "home": "Settings > Onboarding replay", "status": "kept", "note": ""}, {"area": "Onboarding", "feature": "Step nav back/continue/dots", "home": "Settings > Onboarding replay", "status": "kept", "note": ""}, {"area": "Onboarding", "feature": "Gap no re-entry point", "home": "Settings > Onboarding replay", "status": "added", "note": "replay entry point added"}, {"area": "Profiles", "feature": "Profile gate first run block", "home": "Settings > Account", "status": "kept", "note": ""}, {"area": "Profiles", "feature": "Pick existing profile", "home": "Settings > Account", "status": "kept", "note": ""}, {"area": "Profiles", "feature": "Create new profile", "home": "Settings > Account", "status": "kept", "note": ""}, {"area": "Profiles", "feature": "Current profile display 2 places", "home": "Settings > Account", "status": "merged", "note": "dup of sidebar profile display"}, {"area": "Profiles", "feature": "Sidebar tap to Settings", "home": "Global > sidebar/bottom nav", "status": "merged", "note": "same entry point listed under Sidebar Nav"}, {"area": "Profiles", "feature": "Switch profile/start fresh cross listed", "home": "Settings > Account", "status": "merged", "note": "cross-listing of Settings rows"}, {"area": "Profiles", "feature": "Profiles registry write", "home": "Settings > Account", "status": "kept", "note": ""}, {"area": "Profiles", "feature": "Engagement/usage report cross listed", "home": "Settings > Account", "status": "merged", "note": "cross-listing of Settings usage report row"}, {"area": "Sidebar Nav", "feature": "Logo", "home": "Global > sidebar/bottom nav", "status": "kept", "note": ""}, {"area": "Sidebar Nav", "feature": "Profile switcher entry", "home": "Global > sidebar/bottom nav", "status": "kept", "note": ""}, {"area": "Sidebar Nav", "feature": "Nav links to all views", "home": "Global > sidebar/bottom nav", "status": "kept", "note": ""}, {"area": "Sidebar Nav", "feature": "Board inbox badge", "home": "Tasks > Board > tester reports", "status": "merged", "note": "badge on Tasks and the avatar"}, {"area": "Sidebar Nav", "feature": "Theme toggle sidebar", "home": "Settings > Appearance", "status": "merged", "note": "one of 3 theme toggle copies"}, {"area": "Sidebar Nav", "feature": "Section dividers", "home": "Global > sidebar/bottom nav", "status": "kept", "note": ""}, {"area": "Sidebar Nav", "feature": "Categories list plus counts plus delete", "home": "Tasks > project filter", "status": "merged", "note": "consolidated into category/project filtering"}, {"area": "Sidebar Nav", "feature": "Manage categories/projects button", "home": "Settings > Categories", "status": "merged", "note": "dup manager, consolidated to Settings"}, {"area": "Sidebar Nav", "feature": "Add category/project", "home": "Settings > Categories", "status": "kept", "note": ""}, {"area": "Sidebar Nav", "feature": "Projects list plus active filter plus delete", "home": "Tasks > project filter", "status": "merged", "note": "consolidated into category/project filtering"}, {"area": "Sidebar Nav", "feature": "Mobile sidebar open/close", "home": "Global > sidebar/bottom nav", "status": "kept", "note": ""}, {"area": "Bottom Nav", "feature": "Today/Tasks/Board/Training/Diet icons", "home": "Global > sidebar/bottom nav", "status": "kept", "note": ""}, {"area": "Bottom Nav", "feature": "More overflow trigger", "home": "Global > More sheet", "status": "kept", "note": ""}, {"area": "More Sheet", "feature": "Sheet open/close", "home": "Global > More sheet", "status": "kept", "note": ""}, {"area": "More Sheet", "feature": "Calendar entry", "home": "Global > More sheet", "status": "kept", "note": ""}, {"area": "More Sheet", "feature": "Search entry", "home": "Global > Ctrl K search", "status": "merged", "note": "dup of header search icon"}, {"area": "More Sheet", "feature": "Insights entry", "home": "Global > More sheet", "status": "kept", "note": ""}, {"area": "More Sheet", "feature": "Settings entry", "home": "Global > More sheet", "status": "kept", "note": ""}, {"area": "More Sheet", "feature": "Theme toggle more sheet", "home": "Settings > Appearance", "status": "merged", "note": "third theme toggle copy"}, {"area": "Header & Search", "feature": "View title plus date", "home": "Global", "status": "kept", "note": ""}, {"area": "Header & Search", "feature": "Header condense on scroll", "home": "Global", "status": "kept", "note": ""}, {"area": "Header & Search", "feature": "Mobile menu button", "home": "Global", "status": "kept", "note": ""}, {"area": "Header & Search", "feature": "Search icon mobile", "home": "Global > Ctrl K search", "status": "merged", "note": "dup of More sheet search"}, {"area": "Header & Search", "feature": "Inline search box desktop", "home": "Tasks > List view", "status": "merged", "note": "same searchInput element as Tasks search"}, {"area": "Header & Search", "feature": "Command palette Ctrl K", "home": "Global > Ctrl K search", "status": "kept", "note": ""}, {"area": "Header & Search", "feature": "Sync status indicator header", "home": "Global > sync indicator", "status": "kept", "note": ""}, {"area": "Header & Search", "feature": "Header primary action button", "home": "Global > + sheet", "status": "kept", "note": ""}, {"area": "Header & Search", "feature": "Mobile primary FAB", "home": "Global > + sheet", "status": "merged", "note": "dup of header primary action"}, {"area": "Header & Search", "feature": "Top sync progress bar", "home": "Global > sync indicator", "status": "kept", "note": ""}, {"area": "Header & Search", "feature": "Update available banner", "home": "Global", "status": "kept", "note": ""}, {"area": "Sync Status", "feature": "Status pill connecting/saving/synced/error", "home": "Global > sync indicator", "status": "kept", "note": ""}, {"area": "Sync Status", "feature": "Tap to expand detail panel", "home": "Global > sync indicator", "status": "kept", "note": ""}, {"area": "Sync Status", "feature": "Close detail", "home": "Global > sync indicator", "status": "kept", "note": ""}, {"area": "Sync Status", "feature": "Manual retry", "home": "Global > sync indicator", "status": "kept", "note": ""}, {"area": "Sync Status", "feature": "Automatic retry loop 30s", "home": "Global > sync indicator", "status": "kept", "note": ""}, {"area": "Sync Status", "feature": "Stalled write timeout message", "home": "Global > sync indicator", "status": "kept", "note": ""}, {"area": "Sync Status", "feature": "Silent gap no conflict indicator", "home": "Global > sync indicator", "status": "added", "note": "new conflict indicator for silently dropped cloud data"}, {"area": "Layout Editor", "feature": "Enter/exit edit mode", "home": "Today > Edit layout sheet", "status": "kept", "note": ""}, {"area": "Layout Editor", "feature": "Per widget handle drag/up/down/hide", "home": "Today > Edit layout sheet", "status": "kept", "note": ""}, {"area": "Layout Editor", "feature": "Hidden widgets tray plus restore", "home": "Today > Edit layout sheet", "status": "kept", "note": ""}, {"area": "Layout Editor", "feature": "Save/apply/delete named layout", "home": "Settings > Today layout", "status": "kept", "note": ""}, {"area": "Layout Editor", "feature": "Wide span toggle dead flag", "home": "Removed", "status": "removed", "note": "same dead prefs.wide flag as Today row, never had UI"}, {"area": "Pull-to-Refresh", "feature": "Gesture arm plus visual indicator", "home": "Global > pull to refresh", "status": "kept", "note": ""}, {"area": "Pull-to-Refresh", "feature": "Commit threshold ready state", "home": "Global > pull to refresh", "status": "kept", "note": ""}, {"area": "Pull-to-Refresh", "feature": "Refresh execution plus completion toast", "home": "Global > pull to refresh", "status": "kept", "note": ""}, {"area": "Pull-to-Refresh", "feature": "Horizontal swipe cancellation", "home": "Global > pull to refresh", "status": "kept", "note": ""}, {"area": "CSV Import", "feature": "Open import modal", "home": "Settings > Import CSV", "status": "kept", "note": ""}, {"area": "CSV Import", "feature": "Paste textarea plus project dropdown", "home": "Settings > Import CSV", "status": "kept", "note": ""}, {"area": "CSV Import", "feature": "Preview success/parse errors", "home": "Settings > Import CSV", "status": "kept", "note": ""}, {"area": "CSV Import", "feature": "Import execution/cancel", "home": "Settings > Import CSV", "status": "kept", "note": ""}, {"area": "Inbox", "feature": "Live watch of inbox node", "home": "Tasks > Board > tester reports", "status": "kept", "note": ""}, {"area": "Inbox", "feature": "Board nav badge unread count", "home": "Tasks > Board > tester reports", "status": "kept", "note": "badge on Tasks and the avatar"}, {"area": "Inbox", "feature": "Inbox panel report cards plus screenshots", "home": "Tasks > Board > tester reports", "status": "kept", "note": ""}, {"area": "Inbox", "feature": "View screenshot full size", "home": "Tasks > Board > tester reports", "status": "kept", "note": ""}, {"area": "Inbox", "feature": "Accept report creates task", "home": "Tasks > Board > tester reports", "status": "kept", "note": ""}, {"area": "Inbox", "feature": "Dismiss report", "home": "Tasks > Board > tester reports", "status": "kept", "note": ""}, {"area": "Inbox", "feature": "Clear handled reports", "home": "Tasks > Board > tester reports", "status": "kept", "note": ""}, {"area": "Photo Logging", "feature": "Snap a meal trigger per meal row", "home": "Diet", "status": "kept", "note": ""}, {"area": "Photo Logging", "feature": "Photo capture input", "home": "Global > Photo Logging", "status": "kept", "note": ""}, {"area": "Photo Logging", "feature": "Photo analysis Claude vision", "home": "Global > Photo Logging", "status": "kept", "note": ""}, {"area": "Photo Logging", "feature": "Analyzing spinner", "home": "Global > Photo Logging", "status": "kept", "note": ""}, {"area": "Photo Logging", "feature": "Confirmation card edit before save", "home": "Global > Photo Logging", "status": "kept", "note": ""}, {"area": "Photo Logging", "feature": "Meal target selector", "home": "Global > Photo Logging", "status": "kept", "note": ""}, {"area": "Photo Logging", "feature": "Add all to log", "home": "Global > Photo Logging", "status": "kept", "note": ""}, {"area": "Photo Logging", "feature": "Discard analysis", "home": "Global > Photo Logging", "status": "kept", "note": ""}, {"area": "Photo Logging", "feature": "Pending photo persistence 12h", "home": "Global > Photo Logging", "status": "kept", "note": ""}, {"area": "Photo Logging", "feature": "No key inline prompt", "home": "Global > Photo Logging", "status": "kept", "note": ""}, {"area": "Photo Logging", "feature": "Error states unreadable/rejected/network", "home": "Global > Photo Logging", "status": "kept", "note": ""}, {"area": "Voice", "feature": "Floating mic FAB", "home": "Global > voice commands", "status": "kept", "note": ""}, {"area": "Voice", "feature": "Voice command panel", "home": "Global > voice commands", "status": "kept", "note": ""}, {"area": "Voice", "feature": "Mic listen toggle speech to text", "home": "Global > voice commands", "status": "kept", "note": ""}, {"area": "Voice", "feature": "Typed command fallback", "home": "Global > voice commands", "status": "kept", "note": ""}, {"area": "Voice", "feature": "Task creation via voice", "home": "Global > voice commands", "status": "kept", "note": ""}, {"area": "Voice", "feature": "Water logging via voice", "home": "Global > voice commands", "status": "kept", "note": ""}, {"area": "Voice", "feature": "Weight logging via voice", "home": "Global > voice commands", "status": "kept", "note": ""}, {"area": "Voice", "feature": "Food logging via voice", "home": "Global > voice commands", "status": "kept", "note": ""}, {"area": "Voice", "feature": "Navigation via voice", "home": "Global > voice commands", "status": "kept", "note": ""}, {"area": "Voice", "feature": "Multi command per utterance", "home": "Global > voice commands", "status": "kept", "note": ""}, {"area": "Voice", "feature": "Result list plus per command undo", "home": "Global > voice commands", "status": "kept", "note": ""}, {"area": "Voice", "feature": "Unrecognized speech notice", "home": "Global > voice commands", "status": "kept", "note": ""}, {"area": "Voice", "feature": "No key/error states voice", "home": "Global > voice commands", "status": "kept", "note": ""}, {"area": "AI Usage Tracker", "feature": "Usage/cost report panel", "home": "Settings > AI usage", "status": "kept", "note": ""}, {"area": "AI Usage Tracker", "feature": "Empty state AI usage", "home": "Settings > AI usage", "status": "kept", "note": ""}, {"area": "AI Usage Tracker", "feature": "Totals row", "home": "Settings > AI usage", "status": "kept", "note": ""}, {"area": "AI Usage Tracker", "feature": "Per feature breakdown", "home": "Settings > AI usage", "status": "kept", "note": ""}, {"area": "AI Usage Tracker", "feature": "Per day breakdown 14 days", "home": "Settings > AI usage", "status": "kept", "note": ""}, {"area": "AI Usage Tracker", "feature": "Cost estimate disclaimer", "home": "Settings > AI usage", "status": "kept", "note": ""}, {"area": "AI Usage Tracker", "feature": "Anthropic API key setup adjacent", "home": "Settings > AI usage", "status": "merged", "note": "same key slot as Settings API key row"}, {"area": "Toasts/Notifications", "feature": "Toast host plus plain toast", "home": "Global > toasts", "status": "kept", "note": ""}, {"area": "Toasts/Notifications", "feature": "Actionable/undo toast", "home": "Global > toasts", "status": "kept", "note": ""}, {"area": "Toasts/Notifications", "feature": "Global empty state component", "home": "Global > toasts", "status": "kept", "note": ""}, {"area": "Toasts/Notifications", "feature": "Empty state CTA", "home": "Global > toasts", "status": "kept", "note": ""}, {"area": "Toasts/Notifications", "feature": "Keyboard access promotion", "home": "Global > toasts", "status": "kept", "note": ""}, {"area": "Toasts/Notifications", "feature": "Global error toast", "home": "Global > toasts", "status": "kept", "note": ""}, {"area": "Toasts/Notifications", "feature": "Recent errors diagnostics panel", "home": "Settings > Data & sync", "status": "merged", "note": "dup of Settings diagnostics row"}, {"area": "Toasts/Notifications", "feature": "Haptic feedback", "home": "Global > toasts", "status": "kept", "note": ""}, {"area": "Notable gaps", "feature": "No priority control in task modal", "home": "Tasks > task detail sheet", "status": "added", "note": "new priority picker, feeds Calendar dot/border colors"}, {"area": "Notable gaps", "feature": "No custom category/project color picker", "home": "Settings > Categories", "status": "added", "note": "new color picker for categories and projects"}, {"area": "Notable gaps", "feature": "No install/Add to Home Screen prompt", "home": "Global", "status": "added", "note": "new install prompt UI"}, {"area": "Notable gaps", "feature": "No conflict indicator for sync", "home": "Global > sync indicator", "status": "added", "note": "new indicator so dropped cloud writes are visible"}, {"area": "Notable gaps", "feature": "Two dead renders fire with no host div", "home": "Today", "status": "added", "note": "cleanup: remove dead renderWeightTrend/renderWeeklyReport calls from Today"}, {"area": "Notable gaps", "feature": "Stale voice error copy says Diet tab", "home": "Global > voice commands", "status": "added", "note": "fix copy to point to Settings instead of Diet tab"}, {"area": "Notable gaps", "feature": "Wide widget toggle unshipped in data model", "home": "Settings > Today layout", "status": "added", "note": "either ship a wide-span UI or remove the dead prefs.wide flag"}, {"area": "Notable gaps", "feature": "No way to replay onboarding", "home": "Settings > Onboarding replay", "status": "added", "note": "new replay entry point added"}]</script>
+<script>
+/* ===== Day Line: every other screen ===== */
+const C=k=>`var(--c-${k})`;
+const chip=(t,k,i)=>`<span class="chip" style="--c:${k?C(k):"var(--sub)"}">${i?ico(i):""}${t}</span>`;
+const W=["Work","meet"],H=["Home","habit"],D=["Daylign","water"],F=["Health","move"];
+const hdr=(sub,title,right="")=>`<div class="mhd2"><div><small>${sub}</small>${title}</div><div class="r">${right}</div></div>`;
+const ib=i=>`<div class="iconbtn">${ico(i)}</div>`;
+const scr=(inner,navOn)=>`<div class="phone app scr">${inner}<div class="grow"></div>${navOn===null?"":nav(navOn)}</div>`;
+const sheet=(under,body)=>`<div class="phone app sh"><div class="under">${under}</div><div class="dim"></div><div class="sheet"><div class="grab"></div>${body}</div></div>`;
+const seg=(items,on,full)=>`<div class="seg ${full?"full":""}">${items.map(x=>`<span class="${x===on?"on":""}">${x}</span>`).join("")}</div>`;
+const task=(t,o={})=>`<div class="trow ${o.done?"done":""}"><span class="cb ${o.done?"on":""}"></span><div class="tb"><span>${t}</span><div class="meta">${o.cat?chip(o.cat[0],o.cat[1]):""}${o.due?`<span class="due ${o.od?"od":""}">${o.due}</span>`:""}${o.sub?`<span class="mut">${o.sub} steps</span>`:""}${o.est?`<span class="mut">${o.est}</span>`:""}</div></div>${o.pri?`<span class="flag p${o.pri}">${ico("flag")}</span>`:""}</div>`;
+const fld=(l,v,cls="")=>`<div class="fld"><label>${l}</label><div class="in ${cls}">${v}</div></div>`;
+const li=(i,t,v="",k)=>`<div class="li" ${k?`style="--c:${C(k)}"`:""}>${i==="sw"?`<span class="sw"></span>`:i?ico(i):""}<span>${t}</span><span class="v">${v}</span></div>`;
+const bar2=(p,k)=>`<div class="bar2" style="--c:${C(k)}"><i style="width:${p}%"></i></div>`;
+const tog=on=>`<span class="tog ${on?"on":""}"></span>`;
+const bars=(vals,o={})=>{const w=o.w||260,h=o.h||70,k=o.k||"move";const max=o.max||Math.max(...vals.filter(v=>v!=null),o.goal||0)*1.12;const bw=w/vals.length;
+ return `<svg class="chart" style="height:${h}px" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">${vals.map((v,i)=>v==null?`<rect x="${i*bw+bw*.2}" y="${h-2}" width="${bw*.6}" height="2" fill="var(--line)"/>`:`<rect x="${i*bw+bw*.18}" y="${h-v/max*h}" width="${bw*.64}" height="${v/max*h}" rx="2" fill="${C(k)}" opacity="${o.hi===i?1:.72}"/>`).join("")}${o.goal?`<line x1="0" x2="${w}" y1="${h-o.goal/max*h}" y2="${h-o.goal/max*h}" stroke="var(--ink)" stroke-dasharray="4 4" stroke-width="1" vector-effect="non-scaling-stroke"/>`:""}</svg>`};
+const lineC=(vals,o={})=>{const w=o.w||260,h=o.h||70,k=o.k||"move";const mn=Math.min(...vals),mx=Math.max(...vals);const pts=vals.map((v,i)=>`${(i*w/(vals.length-1)).toFixed(1)},${(h-4-(v-mn)/(mx-mn||1)*(h-8)).toFixed(1)}`).join(" ");
+ return `<svg class="chart" style="height:${h}px" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${C(k)}" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/></svg>`};
+const spark=(vals,k="move")=>{const w=54,h=16,mn=Math.min(...vals),mx=Math.max(...vals);return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><polyline points="${vals.map((v,i)=>`${i*w/(vals.length-1)},${h-2-(v-mn)/(mx-mn||1)*(h-4)}`).join(" ")}" fill="none" stroke="${C(k)}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`};
+const ring=(pct,k,label,size=86,sub="")=>{const r=size/2-7,c=2*Math.PI*r;return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="flex:none"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--line)" stroke-width="7"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${C(k)}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${(c*pct).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 ${size/2} ${size/2})"/><text x="50%" y="${sub?"46%":"52%"}" text-anchor="middle" dominant-baseline="middle" font-family="JetBrains Mono" font-weight="700" font-size="${size/4.2}" fill="var(--ink)">${label}</text>${sub?`<text x="50%" y="66%" text-anchor="middle" font-family="Geist" font-size="${size/9}" fill="var(--mute)">${sub}</text>`:""}</svg>`};
+const heat=()=>{let s="";for(let i=0;i<112;i++){const v=((i*37+11)%9);const o=i>104?0:v<3?.12:v<5?.35:v<7?.65:1;s+=`<i style="opacity:${o||.06}"></i>`}return `<div class="heat">${s}</div>`};
+const dayStrip=()=>`<div class="grid4" style="grid-template-columns:repeat(7,1fr);gap:4px">${[["M",.9],["T",.7],["W",1],["T",.6],["F",.95],["S",.8],["S",.62]].map((d,i)=>`<div style="display:grid;justify-items:center;gap:2px;font:500 9px var(--mono);color:${i===1?"var(--ink)":"var(--mute)"}">${ring(d[1],"food","",30)}${d[0]}</div>`).join("")}</div>`;
+
+/* ---------- TASKS ---------- */
+const tasksList=scr(`${hdr("17 open","Tasks",ib("search"))}<div class="pad">
+ ${seg(["List","Board"],"List")}
+ <div class="fchips"><span class="fc on">Open ${ico("expand_more")}</span><span class="fc">All categories ${ico("expand_more")}</span><span class="fc">Due date ${ico("expand_more")}</span></div>
+ <div class="fchips"><span class="fc on">All</span><span class="fc">Daylign 5</span><span class="fc">Home 4</span><span class="fc">Client 8</span></div>
+ <div><div class="gh od"><span>Overdue</span><span>1</span></div>${task("Tax form",{cat:W,due:"Sep 27",od:1,pri:3})}</div>
+ <div><div class="gh"><span>Today</span><span>2</span></div>${task("Invoice review",{cat:W,due:"Today 3:00",est:"45m",sub:"1/3",pri:2})}${task("Reply to landlord",{cat:H,est:"5m"})}</div>
+ <div><div class="gh"><span>This week</span><span>2</span></div>${task("Renew permit",{cat:H,due:"Fri",pri:1})}${task("Onboarding replay screen",{cat:D,due:"Thu",sub:"0/4"})}</div>
+ <div><div class="gh"><span>No date</span><span>4</span></div><div class="triage" style="padding:2px 0 4px"><b>4</b> tasks have no date. <u>Plan them</u></div>${task("Pick app icon",{cat:D})}${task("Call plumber",{cat:H})}</div>
+ <div class="li">${ico("inventory_2")}<span>Archived</span><span class="v">12, done 7+ days ago ${ico("chevron_right")}</span></div>
+</div>`,"Tasks");
+
+const bcard=(t,k,m="")=>`<div class="bcard" style="--c:${C(k)}"><span>${t}</span><div class="meta">${m}</div></div>`;
+const board=scr(`${hdr("Board","Tasks",ib("search"))}<div class="pad">
+ ${seg(["List","Board"],"Board")}
+ <div class="inbox"><b>${ico("bug_report")} 2 tester reports</b><div class="rep"><div class="shot"></div><div>"Water button adds twice on iPhone"<div class="small">from a tester, Sep 28 · tap the picture to see it full size</div></div></div><div class="btnrow"><span class="btn p">Make it a task</span><span class="btn">Dismiss</span><span class="btn d">Clear handled</span></div></div>
+ <div class="colsw"><span class="on">To do 6</span><span>Doing 3</span><span>Done 8</span></div>
+ <div class="fchips"><span class="fc on">All</span><span class="fc">Work</span><span class="fc">Home</span><span class="fc">Daylign</span><span class="fc">Health</span></div>
+ <div class="folder" style="--c:${C("meet")}"><span class="sw"></span>Work · 2 ${ico("expand_more")}</div>
+ ${bcard("Tax form","meet",`<span class="due od mono small" style="color:var(--warn)">Sep 27</span><span class="flag p3">${ico("flag")}</span>`)}
+ ${bcard("Invoice review","meet",`<span class="mono small">Today</span><span class="small">1/3 steps</span>`)}
+ <div class="folder" style="--c:${C("habit")}"><span class="sw"></span>Home · 3 ${ico("expand_more")}</div>
+ ${bcard("Renew permit","habit",`<span class="mono small">Fri</span>`)}
+ ${bcard("Call plumber","habit","")}
+</div>`,"Tasks");
+
+const taskSheet=sheet(tasksList,`<h4>Invoice review</h4>
+ <div class="fld"><label>NOTES</label><div class="in" style="color:var(--sub)">Check the September hours before sending.</div></div>
+ <div class="grid2">${fld("CATEGORY",chip("Work","meet"))}${fld("PROJECT","Client")}${fld("DUE","Tue, Sep 30")}${fld("TIME ON YOUR DAY","3:00 · 45 min")}</div>
+ <div class="fld"><label>PRIORITY <span class="new">NEW</span></label>${seg(["None","Low","Medium","High"],"Medium",1)}</div>
+ <div class="fld"><label>STATUS</label>${seg(["To do","Doing","Done"],"To do",1)}</div>
+ <div class="fld"><label>STEPS 1/3</label><div>${task("Pull hours",{done:1})}${task("Match to contract")}${task("Send")}<div class="small" style="padding-top:6px;color:var(--accent);font-weight:600">+ Add step</div></div></div>
+ <div class="small">Created Sep 24</div>
+ <div class="btnrow"><span class="btn d">${ico("delete")} Delete</span><span style="flex:1"></span><span class="btn">Cancel</span><span class="btn p">Save</span></div>`);
+
+const tasksDesk=`<div class="desk app" style="grid-template-columns:210px 1fr">
+ <div class="side"><div class="date" style="font-size:30px"><small>Tuesday, September</small>29</div>
+  <div class="dnav">${[["today","Today"],["check_circle","Tasks",1],["calendar_month","Calendar"],["fitness_center","Training"],["restaurant","Diet"],["insights","Insights"]].map(n=>`<div class="${n[2]?"on":""}">${ico(n[0])}${n[1]}</div>`).join("")}</div>
+  <div class="lbl">CATEGORIES</div>${[["Work","meet",8],["Home","habit",4],["Daylign","water",5],["Health","move",2]].map(c=>`<div class="cat" style="--c:${C(c[1])}"><span class="sw"></span>${c[0]}<em>${c[2]}</em></div>`).join("")}
+  <div class="lbl">PROJECTS</div>${[["All projects","",19,1],["Client","",8],["House move","",3]].map(c=>`<div class="cat ${c[3]?"on":""}" style="--c:var(--mute)">${c[0]}<em>${c[2]}</em></div>`).join("")}
+  <div class="small" style="color:var(--accent);font-weight:600">Manage categories and projects</div></div>
+ <div class="main"><div style="display:flex;gap:10px;align-items:center"><div class="date" style="font-size:30px">Tasks</div><div style="margin-left:auto">${seg(["List","Board"],"Board")}</div><div class="search" style="width:200px">${ico("search")} Search tasks <kbd>Ctrl K</kbd></div><span class="btn p">${ico("add")} New task</span></div>
+  <div class="cols3">
+   <div><div class="colh">To do <em>6</em></div>${bcard("Tax form","meet",`<span class="mono small" style="color:var(--warn)">Sep 27</span><span class="flag p3">${ico("flag")}</span>`)}${bcard("Renew permit","habit",`<span class="mono small">Fri</span>`)}${bcard("Pick app icon","water","")}${bcard("Call plumber","habit","")}</div>
+   <div><div class="colh">Doing <em>3</em></div>${bcard("Invoice review","meet",`<span class="mono small">Today</span><span class="small">1/3</span>`)}${bcard("Onboarding replay screen","water",`<span class="mono small">Thu</span>`)}<div class="dropzone">Drop here to move to Doing</div></div>
+   <div><div class="colh">Done <em>8</em></div>${bcard("Order protein","move",`<span class="small">done today</span>`)}${bcard("Book dentist","habit",`<span class="small">done Sep 26</span>`)}<div class="small">Older done cards are archived after 7 days.</div></div>
+  </div></div></div>`;
+
+/* ---------- CALENDAR ---------- */
+const monthGrid=()=>{const dots={3:["meet"],7:["hol"],9:["water","meet"],12:["move"],15:["meet","habit"],18:["water"],22:["meet"],24:["habit"],27:["meet","move"],29:["meet","move","habit"],30:["meet"]};let s=["M","T","W","T","F","S","S"].map(d=>`<div class="dh">${d}</div>`).join("");s+=`<div class="d o">31</div>`;
+ for(let d=1;d<=30;d++){const dd=dots[d]||[];s+=`<div class="d ${d===29?"t":""} ${d===30?"s":""}">${d}${dd[0]==="hol"?`<span class="hol">Labor Day</span>`:`<span class="dots">${dd.map(k=>`<i style="--c:${C(k)}"></i>`).join("")}</span>`}</div>`}
+ for(let d=1;d<=4;d++)s+=`<div class="d o">${d}</div>`;return `<div class="mgrid">${s}</div>`};
+const calMonth=scr(`${hdr("September 2026","Calendar",seg(["Month","Week"],"Month"))}<div class="pad">
+ <div class="dnav2">${ico("chevron_left")}<span>September</span>${ico("chevron_right")}</div>${monthGrid()}
+ <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-family:var(--disp);font-size:16px">Tue 29</b><span class="btn">${ico("add")} Event</span></div>
+ <div class="line" style="--cut:60%;padding:4px 0 0 60px">${it("past","9:00","groups","Stand-up","","30m","meet")}${it("past","11:00","event","Dentist","Google Calendar, read only","","meet")}${it("fut","3:00","check_circle","Invoice review","task, due today","45m","meet")}${it("fut","6:30","fitness_center","Push day","","55m","move")}</div>
+ <div class="small">Dots are coloured by the event's colour, or the task's priority.</div>
+</div>`,null);
+const evSheet=sheet(calMonth,`<h4>New event</h4>${fld("NAME","Dentist")}<div class="grid2">${fld("DATE","Tue, Sep 29")}${fld("TIME","11:00 to 11:45")}</div>${fld("NOTES",`<span style="color:var(--mute)">Bring insurance card</span>`)}
+ <div class="fld"><label>COLOUR</label><div class="swatches">${["meet","habit","move","water","sleep","food"].map((k,i)=>`<i class="${i===0?"sel":""}" style="--c:${C(k)}"></i>`).join("")}</div></div>
+ <div class="btnrow"><span class="btn d">${ico("delete")} Delete</span><span style="flex:1"></span><span class="btn p">Save</span></div>
+ <div class="small">On desktop, double-click a day also opens this.</div>`);
+const calAgenda=scr(`${hdr("Next 7 days","Agenda",seg(["Month","Week"],"Week"))}<div class="pad">
+ <div class="small">On a phone, Week shows as a list of days.</div>
+ ${[["Tue 29 · today",[["9:00","Stand-up","meet"],["11:00","Dentist","meet"],["6:30","Push day","move"]]],["Wed 30",[["all day","Invoice review due","meet"],["7:30","Ride","move"]]],["Thu 1",[["9:00","Stand-up","meet"],["","Onboarding replay screen","water"]]],["Fri 2",[["","Renew permit due","habit"]]]].map(d=>`<div><div class="gh"><span>${d[0]}</span></div>${d[1].map(e=>`<div class="li" style="--c:${C(e[2])}"><span class="sw"></span><span>${e[1]}</span><span class="v">${e[0]}</span></div>`).join("")}</div>`).join("")}
+ <div class="empty"><b>Sat 3 is clear</b>Nothing planned. Double-tap to add an event.</div>
+</div>`,null);
+const ev=(col,top,hgt,t,k,sub)=>`<div class="ev" style="--c:${C(k)};top:${top}px;height:${hgt}px">${t}${sub?`<em>${sub}</em>`:""}</div>`;
+const weekCols=[[ev(0,34,30,"Stand-up","meet","9:00"),ev(0,238,60,"Ride","move","3:00")],[ev(1,34,30,"Stand-up","meet","9:00"),ev(1,102,26,"Dentist","meet","11:00"),ev(1,204,50,"Invoice review","meet","task"),ev(1,356,56,"Push day","move","6:30")],[ev(2,0,24,"Ride","move","7:30")],[ev(3,34,30,"Stand-up","meet","9:00"),ev(3,136,48,"Design sync","water","12:00")],[ev(4,170,40,"Lunch w/ Sam","food","1:00")],[ev(5,68,90,"Farmers market","habit","10:00")],[]];
+const calDesk=`<div class="desk app" style="grid-template-columns:210px 1fr">
+ <div class="side"><div class="date" style="font-size:30px"><small>Tuesday, September</small>29</div>
+  <div class="dnav">${[["today","Today"],["check_circle","Tasks"],["calendar_month","Calendar",1],["fitness_center","Training"],["restaurant","Diet"],["insights","Insights"]].map(n=>`<div class="${n[2]?"on":""}">${ico(n[0])}${n[1]}</div>`).join("")}</div></div>
+ <div class="main"><div style="display:flex;gap:10px;align-items:center"><div class="date" style="font-size:30px">Sep 28 to Oct 4</div><div style="margin-left:auto">${seg(["Month","Week"],"Week")}</div><span class="btn">${ico("chevron_left")}</span><span class="btn">${ico("chevron_right")}</span><span class="btn p">${ico("add")} Event</span></div>
+  <div><div class="wkhd"><span></span>${["Mon 28","Tue 29","Wed 30","Thu 1","Fri 2","Sat 3","Sun 4"].map((d,i)=>`<span class="${i===1?"t":""}">${d}</span>`).join("")}</div>
+  <div class="unsch"><span style="border:none;color:var(--mute)">any</span><span></span><span>Reply to landlord</span><span>Tax form</span><span>Onboarding</span><span>Renew permit</span><span></span><span></span></div>
+  <div class="wkg"><div>${["8a","9a","10a","11a","12p","1p","2p","3p","4p","5p","6p","7p"].map(h=>`<div class="hh">${h}</div>`).join("")}</div>${weekCols.map(c=>`<div class="col">${Array(12).fill('<div class="ln"></div>').join("")}${c.join("")}</div>`).join("")}</div></div>
+  <div class="small">Drag an item from "no time" onto an hour to schedule it. Double-click an empty slot to add an event.</div></div></div>`;
+
+/* ---------- TRAINING ---------- */
+const trTop=(on)=>`${hdr("This week: 3 sessions","Training",`<span class="pill" style="--c:${C("sleep")}"><i></i>182.4 lb</span>`)}<div class="pad" style="padding-bottom:4px">${seg(["Strength","Cardio","Coach","Sleep"],on,1)}</div>`;
+const logged=(n,s,v,pr)=>`<div class="li" style="--c:${C("move")}"><span class="sw"></span><div style="flex:1"><div>${n} ${pr?chip("PR","food","trophy"):""}</div><div class="small mono">${s}</div></div><span class="v">${v}</span>${ico("edit")}${ico("delete")}</div>`;
+const trStrength=scr(`${trTop("Strength")}<div class="pad">
+ <div class="banner">${ico("watch")} Apple Watch synced 12 min ago <u>Details</u></div>
+ <div class="grid4" style="grid-template-columns:repeat(7,1fr);gap:4px">${["M","T","W","T","F","S","S"].map((d,i)=>`<div style="text-align:center;font:500 9px var(--mono);color:var(--mute)"><div style="height:24px;border-radius:7px;margin-bottom:2px;background:${[0,1,3].includes(i)?C("move"):"var(--surf)"};border:1px solid var(--line)"></div>${d}</div>`).join("")}</div>
+ <div class="dnav2">${ico("chevron_left")}<span>Today, Tue 29</span>${ico("chevron_right")}</div>
+ <div class="card2 tint" style="--c:${C("move")}"><h6>Push: chest, shoulders, triceps <em>9 sets · 3,960 lb · ~190 kcal</em></h6>
+  ${logged("Bench press","3 x 8 · 155 lb","",1)}${logged("Overhead press","3 x 8 · 95 lb","")}${logged("Dips","3 x 12 · bodyweight","")}</div>
+ <span class="btn p w">${ico("add")} Log exercise</span>
+ <div class="card2"><h6>Consistency <em>12-day streak</em></h6>${heat()}<div class="small" style="margin-top:4px">Last 16 weeks. Next training day: Thursday, legs.</div></div>
+</div>`,"Training");
+const trLog=sheet(trStrength,`<h4>Log exercise</h4>
+ <div class="fld"><label>EXERCISE</label><div class="in">Incline dumb<span style="border-left:1.5px solid var(--accent);height:14px"></span></div></div>
+ <div class="fchips" style="flex-wrap:wrap"><span class="fc on">Incline dumbbell press</span><span class="fc">Incline bench</span><span class="fc">Incline fly</span></div>
+ <div class="banner" style="--c-water:var(--c-food)">${ico("trending_up")} Last time 3 x 10 at 50 lb. Beat it: 3 x 10 at 55.</div>
+ <div class="fld"><label>SETS</label>${[1,2,3].map(n=>`<div class="li"><span class="mono small">Set ${n}</span><span class="mono" style="margin-left:auto">10 reps</span><span class="mono">55 lb</span>${ico("remove_circle")}</div>`).join("")}<div class="small" style="color:var(--accent);font-weight:600;padding-top:4px">+ Add set</div></div>
+ <div class="btnrow"><span class="small">Rest timer</span><span class="btn">60s</span><span class="btn" style="border-color:var(--accent);color:var(--accent)">90s</span><span style="flex:1"></span><span class="btn p">Save</span></div>
+ <div class="small">Bodyweight moves (dips, pull-ups) are spotted automatically and skip the weight field.</div>`);
+const mv=(n,vals,tag,k)=>`<div class="li"><span style="flex:1">${n}</span>${spark(vals,k)}${chip(tag,tag==="improving"?"move":"food")}</div>`;
+const trProgress=scr(`${trTop("Strength")}<div class="pad">
+ ${seg(["Today","Progress"],"Progress")}
+ <div class="grid4">${[["14","sessions"],["162","sets"],["48k","lb moved"],["5","PRs"]].map(t=>`<div class="tile"><b>${t[0]}</b><span>${t[1]}</span></div>`).join("")}</div>
+ <div class="card2 tint" style="--c:${C("food")}"><h6>Bench has stalled at 155 for 3 weeks</h6><div class="small" style="margin-bottom:8px">Heavier, shorter sets usually break it.</div><span class="btn p">Try 3 x 6 at 160</span></div>
+ <div class="card2"><h6>Muscle balance <em>30 days</em></h6>${[["Chest",80],["Back",62],["Legs",48],["Shoulders",70],["Arms",55]].map(m=>`<div style="display:grid;grid-template-columns:62px 1fr;gap:6px;align-items:center;font-size:10.5px;margin:3px 0">${m[0]}${bar2(m[1],"move")}</div>`).join("")}</div>
+ <div class="card2"><h6>Movements</h6>${mv("Bench press",[140,145,150,155,155,155],"stalled","food")}${mv("Squat",[185,195,200,210,215,225],"improving","move")}${mv("Pull-ups",[5,6,6,7,8,8],"improving","move")}</div>
+ <div class="card2"><h6>Squat ${seg(["Est. 1RM","Top set"],"Est. 1RM")}</h6>${lineC([230,238,241,250,256,262,270],{k:"move",h:60})}</div>
+ <div class="card2"><h6>Personal records</h6><div class="fchips" style="flex-wrap:wrap">${chip("Squat 225 x 5","food","trophy")}${chip("Bench 155 x 8","food","trophy")}${chip("Pull-ups 8","food","trophy")}</div></div>
+</div>`,"Training");
+const trCardio=scr(`${trTop("Cardio")}<div class="pad">
+ <div class="card2 tint" style="--c:${C("move")}"><h6>Your usual ride <em>5-day streak</em></h6><div style="display:flex;align-items:center;gap:8px"><span class="mono" style="font-weight:700;font-size:18px">8 mi · 32 min</span><span class="btn p" style="margin-left:auto">Log it</span></div></div>
+ <div class="dnav2">${ico("chevron_left")}<span>Today, Tue 29</span>${ico("chevron_right")}</div>
+ ${seg(["Run","Ride","Swim"],"Run",1)}
+ <div class="grid3">${fld("DISTANCE","3.1 mi")}${fld("TIME","27:40")}${fld("PACE",`<span class="mono">8:55/mi</span>`)}</div>
+ <div class="fchips"><span class="fc">Easy</span><span class="fc on">Tempo</span><span class="fc">Intervals</span><span class="fc">Long</span></div>
+ <div class="li">${ico("tune")}<span>Heart rate, elevation, effort, zones</span><span class="v">${ico("expand_more")}</span></div>
+ <div class="banner">${ico("watch")} Watch saw 3.1 mi in 27:40 <u>Use this</u></div>
+ <div class="card2"><h6>From your Watch</h6>${li("directions_walk","Outdoor walk","1.2 mi · <b style='color:var(--accent)'>Add to log</b>")}</div>
+ <div class="card2"><h6>Today <em>380 kcal</em></h6>${li("directions_bike","Ride, 8 mi","32 min ×")}</div>
+ <div style="display:flex;gap:10px;align-items:center">${ring(.72,"move","18",70,"of 25 mi")}<div class="card2 tint" style="--c:${C("meet")};flex:1"><h6>Half marathon</h6><div class="mono" style="font-weight:700">47 days</div><div class="small">Projected finish 1:58. Target 2:00.</div></div></div>
+</div>`,"Training");
+const coachRow=(t,v,k)=>`<div class="li" style="--c:${C(k)};align-items:flex-start"><span class="sw" style="margin-top:3px"></span><div><b style="font-size:11.5px">${t}</b><div class="small">${v}</div></div></div>`;
+const trCoach=scr(`${trTop("Coach")}<div class="pad">
+ <p style="margin:0;font-family:var(--disp);font-weight:700;font-size:21px;letter-spacing:-.02em;line-height:1.15">Push today. <span style="color:var(--mute)">Your legs are rested for Thursday.</span></p>
+ <div class="fchips" style="flex-wrap:wrap">${chip("Readiness 82","sleep")}${chip("Last push 4 days ago","move")}${chip("Sleep 7h10","sleep")}</div>
+ <div class="card2">${coachRow("Do this","Push A: bench, overhead press, dips. <b style='color:var(--accent)'>Start it</b>","move")}${coachRow("Volume","Chest 12 sets this week, aim for 14.","food")}${coachRow("Recovery","Sleep is steady. Keep intensity.","sleep")}${coachRow("Cardio","Mileage rose 18%. Stay under 10% next week.","water")}</div>
+ <div class="grid2"><div class="tile"><b>420<span style="font-size:10px"> /500</span></b><span>burned today, Watch</span></div><div class="tile"><b>-0.6<span style="font-size:10px"> lb/wk</span></b><span>goal -0.5, on pace</span></div></div>
+ <div class="card2"><h6>Pull-ups ladder</h6><div class="ladder"><div class="d"><i></i>Dead hangs 3 x 30s</div><div class="d"><i></i>Negatives 3 x 5</div><div class="c"><i></i>3 x 6 full reps (you are here)</div><div><i></i>3 x 8</div><div><i></i>Weighted, +10 lb</div></div></div>
+ <div class="card2"><h6>Goals <em>tap to open</em></h6>${[["Weight 175 lb","sleep",62],["Protein 150g daily","food",75],["Ride 25 mi a week","move",72]].map(g=>`<div style="font-size:10.5px;margin:4px 0">${g[0]}${bar2(g[2],g[1])}</div>`).join("")}<div class="small" style="margin-top:6px">This month: strength 55%, cardio 35%, walking 10%.</div></div>
+</div>`,"Training");
+const trSleep=scr(`${trTop("Sleep")}<div class="pad">
+ <div style="display:flex;gap:12px;align-items:center">${ring(.82,"sleep","82",96,"readiness")}<div><b style="font-family:var(--disp);font-size:18px">Good to push</b><div class="small">Sleep and load are both fine. Heavy day is OK.</div></div></div>
+ <div class="card2"><h6>Last night <em>logged by you, 7:02 am</em></h6>
+  <div class="stepper"><span>-</span><b>7h 15m</b><span>+</span></div>
+  <div style="margin-top:8px">${seg(["Poor","Okay","Good","Great"],"Good",1)}</div>
+  <span class="btn p w" style="margin-top:8px">Save</span></div>
+ <div class="card2"><h6>Last 7 nights <em>avg 7h02</em></h6>${bars([6.8,7.2,6.5,7.9,13.2,7.1,7.25],{k:"sleep",h:64,hi:6,max:13.5})}<div class="small">Fri shows 13h. It looks wrong, so it is flagged but kept.</div></div>
+ <div class="empty"><b>No readiness yet?</b>It appears after your first 6 sessions.</div>
+</div>`,"Training");
+
+/* ---------- DIET ---------- */
+const food=(n,s,v,k="food")=>`<div class="li"><span style="flex:1">${n}<div class="small mono">${s}</div></span><span class="fc" style="padding:2px 7px">x1 ${ico("unfold_more")}</span><span class="v" style="color:${C(k)};font-weight:700">${v}</span>${ico("more_horiz")}</div>`;
+const dietDay=scr(`${hdr("Tue, Sep 29","Diet",ib("menu_book"))}<div class="pad">
+ ${dayStrip()}
+ <div style="display:flex;gap:12px;align-items:center">${ring(.82,"food","1,640",104,"of 2,000")}<div style="flex:1;display:grid;gap:6px;font-size:10.5px"><div>Protein 112 / 150g${bar2(75,"food")}</div><div>Carbs 180 / 220g${bar2(82,"habit")}</div><div>Fat 52 / 70g${bar2(74,"meet")}</div><div class="small">Burned 420, so about 780 left.</div></div></div>
+ <div class="search" style="background:var(--surf)">${ico("search")} Add food <span style="margin-left:auto;display:flex;gap:8px">${ico("mic")}${ico("photo_camera")}</span></div>
+ <div class="fchips">${["Oats bowl","Chicken wrap","Shake"].map(f=>`<span class="fc">${f}</span>`).join("")}<span class="fc" style="border-color:var(--c-food);color:var(--c-food)">Dal, rice, curd</span></div>
+ <div class="card2 tint" style="--c:${C("water")}"><h6>Water <em>54 / 80 oz</em></h6><div class="btnrow"><span class="btn">+8</span><span class="btn">+16</span><span class="btn">+24</span><span class="btn">Other</span><span class="btn d" style="margin-left:auto">Undo</span></div></div>
+ <div class="line" style="--cut:70%;padding:2px 0 0 60px">${it("past","8:10","breakfast_dining","Breakfast","oats bowl, coffee","420","food")}${it("past","12:40","lunch_dining","Lunch","chicken wrap, apple","610","food")}${it("past","4:10","cookie","Snack","tap + to add","","food")}${it("fut","7:45","dinner_dining","Dinner","ideas: 38g protein to go","","food")}</div>
+ <div class="li">${ico("lightbulb")}<span>Yesterday: protein was 22g short</span><span class="v">${ico("expand_more")}</span></div>
+</div>`,"Diet");
+const mealSheet=sheet(dietDay,`<h4>Lunch <span class="mono" style="font-size:14px;color:var(--c-food)">610</span></h4>
+ ${food("Chicken wrap","1 wrap · 38g protein","515")}${food("Apple","1 medium","95")}
+ <div class="btnrow"><span class="btn">${ico("add")} Add food</span><span class="btn">${ico("photo_camera")} Photo</span><span class="btn">${ico("bookmark_add")} Save these 2 as a meal</span></div>
+ <div class="card2"><h6>Edit Chicken wrap <em>fixes it everywhere you use it</em></h6><div class="grid4">${fld("KCAL","515")}${fld("P","38")}${fld("C","48")}${fld("F","18")}</div></div>
+ <div class="small">A saved meal logs as one group. Open it to add an ingredient or remove the whole group.</div>`);
+const photoSheet=sheet(dietDay,`<h4>Dinner from a photo</h4>
+ <div style="height:88px;border-radius:14px;background:linear-gradient(135deg,color-mix(in srgb,var(--c-food) 70%,#000),var(--c-habit))"></div>
+ ${[["Masala dosa","390 kcal · 9g P","move"],["Coconut chutney","60 kcal · 1g P","habit"],["Sambar, 1 cup","150 kcal · 7g P","move"]].map(f=>`<div class="li" style="--c:${C(f[2])}"><span class="sw" style="border-radius:50%;width:8px;height:8px"></span><span style="flex:1">${f[0]}<div class="small mono">${f[1]}</div></span>${ico("edit")}${ico("close")}</div>`).join("")}
+ <div class="small">Dots show how sure it is: green sure, amber check it.</div>
+ ${fld("ADD TO","Dinner "+ico("expand_more"))}
+ <div class="btnrow"><span class="btn d">Discard</span><span style="flex:1"></span><span class="btn p">Add all 3</span></div>
+ <div class="small">If you leave, this waits for you for 12 hours.</div>`);
+const library=scr(`${hdr("Food library","Foods",ib("close"))}<div class="pad">
+ ${seg(["My foods","Meals","Recent","History"],"My foods",1)}
+ <div class="search" style="background:var(--surf)">${ico("search")} Search, or look it up online</div>
+ <div class="card2">${li("sw","Oats bowl","420 · 14g P","food")}${li("sw","Chicken wrap","515 · 38g P","food")}${li("sw","Protein shake "+chip("Community","water"),"160 · 30g P","food")}${li("sw","Curd rice","310 · 9g P","food")}</div>
+ <div class="card2"><h6>Not found? Add it</h6>${fld("NAME","Ragi mudde")}<div class="grid4" style="margin-top:6px">${fld("KCAL","210")}${fld("P","5")}${fld("C","44")}${fld("F","1")}</div><span class="btn p" style="margin-top:8px">Add to my foods</span></div>
+ <div class="small">Online search uses Open Food Facts, then USDA. Foods you log are remembered automatically.</div>
+</div>`,"Diet");
+
+/* ---------- INSIGHTS ---------- */
+const chartCard=(t,sub,body)=>`<div class="card2"><h6>${t}<em>${sub}</em></h6>${body}</div>`;
+const insPhone=scr(`${hdr("Sep 23 to 29","Insights",`<span class="btn">${ico("download")} CSV</span>`)}<div class="pad">
+ ${seg(["Week","Month","Year","All"],"Week",1)}
+ <div class="card2 tint" style="--c:${C("move")}"><p style="margin:0 0 6px;font-family:var(--disp);font-weight:700;font-size:17px;line-height:1.2">Strong week. <span style="color:var(--mute)">4 sessions, protein hit 5 of 7 days.</span></p><div class="small">Weight -0.6 lb · 23 tasks done · sleep avg 7h02</div></div>
+ <div class="grid4">${[["1,910","avg kcal"],["138g","avg protein"],["4","full sessions"],["23","tasks done"]].map(t=>`<div class="tile"><b style="font-size:14px">${t[0]}</b><span>${t[1]}</span></div>`).join("")}</div>
+ ${chartCard("Calories","goal 2,000",bars([1850,2100,1960,2240,1780,1900,1640],{k:"food",goal:2000,h:62,hi:6}))}
+ ${chartCard("Body weight","lb",lineC([183.2,183,182.9,182.7,182.8,182.5,182.4],{k:"sleep",h:56}))}
+ ${chartCard("Water","oz",bars([72,80,64,88,70,76,54],{k:"water",goal:80,h:50}))}
+ ${chartCard("Steps","",`<div class="empty" style="padding:10px"><b style="font-size:13px">Still growing</b>Needs 3 days of data to draw.</div>`)}
+</div>`,null);
+const insDesk=`<div class="desk app" style="grid-template-columns:210px 1fr">
+ <div class="side"><div class="date" style="font-size:30px"><small>Tuesday, September</small>29</div>
+  <div class="dnav">${[["today","Today"],["check_circle","Tasks"],["calendar_month","Calendar"],["fitness_center","Training"],["restaurant","Diet"],["insights","Insights",1]].map(n=>`<div class="${n[2]?"on":""}">${ico(n[0])}${n[1]}</div>`).join("")}</div></div>
+ <div class="main"><div style="display:flex;gap:10px;align-items:center"><div class="date" style="font-size:30px">Insights</div><div style="margin-left:auto">${seg(["Week","Month","Year","All"],"Month")}</div><span class="btn">${ico("download")} Export CSV</span></div>
+  <div class="grid2" style="grid-template-columns:repeat(3,1fr);gap:12px">
+  ${chartCard("Calories","goal 2,000",bars([1850,2100,1960,2240,1780,1900,2010,1880,1990,2120,1760,null,1950,2050,1890,1930,2080,1820,1900,1640],{k:"food",goal:2000,h:70}))}
+  ${chartCard("Protein","goal 150g",bars([130,150,142,160,120,138,155,149,152,120,141,null,150,162,139,148,151,128,140,112],{k:"food",goal:150,h:70}))}
+  ${chartCard("Training volume","lb",bars([0,9800,0,11200,0,8600,0,0,10400,0,12100,0,9300,0,0,11800,0,10200,0,3960],{k:"move",h:70}))}
+  ${chartCard("Body weight","lb",lineC([184.6,184.3,184.4,184,183.7,183.9,183.4,183.2,183,182.9,182.7,182.8,182.5,182.4],{k:"sleep",h:70}))}
+  ${chartCard("Sleep","hours",bars([7,6.5,7.4,7.2,6.8,7.9,7.1,6.9,7.3,7.5,7,7.2,6.6,7.25],{k:"sleep",h:70}))}
+  ${chartCard("Water","goal 80 oz",bars([72,80,64,88,70,76,80,84,66,78,90,74,80,54],{k:"water",goal:80,h:70}))}
+  ${chartCard("Steps","",bars([8200,10400,7600,9100,11800,6400,9900,8800,7200,10100,9400,8700,9600,7900],{k:"move",h:70}))}
+  ${chartCard("Sets by muscle","",[["Chest",80],["Back",62],["Legs",48],["Shoulders",70]].map(m=>`<div style="display:grid;grid-template-columns:62px 1fr;gap:6px;align-items:center;font-size:10.5px;margin:4px 0">${m[0]}${bar2(m[1],"move")}</div>`).join(""))}
+  ${chartCard("Tasks","done per week",bars([14,19,17,23],{k:"meet",h:70,hi:3}))}
+  </div><div class="small">Hover or tap any point for its value. A gap means nothing was logged, not zero.</div></div></div>`;
+
+/* ---------- SETTINGS ---------- */
+const sgrp=(t,rows)=>`<div><div class="gh"><span>${t}</span></div><div class="card2" style="padding:2px 12px">${rows}</div></div>`;
+const srow=(i,t,v)=>`<div class="li">${ico(i)}<span>${t}</span><span class="v">${v} ${ico("chevron_right")}</span></div>`;
+const setIndex=scr(`${hdr("Alex (demo)","Settings")}<div class="pad">
+ ${sgrp("YOU",srow("person","Profile and goals","175 lb · 2,000 kcal")+srow("watch","Apple Watch","Connected")+srow("view_module","Modules","Strength, Cardio, Diet"))}
+ ${sgrp("LOOK",srow("palette","Appearance","System")+srow("sell","Categories and projects","4 · 3")+srow("dashboard_customize","Today layout","Default"))}
+ ${sgrp("WORKOUTS",srow("timer","Defaults","90s rest · 3 sets"))}
+ ${sgrp("AI",srow("key","Anthropic key","Saved")+srow("monitoring","AI usage","$1.84 this month"))}
+ ${sgrp("DATA",srow("cloud_done","Sync","Synced")+srow("backup","Backup and restore","")+srow("upload_file","Import a spreadsheet","")+srow("bug_report","Tester reports","2"))}
+ ${sgrp("HELP",srow("replay","Replay setup","")+srow("error","Recent errors","0")+srow("query_stats","How the app is used",""))}
+ ${sgrp("PROFILE",`<div class="li">${ico("swap_horiz")}<span>Switch profile</span></div><div class="li" style="color:var(--warn)">${ico("delete_forever")}<span>Start fresh (type ERASE)</span></div>`)}
+</div>`,null);
+const setLook=scr(`${hdr("Settings","Appearance",ib("arrow_back"))}<div class="pad">
+ <div class="fld"><label>THEME, THE ONLY PLACE TO CHANGE IT</label>${seg(["System","Light","Dark"],"System",1)}</div>
+ <div class="fld"><label>ACCENT (NOW LINE AND BUTTONS)</label><div class="swatches">${["#2446f0","#15a34a","#d9366e","#e8730c","#0891b2","#5a5fd8"].map((c,i)=>`<i class="${i===0?"sel":""}" style="--c:${c}"></i>`).join("")}</div></div>
+ <div class="card2" style="padding:2px 12px"><div class="li">Larger text${tog(0)}</div><div class="li">Reduce motion${tog(0)}</div><div class="li">Always show delete buttons${tog(1)}</div><div class="li">Haptics${tog(1)}</div></div>
+ <div class="gh"><span>CATEGORIES AND PROJECTS</span></div>
+ <div class="card2" style="padding:2px 12px">${[["Work","meet",8],["Home","habit",4],["Daylign","water",5],["Health","move",2]].map(c=>`<div class="li" style="--c:${C(c[1])}"><span class="sw"></span><span>${c[0]}</span><span class="v">${c[2]} tasks</span>${ico("palette")}${ico("close")}</div>`).join("")}</div>
+ <div class="card2"><h6>Colour for Work <span class="new">NEW</span></h6><div class="swatches">${["meet","habit","move","water","sleep","food"].map((k,i)=>`<i class="${i===0?"sel":""}" style="--c:${C(k)}"></i>`).join("")}</div></div>
+ <span class="btn w">${ico("add")} Add category or project</span>
+</div>`,null);
+const setData=scr(`${hdr("Settings","Data and sync",ib("arrow_back"))}<div class="pad">
+ <div class="card2 tint" style="--c:${C("move")}"><h6><span style="display:flex;gap:5px;align-items:center">${ico("cloud_done")} Synced 2 min ago</span><em>retries every 30s</em></h6><div class="small">Saves locally first, then to the cloud.</div></div>
+ <div class="card2 tint" style="--c:${C("food")}"><h6>Your laptop changed Water while you typed <span class="new">NEW</span></h6><div class="small" style="margin-bottom:6px">We kept this phone's value (54 oz). The laptop had 62 oz.</div><div class="btnrow"><span class="btn">Use 62 oz</span><span class="btn">Keep 54 oz</span></div></div>
+ ${sgrp("BACKUP",`<div class="li">${ico("download")}<span>Download a backup</span></div><div class="li">${ico("restore")}<span>Restore (type RESTORE, saves a safety copy first)</span></div>`)}
+ <div class="card2"><h6>Import a spreadsheet</h6><div class="fld"><div class="in mono" style="font-size:10px;color:var(--sub);display:block">title, due, category<br>Renew passport, 2026-10-12, Home<br>Quarterly taxes, , Work</div></div>
+  <div class="grid2" style="margin-top:6px">${fld("INTO PROJECT","House move")}<div class="small" style="align-self:end">12 rows ready<br><span style="color:var(--warn)">1 has no date</span></div></div><span class="btn p" style="margin-top:8px">Import 12 tasks</span></div>
+ ${sgrp("RECENT ERRORS",`<div class="li"><span class="small">No errors in the last 7 days</span><span class="v">Copy · Clear</span></div>`)}
+</div>`,null);
+const setAI=scr(`${hdr("Settings","AI",ib("arrow_back"))}<div class="pad">
+ <div class="card2"><h6>Anthropic key <em>used for photo and voice</em></h6><div class="btnrow"><span class="small">Key saved on this device</span><span class="btn d" style="margin-left:auto">Remove</span></div></div>
+ <div class="grid2"><div class="tile"><b>$1.84</b><span>last 30 days</span></div><div class="tile"><b>212</b><span>requests</span></div></div>
+ <div class="card2"><h6>By feature</h6><div style="font-size:10.5px;margin:4px 0">Photo food logging, $1.12${bar2(61,"food")}</div><div style="font-size:10.5px;margin:4px 0">Voice commands, $0.72${bar2(39,"water")}</div></div>
+ <div class="card2"><h6>By day <em>14 days</em></h6>${bars([.1,.22,0,.08,.3,.12,.05,.18,0,.2,.14,.09,.16,.2],{k:"water",h:54})}</div>
+ <div class="small">An estimate from token counts, not your bill.</div>
+</div>`,null);
+const onboard=scr(`<div class="pad" style="padding-top:22px">
+ <div class="small mono">STEP 3 OF 5</div>
+ <p style="margin:0;font-family:var(--disp);font-weight:800;font-size:28px;letter-spacing:-.03em;line-height:1">Set your goals</p>
+ <div class="small">You can change these any time in Settings.</div>
+ ${fld("GOAL WEIGHT","175 lb")}${fld("DAILY CALORIES","2,000")}${fld("DAILY PROTEIN","150 g")}
+ <div style="display:flex;gap:5px;justify-content:center;margin:6px 0">${[0,1,2,3,4].map(i=>`<i style="width:${i===2?18:6}px;height:6px;border-radius:3px;background:${i<=2?"var(--accent)":"var(--line)"}"></i>`).join("")}</div>
+ <div class="btnrow"><span class="btn">Back</span><span style="flex:1"></span><span class="small">Skip setup</span><span class="btn p">Continue</span></div>
+ <div class="card2" style="margin-top:10px"><h6>The five steps</h6><div class="small">Welcome · Pick modules · Goals · Apple Watch · Done. Modules you turn off skip their steps. Replay any time from Settings.</div></div>
+</div>`,null);
+const gate=scr(`<div class="pad" style="padding-top:26px">
+ <p style="margin:0;font-family:var(--disp);font-weight:800;font-size:30px;letter-spacing:-.03em;line-height:1">Who's using Daylign?</p>
+ <div class="card2" style="padding:2px 12px">${["Alex (demo)","Sam (demo)"].map(n=>`<div class="li"><div class="avatar" style="width:26px;height:26px;font-size:10px">${n[0]}</div><span>${n}</span><span class="v">${ico("chevron_right")}</span></div>`).join("")}</div>
+ <div class="fld"><label>NEW PROFILE</label><div class="in" style="color:var(--mute)">Your name</div></div><span class="btn p w">Create</span>
+ <div class="small">An existing name signs you in instead of making a copy.</div>
+</div>`,null);
+
+/* ---------- GLOBAL ---------- */
+const plusSheet=sheet(`${hdr("Tuesday, September","29")}<div class="pad">${now}</div>`,`<h4>Add</h4><div class="actgrid">${[["check_circle","Task","meet"],["restaurant","Food","food"],["water_drop","Water","water"],["monitor_weight","Weigh in","sleep"],["fitness_center","Workout","move"],["directions_bike","Usual ride","move"],["event","Event","meet"],["mic","Say it","habit"]].map(a=>`<div style="--c:${C(a[2])}"><span class="ic">${ico(a[0])}</span>${a[1]}</div>`).join("")}</div>
+ <div class="small">On Tasks this opens a new task straight away, on Diet the food search, on Training the exercise log.</div>`);
+const voiceSheet=sheet(`${hdr("Tuesday, September","29")}<div class="pad">${now}</div>`,`<div class="mic">${ico("mic")}</div>
+ <p style="margin:0;text-align:center;font-family:var(--disp);font-weight:600;font-size:16px">"Dentist tomorrow at 11 and 16 ounces of water"</p>
+ <div><div class="vres">${ico("check_circle")}<span>Task: Dentist, Wed 11:00</span><u>Undo</u></div><div class="vres">${ico("check_circle")}<span>Water: +16 oz</span><u>Undo</u></div><div class="vres" style="color:var(--mute)">${ico("help")}<span>Didn't catch "and the other thing"</span></div></div>
+ <div class="search" style="background:var(--surf)">${ico("keyboard")} Or type a command</div>
+ <div class="small">Tasks, water, weight, food and "go to" all work, several at once. Undo stays for 6 seconds. No key yet? It says: add one in Settings, AI.</div>`);
+const youSheet=sheet(`${hdr("Tuesday, September","29")}<div class="pad">${now}</div>`,`<div style="display:flex;gap:10px;align-items:center"><div class="avatar" style="width:40px;height:40px">A</div><div><b>Alex (demo)</b><div class="small">${`<span class="pill" style="--c:${C("move")};padding:2px 7px"><i></i>Synced</span>`}</div></div></div>
+ <div class="card2" style="padding:2px 12px">${srow("calendar_month","Calendar","")}${srow("insights","Insights","")}${srow("search","Search","")}${srow("bug_report","Tester reports","2 new")}${srow("settings","Settings","")}</div>
+ <div class="small">The avatar on every screen opens this. It replaces the More sheet and the sidebar extras on phone.</div>`);
+const weighSheet=sheet(`${hdr("Tuesday, September","29")}<div class="pad">${now}</div>`,`<h4>Weigh in</h4>
+ <div class="grid2">${fld("WEIGHT","182.4","big")}${fld("WAIST (OPTIONAL)","33.5 in")}</div>
+ <div class="card2"><h6>Last 30 days <em>-2.2 lb</em></h6>${lineC([184.6,184.3,184.4,184,183.7,183.9,183.4,183.2,183,182.9,182.7,182.8,182.5,182.4],{k:"sleep",h:54})}<div class="small">7.4 lb to your goal. On pace for early December.</div></div>
+ <span class="btn p w">Save</span><div class="small">The only weigh-in. The pinned block, Coach, Training and voice all open this.</div>`);
+const goalSheet=sheet(`${hdr("Tuesday, September","29")}<div class="pad">${now}</div>`,`<h4>Goals</h4>
+ <div class="grid2">${fld("GOAL WEIGHT","175 lb")}${fld("CALORIES","2,000")}${fld("PROTEIN","150 g")}${fld("WATER","80 oz")}${fld("BURN","500 kcal")}${fld("CARBS / FAT","220 / 70 g")}</div>
+ <span class="btn p w">Save</span><div class="small">One goals editor. Diet, Coach, Settings and setup all open this one.</div>`);
+const palDesk=`<div class="desk app" style="grid-template-columns:1fr;height:470px;position:relative"><div style="opacity:.35;padding:18px">${now}${say}</div><div class="dim" style="position:absolute;inset:0;background:rgba(10,12,10,.35)"></div>
+ <div class="pal"><div class="q">${ico("search")} ben<kbd>Esc</kbd></div>
+  <div class="g">EXERCISES</div><div class="r on">${ico("fitness_center")}Bench press<em>log a set</em></div><div class="r">${ico("fitness_center")}Incline bench<em>log a set</em></div>
+  <div class="g">TASKS</div><div class="r">${ico("check_circle")}Send Ben the invoice<em>Work</em></div>
+  <div class="g">FOODS</div><div class="r">${ico("restaurant")}Bengali fish curry<em>add to dinner</em></div>
+  <div class="g">RUN AS A COMMAND</div><div class="r">${ico("mic")}"ben"<em>Enter</em></div></div></div>`;
+const states=`<div class="statewall app">
+ <div><h6>TOASTS</h6><div style="display:grid;gap:8px"><div class="toast">${ico("check")} Task added<u>Undo</u></div><div class="toast">${ico("cloud_off")} Saved on this phone. Will sync.</div><div class="toast" style="background:var(--warn)">${ico("error")} Something broke. It's in Recent errors.</div></div></div>
+ <div><h6>SYNC PILL</h6><div class="btnrow">${[["Connecting","mute"],["Saving","habit"],["Synced","move"],["Offline","sleep"],["Error, retry","meet"]].map(s=>`<span class="pill" style="--c:${s[1]==="mute"?"var(--mute)":C(s[1])}"><i></i>${s[0]}</span>`).join("")}</div><div class="small" style="margin-top:6px">Tap for details, retry and last saved time.</div></div>
+ <div><h6>BANNERS</h6><div style="display:grid;gap:8px"><div class="banner">${ico("system_update")} A new version is ready <u>Reload</u></div><div class="banner" style="--c-water:var(--c-move)">${ico("install_mobile")} Add Daylign to your home screen <span class="new">NEW</span><u>Add</u></div></div></div>
+ <div><h6>PULL TO REFRESH</h6><div style="display:grid;justify-items:center;gap:4px"><div style="width:34px;height:34px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent)"></div><span class="small">Release to refresh Watch data and foods</span></div></div>
+ <div><h6>EMPTY STATE</h6><div class="empty"><b>Nothing logged yet</b>Your usual ride is one tap away.<span class="btn p">Log ride</span></div></div>
+ <div><h6>LOADING</h6><div style="display:grid;gap:6px">${[80,60,90].map(w=>`<div style="height:12px;width:${w}%;border-radius:6px;background:var(--line)"></div>`).join("")}</div><div class="small" style="margin-top:6px">Skeletons in the shape of what's coming, no spinners.</div></div>
+</div>`;
+const layoutSheet=sheet(`${hdr("Tuesday, September","29")}<div class="pad">${now}</div>`,`<h4>Arrange Today</h4>
+ ${[["lock","Now block","always first"],["lock","The line","always there"]].map(r=>`<div class="li">${ico(r[0])}<span>${r[1]}</span><span class="v">${r[2]}</span></div>`).join("")}
+ ${[["Brief and actions",1],["Due soon",1],["This week (desktop)",1]].map(r=>`<div class="li">${ico("drag_indicator")}<span>${r[0]}</span>${tog(r[1])}</div>`).join("")}
+ <div class="fld"><label>SAVED LAYOUTS</label><div class="fchips"><span class="fc on">Default</span><span class="fc">Weekend</span><span class="fc">+ Save current</span></div></div>
+ <div class="small">Habits like the daily ride live on the line; hide one by turning it off in its habit settings.</div>`);
+
+/* ---------- tab content ---------- */
+const TABS=[
+ {key:"tasks",label:"Tasks",intro:"Tasks and Board are one screen with a List / Board switch. Category colours carry over from Today. Priority finally has a control.",
+  screens:[["List: filters, projects, groups, triage, archive",tasksList],["Board: tester reports, columns, folders",board],["Task sheet: every field, one place",taskSheet]],
+  desk:["Desktop board: categories and projects in the sidebar, drag between columns",tasksDesk],
+  notes:["Search, status, category, sort and project filters stay; project filter from Today moves here.","Board keeps the three columns, per-column folders, drag to move and the phone column switcher.","Tester reports sit on top of the Board (and in the avatar sheet) with Make it a task, Dismiss and Clear handled.","New: Priority in the task sheet, and colour pickers for categories (Settings, Appearance)."]},
+ {key:"calendar",label:"Calendar",intro:"Month grid on top, the chosen day as a line below, so Calendar and Today read the same way.",
+  screens:[["Month plus the day's line",calMonth],["Event sheet: name, time, notes, colour",evSheet],["Week on a phone: agenda list",calAgenda]],
+  desk:["Desktop week: 'no time' strip, hour grid, drag to schedule",calDesk],
+  notes:["Month / Week toggle, prev / next, US holidays, task dots and event dots all kept.","Add event: the + Event button, or double-click on desktop. Google Calendar events are read only.","Priority colours on dots now mean something because priority can be set."]},
+ {key:"training",label:"Training",intro:"Four tabs: Strength, Cardio, Coach, Sleep. Body weight sits in the header and opens the one weigh-in sheet.",
+  screens:[["Strength: today's session, streak",trStrength],["Log exercise sheet",trLog],["Strength progress",trProgress],["Cardio",trCardio],["Coach",trCoach],["Sleep and readiness",trSleep]],
+  notes:["Watch sync banner, week chips, day navigation, log sheet (suggestions, beat last time, sets, rest timer, bodyweight detection), PR badges, day stats and heatmap all kept.","Progress: 30-day tiles, plateau insight with a one-tap fix, muscle balance, movement sparklines, curves, PR shelf.","Cardio: usual-ride one tap (same action as the ride on Today), sport tabs, pace, run types, run detail, Watch cross-check and imports, weekly ring, race countdown.","Coach: verdict, evidence, do this (now with Start it), volume, recovery, cardio advice, burn target, weigh-in pace, goals, activity split, and the calisthenics ladder as a real list.","Readiness shows once, on Sleep. The desktop rail duplicates are gone."]},
+ {key:"diet",label:"Diet",intro:"Meals sit on the same kind of line as Today. Search, voice and photo are all in the add bar.",
+  screens:[["Diet day",dietDay],["Meal sheet: servings, edit, save as meal",mealSheet],["Photo logging",photoSheet],["Food library",library]],
+  notes:["Date nav, week strip, calorie ring, macro bars, burn caption, usuals, saved meals, water quick-add with custom and undo all kept.","Food recommendations, yesterday's advice and the end-of-day review are folded rows that open.","Library keeps My foods, saved meals, recent, 14-day history, online search, community tag and add-your-own.","Goals are edited in one sheet (see Global)."]},
+ {key:"insights",label:"Insights",intro:"Weekly report on top in plain words, then every chart in its category colour.",
+  screens:[["Phone",insPhone]],desk:["Desktop grid of all charts",insDesk],
+  notes:["Range chips, CSV export, summary tiles, all 8 charts, sets by muscle, tasks, tooltips and the 'still growing' state are kept.","The weekly report now truly lives here (it was a dead render on Today)."]},
+ {key:"settings",label:"Settings",intro:"Grouped and short. Things that had three homes now have one.",
+  screens:[["Settings home",setIndex],["Appearance, categories, accessibility",setLook],["Data and sync, import",setData],["AI key and usage",setAI],["First run: profile gate",gate],["Setup, replayable",onboard]],
+  notes:["Theme lives only here. Categories manager lives only here (the sidebar link opens it).","New: category colours, a sync conflict notice, and Replay setup.","Kept: modules, Watch connect, workout defaults, backup, restore, CSV import, recent errors, usage report, switch profile, start fresh."]},
+ {key:"global",label:"Global",intro:"Things that work from every screen.",
+  screens:[["+ sheet",plusSheet],["Voice",voiceSheet],["Avatar sheet (replaces More)",youSheet],["The one weigh-in",weighSheet],["The one goals editor",goalSheet],["Arrange Today (layout)",layoutSheet]],
+  desk:["Ctrl K: search and commands",palDesk],
+  extra:["Toasts, sync, banners, states",states],
+  notes:["The floating mic moves into the + sheet and the Ctrl K palette so it no longer covers content.","Voice error copy now points to Settings, AI (it used to say the Diet tab).","New: an install prompt for the home screen."]}
+];
+const tabsRow=document.createElement("div");tabsRow.className="tabsrow";tabsRow.setAttribute("role","tablist");
+tabsRow.innerHTML=[["today","Today"],...TABS.map(t=>[t.key,t.label]),["coverage","Coverage"]].map(t=>`<button type="button" role="tab" data-tab="${t[0]}" aria-selected="false">${t[1]}</button>`).join("");
+document.getElementById("bar").appendChild(tabsRow);
+const host=document.getElementById("tabhost");
+host.insertAdjacentHTML("beforeend",TABS.map(t=>`<section class="tabv" data-tab="${t.key}" hidden><p class="intro">${t.intro}</p>
+ <div class="stage2">${t.screens.map(s=>`<div class="fig"><p class="cap">${s[0]}</p>${s[1]}</div>`).join("")}</div>
+ ${t.desk?`<div class="deskwrap"><p class="cap">${t.desk[0]}</p><div class="deskfit">${t.desk[1]}</div></div>`:""}
+ ${t.extra?`<div class="deskwrap"><p class="cap">${t.extra[0]}</p>${t.extra[1]}</div>`:""}
+ <div class="notes2"><h3>What's on this screen</h3><ul>${t.notes.map(n=>`<li>${n}</li>`).join("")}</ul></div></section>`).join(""));
+document.getElementById("todayextra").innerHTML=`<div class="fig"><p class="cap">Arrange Today</p>${layoutSheet}</div>`;
+
+/* ---------- coverage ---------- */
+const COV=JSON.parse(document.getElementById("cov").textContent||"[]");
+const covEl=document.querySelector('.tabv[data-tab="coverage"]');
+const homes=[...new Set(COV.map(r=>r.home.split(" > ")[0]))].sort();
+const cnt=s=>COV.filter(r=>r.status===s).length;
+covEl.innerHTML=`<p class="intro">Every row of Charlie's inventory, with its home in Day Line. "Merged" means the capability survives in one place instead of two or three. "Added" rows are gaps the audit found.</p>
+ <div class="covsum">${[["All",COV.length],["Kept",cnt("kept")],["Merged",cnt("merged")],["Added",cnt("added")],["Removed",cnt("removed")]].map(s=>`<div><b>${s[1]}</b><span>${s[0]}</span></div>`).join("")}</div>
+ <div class="covtop"><input id="covq" type="search" placeholder="Search features" aria-label="Search features"><select id="covh" aria-label="Filter by new home"><option value="">Every screen</option>${homes.map(h=>`<option>${h}</option>`).join("")}</select>
+ <div class="covchips" id="covs">${["all","kept","merged","added","removed"].map(s=>`<button type="button" data-s="${s}" aria-pressed="${s==="all"}">${s[0].toUpperCase()+s.slice(1)}</button>`).join("")}</div></div>
+ <div class="covtbl"><table><thead><tr><th>Was in</th><th>Feature</th><th>Lives in Day Line</th><th>Status</th><th>Note</th></tr></thead><tbody id="covb"></tbody></table></div><p class="small" id="covn" style="margin-top:8px;color:var(--p-muted)"></p>`;
+let covS="all";
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function covRender(){const q=document.getElementById("covq").value.toLowerCase(),h=document.getElementById("covh").value;
+ const rows=COV.filter(r=>(covS==="all"||r.status===covS)&&(!h||r.home.startsWith(h))&&(!q||(r.feature+" "+r.area+" "+r.home+" "+(r.note||"")).toLowerCase().includes(q)));
+ document.getElementById("covb").innerHTML=rows.map(r=>`<tr><td>${esc(r.area)}</td><td>${esc(r.feature)}</td><td>${esc(r.home)}</td><td><span class="st ${esc(r.status)}">${esc(r.status)}</span></td><td>${esc(r.note)}</td></tr>`).join("");
+ document.getElementById("covn").textContent=`Showing ${rows.length} of ${COV.length}`}
+document.getElementById("covq").addEventListener("input",covRender);document.getElementById("covh").addEventListener("change",covRender);
+document.getElementById("covs").addEventListener("click",e=>{const b=e.target.closest("button[data-s]");if(!b)return;covS=b.dataset.s;document.querySelectorAll("#covs button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));covRender()});
+covRender();
+
+/* ---------- tab switching, fit, theme ---------- */
+function fit(){document.querySelectorAll(".deskfit").forEach(box=>{const inner=box.firstElementChild;inner.style.transform="none";box.style.width="";box.style.height="";const w=inner.offsetWidth,h=inner.offsetHeight;if(!w)return;const s=Math.min(1,box.parentElement.clientWidth/w);box.style.width=w*s+"px";box.style.height=h*s+"px";box.style.overflow="hidden";inner.style.transformOrigin="top left";inner.style.transform=`scale(${s})`})}
+function showTab(k){document.querySelectorAll(".tabv").forEach(s=>s.hidden=s.dataset.tab!==k);tabsRow.querySelectorAll("button").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===k)));try{localStorage.setItem("dayline-tab",k)}catch(e){}fit()}
+tabsRow.addEventListener("click",e=>{const b=e.target.closest("button[data-tab]");if(b){showTab(b.dataset.tab);window.scrollTo({top:document.getElementById("bar").offsetTop-4,behavior:"smooth"})}});
+let t0="today";try{t0=localStorage.getItem("dayline-tab")||"today"}catch(e){}
+if(!document.querySelector(`.tabv[data-tab="${t0}"]`))t0="today";
+showTab(t0);
+mode(document.querySelector('#bar button[aria-pressed="true"][data-mode]')?.dataset.mode||"day");
+
+</script>
