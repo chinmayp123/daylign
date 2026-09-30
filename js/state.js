@@ -41,6 +41,7 @@ function loadData() {
     diet: safeParse('tf_diet', []),
     customFoods: safeParse('tf_custom_foods', {}),
     water: safeParse('tf_water', {}),
+    waterAt: safeParse('tf_waterAt', {}),
     events: safeParse('tf_events', []),
     removedFoods: safeParse('tf_removed_foods', []),
     // Named multi-item meals ("Protein shake"), each item with its own
@@ -70,6 +71,7 @@ function writeStateToLocal(d) {
   localStorage.setItem('tf_diet', JSON.stringify(d.diet));
   localStorage.setItem('tf_custom_foods', JSON.stringify(d.customFoods));
   localStorage.setItem('tf_water', JSON.stringify(d.water));
+  localStorage.setItem('tf_waterAt', JSON.stringify(d.waterAt || {}));
   localStorage.setItem('tf_projects', JSON.stringify(d.projects));
   localStorage.setItem('tf_events', JSON.stringify(d.events));
   localStorage.setItem('tf_removed_foods', JSON.stringify(d.removedFoods || []));
@@ -117,7 +119,7 @@ function saveData(data) {
 // Keys the cloud owns, with the empty value each falls back to.
 const CLOUD_KEYS = {
   tasks: [], categories: [], projects: [], gym: [], cardio: [], modules: {},
-  diet: [], customFoods: {}, water: {}, events: [], removedFoods: [],
+  diet: [], customFoods: {}, water: {}, waterAt: {}, events: [], removedFoods: [],
   combos: [], weight: {}, goals: {}, sleep: {}, aiUsage: {},
 };
 
@@ -186,6 +188,7 @@ function starterState() {
     diet: [],
     customFoods: {},
     water: {},
+    waterAt: {},
     events: [],
     removedFoods: [],
     combos: [],

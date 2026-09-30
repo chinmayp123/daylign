@@ -491,6 +491,12 @@ function renderWater() {
 function addWater(oz) {
   if (!state.water[dietViewDate]) state.water[dietViewDate] = [];
   state.water[dietViewDate].push(oz);
+  // v3: the line puts water at its last add, so each add records when. Kept in
+  // a parallel list because state.water[date] is a plain array of ounces
+  // everywhere else and changing that shape would touch every water reader.
+  if (!state.waterAt) state.waterAt = {};
+  if (!state.waterAt[dietViewDate]) state.waterAt[dietViewDate] = [];
+  state.waterAt[dietViewDate].push(Date.now());
   saveData(state);
   renderWater();
 }
@@ -498,6 +504,7 @@ function addWater(oz) {
 function undoWater() {
   if (!state.water[dietViewDate] || !state.water[dietViewDate].length) return;
   state.water[dietViewDate].pop();
+  if (state.waterAt && state.waterAt[dietViewDate]) state.waterAt[dietViewDate].pop();
   saveData(state);
   renderWater();
 }

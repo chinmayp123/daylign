@@ -346,7 +346,7 @@ function setSyncStatus(state, message) {
 // change tracker.
 const SYNC_KEYS = {
   tasks: [], categories: [], projects: [], gym: [], cardio: [], modules: {},
-  diet: [], customFoods: {}, water: {}, events: [], removedFoods: {},
+  diet: [], customFoods: {}, water: {}, waterAt: {}, events: [], removedFoods: {},
   weight: {}, goals: {}, sleep: {}, aiUsage: {}, combos: [],
 };
 

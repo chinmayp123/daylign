@@ -12295,3 +12295,35 @@ html.pref-reduce-motion .dl-btn:active { transform: none; }
 @media (prefers-reduced-motion: no-preference) {
   .now-block { transition: padding 140ms ease; }
 }
+
+
+/* ---- The line: the bits phase 1 did not ship ---- */
+/* Done / Log it sit in the value column, so they have to read as a control
+   without out-shouting the row they belong to. */
+.dl-line-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font: 600 11px/1 var(--font-body);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.dl-line-btn:hover { border-color: var(--accent); color: var(--accent); }
+.dl-line-btn:active { transform: scale(0.97); }
+
+/* The now block sticks under the header. On DESKTOP the header had no
+   position, so the block scrolled up over the screen title and sat on top of
+   the words. The header sticks at every width now, and outranks the block. */
+@media (min-width: 601px) {
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    background: var(--bg-primary);
+    padding-top: 6px;
+    margin-bottom: 22px;
+  }
+  .now-block { top: 84px; }
+}

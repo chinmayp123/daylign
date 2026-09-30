@@ -55,6 +55,18 @@ function weightTrendClass(weighIns) {
   return delta < 0 ? 'is-good' : 'is-bad';
 }
 
+// The morning routine auto-logs one set each of push ups and sit ups. Pulled
+// out of the reminder button so the line's Done button runs the SAME code -
+// two copies would have drifted, and this one writes to state.gym.
+function logMorningRoutine(dateStr) {
+  const day = dateStr || getTodayStr();
+  const already = state.gym.some(e => e.date === day && e.exercise === 'Push Ups' && e._fromReminder);
+  if (already) return;
+  state.gym.push({ date: day, exercise: 'Push Ups', sets: [{ reps: 10, weight: 0 }], bodyweight: true, _fromReminder: true, at: Date.now() });
+  state.gym.push({ date: day, exercise: 'Sit Ups',  sets: [{ reps: 10, weight: 0 }], bodyweight: true, _fromReminder: true, at: Date.now() });
+  saveData(state);
+}
+
 // Today's health at a glance — the numbers that matter on a cut
 function renderHealthStrip(today) {
   const el = $('#healthGrid');
@@ -418,6 +430,10 @@ function renderDashboard() {
   renderHealthStrip(today);
   if (typeof renderNowBlock === 'function') renderNowBlock();
   if (typeof watchNowBlockScroll === 'function') watchNowBlockScroll();
+  if (typeof renderLine === 'function') renderLine(today);
+  // This PWA stays open for days, so the sidebar's day number goes stale
+  // across midnight unless it is re-derived on render like everything else.
+  if (typeof fillSidebarDate === 'function') fillSidebarDate();
   renderWeightTrend();
   renderWeeklyReport();
   renderReminders(today);
@@ -998,15 +1014,7 @@ function renderReminders(today) {
       const habit = btn.dataset.habit;
       localStorage.setItem(`tf_${habit}_` + today, '1');
 
-      // Auto-log pushups & situps to gym when morning routine is completed
-      if (habit === 'morning') {
-        const alreadyPushups = state.gym.some(e => e.date === today && e.exercise === 'Push Ups' && e._fromReminder);
-        if (!alreadyPushups) {
-          state.gym.push({ date: today, exercise: 'Push Ups', sets: [{ reps: 10, weight: 0 }], bodyweight: true, _fromReminder: true });
-          state.gym.push({ date: today, exercise: 'Sit Ups', sets: [{ reps: 10, weight: 0 }], bodyweight: true, _fromReminder: true });
-          saveData(state);
-        }
-      }
+      if (habit === 'morning') logMorningRoutine(today);
 
       renderReminders(today);
     });

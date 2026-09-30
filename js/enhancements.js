@@ -74,6 +74,7 @@
     });
   }
   window.refreshReportBadges = refreshReportBadges;
+  window.fillSidebarDate = function () { fillSidebarDate(); };
 
   // The sidebar's own date block: small weekday and month, big day number.
   function fillSidebarDate() {
