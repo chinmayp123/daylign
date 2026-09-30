@@ -707,19 +707,19 @@ function goalProgress() {
 
   // 3 — Core (days you hit core this week; target 3)
   const coreDays = goalGroupDaysThisWeek('core');
-  rows.push({ label: 'Core', icon: coreDays >= 3 ? '🔥' : '🎯', status: `${coreDays}/wk`,
-    detail: `${coreDays >= 3 ? 'on target' : 'aim for 3'} core days`, tone: coreDays >= 3 ? 'good' : 'warn' });
+  rows.push({ label: 'Core', icon: coreDays >= 3 ? '🔥' : '🎯', status: `${coreDays} of 3`,
+    detail: 'core days, last 7 days', tone: coreDays >= 3 ? 'good' : 'warn', pct: Math.round((coreDays / 3) * 100) });
 
   // 4 — Cardio (sessions this week; target 2)
   const cardioDays = (state.cardio || []).filter(s => s && typeof s.date === 'string' && s.date >= offsetDateStr(today, -6) && s.date <= today).length;
-  rows.push({ label: 'Cardio', icon: cardioDays >= 2 ? '🔥' : '🏃', status: `${cardioDays}/wk`,
-    detail: `${cardioDays >= 2 ? 'on target' : 'aim for 2'} sessions`, tone: cardioDays >= 2 ? 'good' : 'warn' });
+  rows.push({ label: 'Cardio', icon: cardioDays >= 2 ? '🔥' : '🏃', status: `${cardioDays} of 2`,
+    detail: 'sessions, last 7 days', tone: cardioDays >= 2 ? 'good' : 'warn', pct: Math.round((cardioDays / 2) * 100) });
 
   // 5 — Consistency (real sessions this week vs 4)
   let real = 0;
   for (let i = 0; i < 7; i++) { if (isConsistencyDay(offsetDateStr(today, -i))) real++; }
-  rows.push({ label: 'Consistency', icon: real >= 4 ? '🔥' : '📊', status: `${real}/4`,
-    detail: 'real sessions this week', tone: real >= 4 ? 'good' : 'warn' });
+  rows.push({ label: 'Consistency', icon: real >= 4 ? '🔥' : '📊', status: `${real} of 4`,
+    detail: 'real sessions, last 7 days', tone: real >= 4 ? 'good' : 'warn', pct: Math.round((real / 4) * 100) });
 
   return rows;
 }
@@ -728,13 +728,17 @@ function renderGoalProgress() {
   const host = document.getElementById('goalProgressBody');
   if (!host) return;
   const rows = goalProgress();
-  host.innerHTML = rows.map(r => `
-    <div class="goal-row">
-      <span class="goal-row-icon">${r.icon}</span>
-      <span class="goal-row-label">${esc(r.label)}</span>
-      <span class="goal-row-detail">${esc(r.detail)}</span>
-      <span class="goal-row-status goal-${r.tone}">${esc(r.status)}</span>
-    </div>`).join('');
+  // A chip for the state and, where the goal is a count toward a target, a bar.
+  host.innerHTML = rows.map(r => {
+    const k = r.tone === 'good' ? 'c-move' : r.tone === 'warn' ? 'c-food' : '';
+    return `
+    <div class="co-goal">
+      <span class="co-goal-l">${esc(r.label)}</span>
+      <span class="co-goal-d">${esc(r.detail)}</span>
+      <span class="dl-chip ${k}">${esc(r.status)}</span>
+      ${r.pct != null ? `<span class="dl-meter ${k || 'c-move'} co-goal-m"><i style="width:${Math.max(0, Math.min(100, r.pct))}%"></i></span>` : ''}
+    </div>`;
+  }).join('');
 }
 
 // ---- Activity breakdown ----
@@ -802,35 +806,16 @@ function activityBreakdown(dateStr) {
   return { items, total: watchMin != null ? watchMin : accounted, watch: watchMin, source: 'estimated' };
 }
 
+// One line under the goals (spec 7): where the day's active minutes went.
 function renderActivityBreakdown() {
   const host = document.getElementById('activityBreakdown');
   if (!host) return;
   const b = activityBreakdown(gymViewDate);
   if (!b.items.length) { host.innerHTML = ''; return; }
-
-  const colorFor = k => k === 'strength' ? 'var(--accent)' : k === 'cardio' ? 'var(--blue)' : 'var(--text-muted)';
-  const barTotal = Math.max(b.total, b.accounted, 1);
-  const bar = b.items.map(i =>
-    `<span class="act-seg" style="width:${Math.max(2, Math.round((i.min / barTotal) * 100))}%;background:${colorFor(i.kind)}"></span>`).join('');
-  const BADGE = { watch: { txt: '⌚ watch', cls: 'act-actual' }, logged: { txt: 'logged', cls: 'act-actual' }, est: { txt: 'est.', cls: 'act-est' } };
-  const rows = b.items.map(i => {
-    const bd = BADGE[i.badge] || BADGE.est;
-    return `
-    <div class="act-row">
-      <span class="act-ic">${i.icon}</span>
-      <span class="act-label">${esc(i.label)}${i.detail ? ` <small>${esc(i.detail)}</small>` : ''}<em class="${bd.cls}">${bd.txt}</em></span>
-      <span class="act-min">${i.min}<small> min</small></span>
-    </div>`;
-  }).join('');
-  host.innerHTML = `
-    <div class="card activity-card">
-      <div class="coach-head">
-        <h2>Activity</h2>
-        <span class="act-total">${b.total}<small> min${b.watch != null ? ' ⌚' : ''}</small></span>
-      </div>
-      <div class="act-bar">${bar}</div>
-      <div class="act-rows">${rows}</div>
-    </div>`;
+  const day = gymViewDate === getTodayStr() ? 'Today' : formatDate(gymViewDate);
+  const parts = b.items.map(i => `${esc(String(i.label).toLowerCase())} ${i.min} min`).join(', ');
+  const from = b.source === 'watch' || b.watch != null ? 'from your Watch' : 'estimated from what you logged';
+  host.innerHTML = `<p class="sp-note co-activity">${esc(day)}: ${parts}. ${b.total} min in all, ${from}.</p>`;
 }
 
 // ---- Consistency: streak stats + 16-week calendar ----
@@ -1269,7 +1254,7 @@ function renderGymCoach() {
   const burn = burnInfo.cal;
   const pct = Math.min(100, Math.round((burn / burnGoal) * 100));
   const isToday = gymViewDate === getTodayStr();
-  $('#burnGoalChip').textContent = `Burn goal: ${burnGoal} cal/day`;
+  $('#burnGoalChip').textContent = `Burn goal ${burnGoal} kcal`;
 
   const pace = weighInPace();
   const cutting = latestBodyWeightLbs() > goals.weight;
@@ -1280,9 +1265,9 @@ function renderGymCoach() {
   let paceFlag = '';
   if (pace) {
     const pw = Math.round(pace.perWeek * 10) / 10;
-    paceVal = `${pw > 0 ? '+' : ''}${pw}<small> lbs/wk</small>`;
+    paceVal = `${pw > 0 ? '+' : ''}${pw}<small>lb/wk</small>`;
     const onTrack = cutting ? pace.perWeek <= -0.5 : pace.perWeek >= 0.5;
-    paceFlag = `<span class="coach-pace-flag ${onTrack ? 'good' : 'bad'}">${onTrack ? 'On track' : 'Off pace'}</span>`;
+    paceFlag = onTrack ? 'on pace' : 'off pace';
     const toGo = goals.weight - pace.lastW;
     const movingToward = toGo / pace.perWeek > 0;
     if (Math.abs(pace.lastW - goals.weight) < 0.5) {
@@ -1301,23 +1286,69 @@ function renderGymCoach() {
     }
   }
 
+  // Two tiles (spec 7): burn against its target, and the weigh-in pace.
   targetsEl.innerHTML = `
-    <div class="coach-target">
-      <span class="coach-target-lbl">${burnInfo.watch ? 'Active Burn' : 'Est. Burn'} &mdash; ${isToday ? 'Today' : formatDate(gymViewDate)}</span>
-      <span class="coach-target-val">${burnInfo.watch ? '' : '~'}${burn}<small> / ${burnGoal} cal</small></span>
-      <div class="coach-bar-track"><div class="coach-bar-fill ${burn >= burnGoal ? 'done' : ''}" style="width:${pct}%"></div></div>
-      <span class="coach-target-sub">${burn >= burnGoal ? 'Burn target hit' : `${burnGoal - burn} cal to go`} &middot; ${burnInfo.watch ? 'measured by your Apple Watch' : 'estimated from your logged sets'}</span>
+    <div class="dl-tile co-tile">
+      <b>${burnInfo.watch ? '' : '~'}${burn}<small>/ ${burnGoal}</small></b>
+      <span>kcal burned ${isToday ? 'today' : esc(formatDate(gymViewDate))}, ${burnInfo.watch ? 'from your Watch' : 'estimated'}</span>
+      <span class="dl-meter c-move"><i style="width:${pct}%"></i></span>
     </div>
-    <div class="coach-target">
-      <span class="coach-target-lbl">Weekly Pace &rarr; ${goals.weight} lbs ${paceFlag}</span>
-      <span class="coach-target-val">${paceVal}</span>
-      <span class="coach-target-sub">${paceSub}</span>
+    <div class="dl-tile co-tile">
+      <b>${paceVal}</b>
+      <span>goal ${targetPace} lb/wk${paceFlag ? ', ' + paceFlag : ''}</span>
     </div>
-  `;
+    <p class="sp-note co-pace-note">${paceSub}</p>`;
 
-  $('#coachRecs').innerHTML = coachRecommendations(burn, burnGoal, pace).map(r => `
-    <div class="coach-rec ${r.type}"><span class="coach-rec-dot"></span><span>${r.text}</span></div>
-  `).join('');
+  // The remaining advice, one row each. Text is escaped: it carries exercise
+  // names the user typed.
+  const SW = { warn: 'food', info: 'water', good: 'move' };
+  $('#coachRecs').innerHTML = `
+    <div class="dl-card co-card">
+      <h6 class="dl-card-h"><span>Worth knowing</span></h6>
+      ${coachRecommendations(burn, burnGoal, pace).map(r => `
+        <div class="co-row c-${SW[r.type] || 'water'}"><span class="co-sw"></span><div class="co-row-b"><div class="co-row-t">${esc(r.text)}</div></div></div>`).join('')}
+    </div>`;
+  renderCoachLadder();
+}
+
+// ---- Calisthenics ladder ----
+// The progression chains as a list with done / current / next steps (spec 7).
+// A chain shows once you have logged anything on it; the step you are on is the
+// hardest variation you have logged.
+function coachLadders() {
+  const gym = state.gym || [];
+  const logged = new Set(gym.map(e => (e.exercise || '').trim().toLowerCase()));
+  const out = [];
+  PROGRESSION_CHAINS.forEach(({ chain, threshold }) => {
+    let cur = -1;
+    chain.forEach((n, i) => { if (logged.has(n.toLowerCase())) cur = i; });
+    if (cur === -1) return;
+    const name = chain[cur].toLowerCase();
+    const sessions = gym.filter(e => (e.exercise || '').trim().toLowerCase() === name);
+    const best = sessions.reduce((m, e) => Math.max(m, (e.sets || []).reduce((x, st) => Math.max(x, Number(st.reps) || 0), 0)), 0);
+    out.push({ chain, threshold, cur, best, count: sessions.length });
+  });
+  // Most-trained first; two is enough to read on a phone.
+  return out.sort((a, b) => b.count - a.count).slice(0, 2);
+}
+
+function renderCoachLadder() {
+  const host = document.getElementById('coachLadder');
+  if (!host) return;
+  host.innerHTML = coachLadders().map(l => {
+    const from = Math.max(0, l.cur - 2), to = Math.min(l.chain.length, l.cur + 3);
+    const steps = l.chain.slice(from, to).map((n, k) => {
+      const i = from + k;
+      const cls = i < l.cur ? 'is-done' : i === l.cur ? 'is-cur' : '';
+      const note = i === l.cur ? `<em>You are here: best ${l.best} reps. Move up at 3 x ${l.threshold}.</em>` : '';
+      return `<li class="${cls}"><i aria-hidden="true"></i><span>${esc(n)}${note}</span></li>`;
+    }).join('');
+    return `
+      <div class="dl-card co-card">
+        <h6 class="dl-card-h"><span>${esc(l.chain[l.cur])} ladder</span><em>step ${l.cur + 1} of ${l.chain.length}</em></h6>
+        <ol class="co-ladder">${steps}</ol>
+      </div>`;
+  }).join('');
 }
 
 function renderGym() {

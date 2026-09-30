@@ -494,38 +494,26 @@
              used to be scattered across the Strength and Cardio panes, so
              the same advice was reachable twice or not at all. -->
         <div class="training-pane" id="trainingCoach" hidden>
-        <!-- Coach: one card — the decision (js/coach.js → #coachPanel) plus the
-             burn/pace targets and recommendations (js/gym.js) that used to be a
-             separate "Targets & Coach" card. Sits under the log now. -->
-        <div class="card coach-card coach-merged">
-          <div id="coachPanel"></div>
-          <div class="coach-head coach-merged-head">
-            <h2>Targets</h2>
-            <span class="weight-goal-chip" id="burnGoalChip" title="Edit goals"></span>
+          <p class="co-empty" id="coachEmpty" hidden>The coach starts with your first logged exercise. Log one in Strength and it has something to read.</p>
+          <div id="coachBody">
+            <!-- The verdict sentence, the evidence chips and the rows Do this /
+                 Volume / Recovery / Cardio (js/coach.js). -->
+            <div id="coachPanel"></div>
+            <!-- Burn against its target and the weigh-in pace (js/gym.js). -->
+            <div class="co-targets-h">
+              <span class="ts-label">Targets</span>
+              <button type="button" class="cd-link" id="burnGoalChip" aria-label="Edit goals"></button>
+            </div>
+            <div class="co-tiles" id="coachTargets"></div>
+            <div id="coachRecs"></div>
+            <div id="coachLadder"></div>
+            <!-- Goals, with where the day's active minutes went underneath. -->
+            <div class="dl-card co-card">
+              <h6 class="dl-card-h"><span>Goals</span></h6>
+              <div id="goalProgressBody"></div>
+              <div id="activityBreakdown"></div>
+            </div>
           </div>
-          <div class="coach-targets" id="coachTargets"></div>
-          <div class="coach-recs" id="coachRecs"></div>
-        </div>
-
-        <!-- Goal Progress: ties each logged session to WHY you train. Read from
-             existing data (js/gym.js goalProgress). Golf deferred. -->
-        <div class="card goal-progress-card collapsible" data-collapse="mobile" data-collapse-key="traingoals">
-          <div class="coach-head">
-            <h2>Goal Progress</h2>
-          </div>
-          <div id="goalProgressBody"></div>
-        </div>
-
-        <!-- Activity breakdown: the watch's exercise minutes split into strength
-             (estimated from sets), logged cardio (real minutes) and walking.
-             Rendered by js/gym.js activityBreakdown(). -->
-        <div id="activityBreakdown"></div>
-
-        <!-- Coach -->
-        <div class="card cardio-card collapsible" data-collapse="mobile" data-collapse-key="cardiocoach">
-          <h2>Coach</h2>
-          <div class="cardio-coach" id="cardioCoach"></div>
-        </div>
         </div><!-- /#trainingCoach -->
 
         <!-- Sleep is the only readiness surface (spec section 7). The
