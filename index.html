@@ -162,7 +162,12 @@
              scrolling down everytime to see all the data". So the data leads.
              The counters that sat here are gone entirely; 17 total / 0 in
              progress / 14 completed said almost nothing and cost 150px. -->
-        <div class="health-grid" id="healthGrid"></div>
+        <!-- Zero-height marker at the block's resting position. The block is
+             sticky, so it never leaves the viewport and an observer on the
+             block itself would never fire; this is what "scrolled past" means. -->
+        <div id="nowBlockTop" aria-hidden="true"></div>
+        <!-- The now block (spec 4.2). Locked: not hideable, not reorderable. -->
+        <section class="now-block" id="nowBlock" aria-label="Today's numbers"></section>
 
         <!-- Daily brief: the morning read across training, food and tasks (js/brief.js) -->
         <div id="dailyBrief"></div>
@@ -1280,6 +1285,7 @@
   <script src="js/state.js"></script>
   <script src="js/modal.js"></script>
   <script src="js/dashboard.js"></script>
+  <script src="js/now-block.js"></script>
   <script src="js/tasks.js"></script>
   <script src="js/board.js"></script>
   <script src="js/calendar.js"></script>

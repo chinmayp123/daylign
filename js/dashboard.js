@@ -412,7 +412,12 @@ function renderDashboard() {
   // which All Tasks already shows and nobody opens this app to read. The
   // figures are still computed because the brief and reminders use them.
 
+  // v3: the health strip became the now block (js/now-block.js, spec 4.2).
+  // renderHealthStrip stays for now because #healthGrid is still referenced
+  // by the layout editor's widget list; it no-ops without its host element.
   renderHealthStrip(today);
+  if (typeof renderNowBlock === 'function') renderNowBlock();
+  if (typeof watchNowBlockScroll === 'function') watchNowBlockScroll();
   renderWeightTrend();
   renderWeeklyReport();
   renderReminders(today);

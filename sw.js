@@ -1,7 +1,7 @@
 // Daylign service worker — network-first with cache fallback.
 // Online: every request hits the network (no stale code), responses refresh the cache.
 // Offline: the cached app shell serves, and data loads from localStorage.
-const CACHE = 'daylign-v136';
+const CACHE = 'daylign-v137';
 // Google Fonts (Bricolage Grotesque, Geist, JetBrains Mono, Material Symbols)
 // live in their own cache so a CACHE bump doesn't throw away ~1MB of font
 // files that never change. The stylesheet is network-first like the app shell;
@@ -31,6 +31,7 @@ const ASSETS = [
   'js/state.js',
   'js/modal.js',
   'js/dashboard.js',
+  'js/now-block.js',
   'js/tasks.js',
   'js/board.js',
   'js/calendar.js',

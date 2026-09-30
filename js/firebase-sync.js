@@ -487,10 +487,14 @@ function migrateOwnerData() {
 // Must run only after a profile is chosen — see requireProfile in js/profile.js.
 function initFirebaseSync(onDataReceived) {
   // No SDK: stay on the cached local state rather than throwing on db.ref.
+  // Deliberately does NOT call onDataReceived - that is applyFirebaseData,
+  // which reads data.tasks and throws on null. There is no cloud snapshot to
+  // apply here; state.js has already loaded localStorage, so the right move is
+  // to leave it alone and just render.
   if (!db) {
     setSyncStatus('offline');
     document.body.classList.remove('app-loading');
-    if (typeof onDataReceived === 'function') onDataReceived(null);
+    if (typeof render === 'function') render();
     return;
   }
   setSyncStatus('connecting');

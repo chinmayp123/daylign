@@ -54,6 +54,14 @@
   --c-habit-ink: var(--c-habit);
   --c-none-ink:  var(--text-muted);
 
+  /* The now block inverts: its background is --text-primary, which is
+     near-white at night. So the colours inside it need the opposite theme's
+     treatment to the chips - darkened here, vivid by day. */
+  --c-food-onink:  color-mix(in srgb, #121412 39%, #e8730c);
+  --c-water-onink: color-mix(in srgb, #121412 32%, #0891b2);
+  --c-move-onink:  color-mix(in srgb, #121412 37%, #15a34a);
+  --c-sleep-onink: color-mix(in srgb, #121412 16%, #5a5fd8);
+
   /* The old status colours alias the category ones, so every existing use
      picks up the new palette. */
   --green: var(--c-move);
@@ -5713,6 +5721,13 @@ html[data-theme="light"] {
   --c-meet-ink:  color-mix(in srgb, var(--text-primary) 24%, var(--c-meet));
   --c-habit-ink: color-mix(in srgb, var(--text-primary) 39%, var(--c-habit));
   --c-none-ink:  color-mix(in srgb, var(--text-primary) 15%, var(--text-muted));
+
+  /* By day the now block's background is near-black, so the bright night
+     values are the legible ones here. */
+  --c-food-onink:  #ff9a3d;
+  --c-water-onink: #35c6e6;
+  --c-move-onink:  #3ddc7a;
+  --c-sleep-onink: #8f93ff;
   --red: #c2410c;
   --shadow: 0 8px 32px rgba(20, 24, 20, 0.10);
   color-scheme: light;
@@ -12160,4 +12175,123 @@ html.pref-reduce-motion .dl-btn:active { transform: none; }
   /* Re-measured for what actually floats now: the bar (about 68px) at a 12px
      inset, plus the voice FAB above it. Was 200px for the old FAB stack. */
   .view.active { padding-bottom: calc(190px + env(safe-area-inset-bottom, 0px)); }
+}
+
+
+/* ---- The now block (spec 4.2) ---- */
+/* Ink panel, page-colour text, stuck under the header. The owner's rule is
+   that these numbers are always on screen, so it is not hideable and not
+   reorderable - Arrange Today shows it locked. */
+.now-block {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  margin-bottom: 18px;
+  padding: 16px 18px 14px;
+  border-radius: 18px;
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  box-shadow: var(--shadow);
+}
+/* Inside the block every category colour swaps to its on-ink value. */
+.now-block .c-food  { --c: var(--c-food-onink); }
+.now-block .c-water { --c: var(--c-water-onink); }
+.now-block .c-move  { --c: var(--c-move-onink); }
+.now-block .c-sleep { --c: var(--c-sleep-onink); }
+
+.nb-pin {
+  display: inline-block;
+  margin-bottom: 8px;
+  font: 700 9px/1 var(--font-mono);
+  letter-spacing: .14em;
+  color: var(--accent);
+}
+
+.nb-cal {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.nb-cal-main { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.nb-cal-num {
+  font: 700 34px/1 var(--font-mono);
+  letter-spacing: -0.03em;
+  color: var(--c-food-onink);
+}
+.nb-cal-of { font: 400 12px/1.2 var(--font-body); opacity: .72; }
+.nb-cal-left { font: 500 12px/1 var(--font-mono); opacity: .82; white-space: nowrap; }
+.nb-cal-left.is-over { color: var(--red); opacity: 1; }
+
+.nb-row2 { display: flex; gap: 18px; margin-top: 14px; }
+.nb-metric {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.nb-metric-top { display: flex; align-items: baseline; gap: 5px; min-width: 0; }
+.nb-metric-val { font: 600 15px/1 var(--font-mono); color: var(--c); }
+.nb-metric-label { font: 400 11px/1 var(--font-body); opacity: .66; }
+.nb-ticks { display: flex; gap: 2px; }
+.nb-tick {
+  flex: 1 1 0;
+  height: 4px;
+  border-radius: 2px;
+  background: currentColor;
+  opacity: .18;
+}
+.nb-tick.on { background: var(--c); opacity: 1; }
+
+.nb-row3 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 13px;
+  padding-top: 11px;
+  border-top: 1px solid color-mix(in srgb, var(--bg-primary) 18%, transparent);
+}
+.nb-small {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+}
+.nb-small-val { font: 600 12.5px/1 var(--font-mono); color: var(--c, inherit); }
+.nb-small-label { font: 400 11px/1 var(--font-body); opacity: .6; }
+
+/* Collapsed: one line of the four numbers that matter at a glance. */
+.now-block.is-collapsed { padding: 9px 16px; }
+.now-block.is-collapsed .nb-pin,
+.now-block.is-collapsed .nb-row3,
+.now-block.is-collapsed .nb-ticks,
+.now-block.is-collapsed .nb-cal-of,
+.now-block.is-collapsed .nb-cal-left { display: none; }
+.now-block.is-collapsed .nb-cal { display: inline-flex; width: auto; }
+.now-block.is-collapsed .nb-cal-num { font-size: 16px; }
+.now-block.is-collapsed .nb-row2 { margin-top: 0; gap: 14px; }
+.now-block.is-collapsed { display: flex; align-items: baseline; gap: 14px; }
+.now-block.is-collapsed .nb-metric-label { display: none; }
+.now-block.is-collapsed .nb-metric { flex: 0 0 auto; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .now-block { transition: padding 140ms ease; }
 }
