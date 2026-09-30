@@ -946,12 +946,6 @@ body {
 /* Log left, numbers right. The three-column grid was built for cards that no
    longer exist here; the day view is now the log and a rail beside it. */
 
-@media (max-width: 1100px) {
-  /* The rail goes UNDER the log, never above it - the whole point is that the
-     numbers can no longer push the log down the page. */
-  
-}
-
 /* Water is its own card in the rail now, so the tracker must stop being a
    boxed section INSIDE another box: it kept the divider rule and the 20px
    margin from when it hung below the summary in one card, which read as ~40px
@@ -1714,10 +1708,6 @@ button:not(:disabled):active {
 /* Tucked away while scrolling down so it stops covering content. Translated
    rather than hidden, so it animates back in and stays keyboard-reachable. */
 
-@media (max-width: 900px) {
-   /* clear the bottom nav */
-}
-
 @keyframes voice-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
   50% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
@@ -2421,12 +2411,6 @@ body.profile-gated { overflow: hidden; }
 
 /* Anytime tray */
 
-@media (max-width: 640px) {
-  /* On phones dragging between lanes is unreliable; the handle is decorative,
-     the 🕑 button is the real control. */
-  
-}
-
 /* ========== Cardio run detail + mileage ring (handoff §3 / 4b/4c/11b) ========== */
 
 /* Session list detail row */
@@ -2444,25 +2428,7 @@ body.profile-gated { overflow: hidden; }
    tiny date input. A chevron hints it's interactive. (Diet uses
    .diet-date-label; Training/gym use .gym-date-label — cover both.) */
 
-@media (max-width: 640px) {
-  /* Bigger, thumb-friendly day stepping on phones */
-  
-  
-  
-  
-  /* The raw date input is redundant once the label opens the picker */
-  
-}
-
 /* ========== Collapsible schedule (mobile scroll relief) ========== */
-
-@media (max-width: 640px) {
-  
-  /* Collapsed by default on phones — the two-lane plan above already shows
-     today's tasks, so the full hour grid is opt-in and doesn't force a long
-     scroll past it. */
-  
-}
 
 /* ========== AI usage report (Settings) ========== */
 
@@ -3424,48 +3390,9 @@ html.pref-large-text { font-size: 112.5%; }
 .gym-suggest-chip:active { transform: scale(0.97); }
 .gym-suggest-chip.is-new { color: var(--text-muted); border-style: dashed; }
 
-@media (max-width: 900px) {
-  
-  
-
-  /* The desktop popup wraps the form in a panel card; on mobile that wrapper
-     must vanish so the head stays sticky to the full-screen sheet as before. */
-  
-
-  
-  
-  
-
-  /* The page underneath must not scroll behind the sheet. */
-  
-
-  /* Bigger targets, since this is used mid-set with one hand. */
-  
-  
-  
-  
-
-  /* The floating pill would sit on top of the sheet's own save button. */
-  
-}
-
 /* Desktop: logging is a centered popup, the same interaction as the New Task
    modal — not the inline form it used to be, and not the mobile takeover. The
    form is hidden until the '+ Add Exercise' button (or an entry's edit) opens it. */
-@media (min-width: 901px) {
-  
-  
-
-  
-
-  
-  
-  
-  
-
-  /* Lock the page behind the popup, matching the modal overlay. */
-  
-}
 
 /* ---- Meal combos ----
    A chip that writes five rows must not look like one that writes a single
@@ -3556,13 +3483,6 @@ html.pref-large-text { font-size: 112.5%; }
 
 /* ========== Task view pane ========== */
 /* Reading a task should not mean squinting at a three-line textarea. */
-
-@media (max-width: 600px) {
-  
-  /* Full-width stacked buttons sit better under a thumb on a sheet. */
-  
-  
-}
 
 /* ========== Sync status detail ========== */
 /* "Not saving" used to be a dead end: the reason lived in a title tooltip,
