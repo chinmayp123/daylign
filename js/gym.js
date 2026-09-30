@@ -1051,10 +1051,13 @@ function gymSheetIsMobile() {
   return window.matchMedia('(max-width: 900px)').matches;
 }
 
-function openGymLogSheet(prefillName) {
+// prefillSets: [{reps, weight}] as strings, for a nudge that arrives with its
+// numbers (the plateau card's "Try 3 x 6 at 160", the coach's "Start it").
+function openGymLogSheet(prefillName, prefillSets) {
   const sheet = document.getElementById('gymLogSheet');
   if (!sheet) return;
-  if (gymEditingIdx === null) gymSets = (typeof defaultGymSets === 'function') ? defaultGymSets() : gymSets;
+  if (Array.isArray(prefillSets) && prefillSets.length) gymSets = prefillSets;
+  else if (gymEditingIdx === null) gymSets = (typeof defaultGymSets === 'function') ? defaultGymSets() : gymSets;
   const input = document.getElementById('gymExerciseName');
   if (input && typeof prefillName === 'string') input.value = prefillName;
   renderGym();

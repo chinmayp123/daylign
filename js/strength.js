@@ -128,17 +128,34 @@ function movementTrend(g) {
 }
 
 // Rolling 30-day headline: how much work actually happened.
-function strengthLast30() {
+function strengthLast30(movements) {
   const cutoff = offsetDateStr(getTodayStr(), -30);
   const recent = (state.gym || []).filter(e => e && e.date && e.date >= cutoff);
-  const days = new Set(recent.map(e => e.date));
-  let reps = 0;
-  const moves = new Set();
+  // A session is a full session, not a day with the two habit sets on it.
+  const days = Array.from(new Set(recent.map(e => e.date)));
+  const sessions = days.filter(d => (typeof isFullSession === 'function') ? isFullSession(d) : true).length;
+  let sets = 0, volume = 0;
   recent.forEach(e => {
-    moves.add(exKey(e.exercise));
-    setsOf(e).forEach(s => { reps += Number(s.reps) || 0; });
+    const bw = e.bodyweight || (typeof isBodyweightExercise === 'function' && isBodyweightExercise(e.exercise));
+    setsOf(e).forEach(st => {
+      sets++;
+      if (!bw) volume += (Number(st.reps) || 0) * (Number(st.weight) || 0);
+    });
   });
-  return { sessions: days.size, reps, movements: moves.size };
+  const prs = (movements || []).filter(m => m.sessionCount >= 2 && m.prDate && m.prDate >= cutoff).length;
+  return { sessions, sets, volume, prs };
+}
+
+// 48,120 -> "48k". Under ten thousand the exact figure still fits the tile.
+function compactNumber(n) {
+  if (n >= 10000) return Math.round(n / 1000) + 'k';
+  return Math.round(n).toLocaleString();
+}
+
+// "3 weeks" under two months, "4 months" after: "1 months" was the old output.
+function stallSpan(days) {
+  if (days < 60) { const w = Math.max(1, Math.round(days / 7)); return w + (w === 1 ? ' week' : ' weeks'); }
+  const mo = Math.round(days / 30); return mo + ' months';
 }
 
 // The one thing worth saying today. Prefers the most-trained plateaued
@@ -151,9 +168,9 @@ function strengthInsight(movements) {
   const unit = m.bodyweight ? 'reps' : 'lbs';
   return {
     movement: m,
-    title: `Your ${m.name.toLowerCase()} ${m.bodyweight ? 'have' : 'has'} been ${m.typical} ${unit} for ${Math.max(1, Math.round(m.spanDays / 30))} months`,
+    title: `Your ${m.name.toLowerCase()} ${m.bodyweight ? 'have' : 'has'} been ${m.typical} ${unit} for ${stallSpan(m.spanDays)}`,
     body: `${m.typical} ${unit} in ${m.typicalCount} of ${m.sessionCount} sessions. Your body adapted a long time ago — the fastest win here is adding ${m.bodyweight ? 'reps' : 'weight'}, not more sessions.`,
-    ctaLabel: `Try 3 × ${target} today`,
+    ctaLabel: m.bodyweight ? `Try 3 x ${target} today` : `Try 3 x ${m.typical} at ${m.sessions[m.sessions.length - 1].topWeight + 5}`,
     targetReps: m.bodyweight ? target : m.typical,
     targetWeight: m.bodyweight ? 0 : (m.sessions[m.sessions.length - 1].topWeight + 5),
     name: m.name,
@@ -214,39 +231,31 @@ function renderMuscleBalance() {
   if (typeof muscleGroupFor !== 'function') return '';
   const weeks = muscleWeeks(BALANCE_WEEKS);
   const wk = weeks[0];
-  const anyData = weeks.some(w => w.total > 0);
-  if (!anyData) return '';
+  if (!weeks.some(w => w.total > 0)) return '';
 
   const scale = Math.max.apply(null, MUSCLE_ORDER.map(g => wk[g]).concat([1]));
   const rows = MUSCLE_ORDER.map(g => {
     const sets = wk[g];
     const pct = Math.round((sets / scale) * 100);
-    // 4-week trend for this group, so a zero week reads in context.
+    // Four weeks of this group beside the bar, so a zero week reads in context.
     const hist = weeks.map(w => w[g]).reverse();
     const hmax = Math.max.apply(null, hist.concat([1]));
-    const spark = hist.map(v => `<span class="mb-tick" style="height:${Math.max(8, Math.round((v / hmax) * 100))}%;background:${v ? MUSCLE_COLOR[g] : 'var(--bg-hover)'}"></span>`).join('');
+    const ticks = hist.map(v => `<i class="${v ? '' : 'empty'}" style="--h:${Math.max(12, Math.round((v / hmax) * 100))}%"></i>`).join('');
     return `
-      <div class="mb-row">
-        <div class="mb-head">
-          <span class="mb-name">${MUSCLE_LABEL[g]}</span>
-          <span class="mb-sets tnum">${sets === 0 ? '<span class="mb-zero">none</span>' : `<b>${sets}</b> set${sets === 1 ? '' : 's'}`}</span>
-        </div>
-        <div class="mb-barwrap">
-          <div class="mb-track"><div class="mb-fill" style="width:${pct}%;background:${MUSCLE_COLOR[g]}"></div></div>
-          <div class="mb-spark" title="last ${BALANCE_WEEKS} weeks">${spark}</div>
-        </div>
+      <div class="sp-bal">
+        <span class="sp-bal-name">${MUSCLE_LABEL[g]}</span>
+        <span class="dl-meter c-move"><i style="width:${pct}%"></i></span>
+        <span class="dl-bars c-move sp-bal-ticks" title="last ${BALANCE_WEEKS} weeks">${ticks}</span>
+        <span class="sp-bal-n">${sets || 'none'}</span>
       </div>`;
   }).join('');
 
   const v = balanceVerdict(wk);
   return `
-    <div class="card str-card">
-      <div class="coach-head">
-        <h2>Muscle balance</h2>
-        <span class="weight-goal-chip${v.tone === 'warn' ? ' str-chip-warn' : ''}">${wk.total} set${wk.total === 1 ? '' : 's'} this week</span>
-      </div>
+    <div class="dl-card sp-card">
+      <h6 class="dl-card-h"><span>Muscle balance</span><em>${wk.total} set${wk.total === 1 ? '' : 's'} this week</em></h6>
       ${rows}
-      <div class="mb-verdict ${v.tone}">${esc(v.text)}</div>
+      <p class="sp-note${v.tone === 'warn' ? ' is-warn' : ''}">${esc(v.text)}</p>
     </div>`;
 }
 
@@ -275,33 +284,23 @@ function renderStrength() {
 }
 
 function renderStrengthSummary(movements) {
-  const s = strengthLast30();
+  const s = strengthLast30(movements);
   const insight = strengthInsight(movements);
+  const tiles = [[s.sessions, 'sessions'], [s.sets, 'sets'], [compactNumber(s.volume), 'lb moved'], [s.prs, s.prs === 1 ? 'PR' : 'PRs']];
   return `
-    <div class="card str-card">
-      <div class="coach-head">
-        <h2>Last 30 days</h2>
-        <span class="weight-goal-chip">${s.sessions} session${s.sessions === 1 ? '' : 's'}</span>
-      </div>
-      <div class="str-tiles">
-        <div class="str-tile"><div class="str-tile-v tnum">${s.sessions}</div><div class="str-tile-l">Sessions</div></div>
-        <div class="str-tile"><div class="str-tile-v tnum">${s.reps}</div><div class="str-tile-l">Total reps</div></div>
-        <div class="str-tile"><div class="str-tile-v tnum">${s.movements}</div><div class="str-tile-l">Movements</div></div>
-      </div>
-      ${insight ? `
-        <div class="str-insight">
-          <span class="str-insight-icon">⚡</span>
-          <div class="str-insight-body">
-            <div class="str-insight-title">${esc(insight.title)}</div>
-            <div class="str-insight-text">${esc(insight.body)}</div>
-            <button type="button" class="str-insight-cta" id="strInsightCta">${esc(insight.ctaLabel)}</button>
-          </div>
-        </div>` : ''}
-    </div>`;
+    <div class="dl-tiles sp-tiles">
+      ${tiles.map(t => `<div class="dl-tile"><b>${t[0]}</b><span>${t[1]}</span></div>`).join('')}
+    </div>
+    <p class="sp-window">Last 30 days</p>
+    ${insight ? `
+      <div class="dl-card tint c-food sp-card">
+        <h6 class="dl-card-h"><span>${esc(insight.title)}</span></h6>
+        <p class="sp-note">${esc(insight.body)}</p>
+        <button type="button" class="dl-btn primary" id="strInsightCta">${esc(insight.ctaLabel)}</button>
+      </div>` : ''}`;
 }
 
 function renderMovementList(movements) {
-  const stalledCount = movements.filter(m => m.stalled).length;
   // Tracked movements lead. Movements still gathering history are capped at a
   // couple of rows and then summarised — eight identical "needs more sessions"
   // rows is noise, not information.
@@ -310,53 +309,43 @@ function renderMovementList(movements) {
   const shown = tracked.concat(growing.slice(0, 2));
   const hiddenCount = growing.length - Math.min(growing.length, 2);
   const rows = shown.map(m => {
-    const unit = m.bodyweight ? 'reps' : 'lbs';
-    const headline = m.bodyweight
-      ? `${m.typical}<small> reps</small>`
-      : `${m.sessions[m.sessions.length - 1].topWeight}<small> lbs × ${m.sessions[m.sessions.length - 1].bestReps}</small>`;
+    const last = m.sessions[m.sessions.length - 1];
+    const now = m.bodyweight ? `${m.typical} reps` : `${last.topWeight} lb x ${last.bestReps}`;
     if (!m.canCurve) {
-      const pct = Math.round((m.sessionCount / MIN_CURVE_SESSIONS) * 100);
+      const left = MIN_CURVE_SESSIONS - m.sessionCount;
       return `
-        <div class="str-mv is-locked" data-mv="${esc(m.key)}">
-          <div class="str-mv-top"><span class="str-mv-name">${esc(m.name)}</span><span class="str-mv-best tnum">${headline}</span></div>
-          <div class="str-mv-lock"><div class="str-mv-lockfill" style="width:${pct}%"></div></div>
-          <div class="str-mv-foot">
-            <span class="str-tag lock">${m.sessionCount} / ${MIN_CURVE_SESSIONS}</span>
-            <span class="str-mv-sub">${MIN_CURVE_SESSIONS - m.sessionCount} more session${MIN_CURVE_SESSIONS - m.sessionCount === 1 ? '' : 's'} unlocks your curve</span>
-          </div>
+        <div class="sp-mv is-locked">
+          <span class="sp-mv-main"><span class="sp-mv-name">${esc(m.name)}</span>
+            <span class="sp-mv-sub">${now} · ${left} more session${left === 1 ? '' : 's'} for a curve</span></span>
+          <span class="dl-chip">${m.sessionCount} / ${MIN_CURVE_SESSIONS}</span>
         </div>`;
     }
-    const tag = m.stalled ? '<span class="str-tag flat">STALLED</span>'
-      : m.improving ? '<span class="str-tag up">IMPROVING</span>' : '';
+    const chip = m.stalled ? '<span class="dl-chip c-food">stalled</span>'
+      : m.improving ? '<span class="dl-chip c-move">improving</span>' : '<span class="dl-chip">steady</span>';
     return `
-      <div class="str-mv" data-mv="${esc(m.key)}">
-        <div class="str-mv-top"><span class="str-mv-name">${esc(m.name)}</span><span class="str-mv-best tnum">${headline}</span></div>
+      <button type="button" class="sp-mv${m.key === strengthCurveKey ? ' on' : ''}" data-mv="${esc(m.key)}" aria-pressed="${m.key === strengthCurveKey}">
+        <span class="sp-mv-main"><span class="sp-mv-name">${esc(m.name)}</span>
+          <span class="sp-mv-sub">${now} · ${m.sessionCount} sessions</span></span>
         ${sparklineSvg(m)}
-        <div class="str-mv-foot">
-          ${tag}
-          <span class="str-mv-sub">${m.sessionCount} sessions · best ${m.prVal}${m.bodyweight ? '' : ' lb'} on ${formatDate(m.prDate)}</span>
-        </div>
-      </div>`;
+        ${chip}
+      </button>`;
   }).join('');
 
   return `
-    <div class="card str-card">
-      <div class="coach-head">
-        <h2>Your movements</h2>
-        ${stalledCount ? `<span class="weight-goal-chip str-chip-warn">${stalledCount} stalled</span>` : ''}
-      </div>
+    <div class="dl-card sp-card">
+      <h6 class="dl-card-h"><span>Movements</span><em>tap one to chart it</em></h6>
       ${rows}
-      ${hiddenCount > 0 ? `<div class="str-mv-more">+${hiddenCount} more movement${hiddenCount === 1 ? '' : 's'} building history</div>` : ''}
+      ${hiddenCount > 0 ? `<p class="sp-note">+${hiddenCount} more movement${hiddenCount === 1 ? '' : 's'} building history.</p>` : ''}
     </div>`;
 }
 
 // Small inline sparkline of the last 14 sessions' best set.
 function sparklineSvg(m) {
   const ss = m.sessions.slice(-14);
-  const vals = ss.map(s => s.best);
+  const vals = ss.map(x => x.best);
   const max = Math.max.apply(null, vals);
   const min = Math.min.apply(null, vals);
-  const W = 300, H = 30, P = 5;
+  const W = 120, H = 26, P = 3;
   // Pad the scale so a FLAT series (a plateau — very common here) sits in the
   // middle of the band instead of collapsing onto the bottom edge, where it
   // reads as a clipped/broken chart rather than "steady".
@@ -367,30 +356,30 @@ function sparklineSvg(m) {
   const step = vals.length > 1 ? (W - P * 2) / (vals.length - 1) : 0;
   const yOf = v => H - P - ((v - lo) / range) * (H - P * 2);
   const pts = vals.map((v, i) => `${Math.round((P + i * step) * 10) / 10},${Math.round(yOf(v) * 10) / 10}`).join(' ');
-  const color = m.stalled ? 'var(--yellow)' : 'var(--accent)';
-  const prI = vals.lastIndexOf(max);
-  const prX = P + prI * step, prY = yOf(max);
+  const color = m.stalled ? 'var(--c-food)' : m.improving ? 'var(--c-move)' : 'var(--text-muted)';
   return `
-    <svg class="str-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
-      <polyline class="str-spark-line" fill="none" stroke="${color}" stroke-width="2"
-        stroke-linejoin="round" stroke-linecap="round" pathLength="100" points="${pts}"/>
-      ${spread > 0 ? `<circle cx="${Math.round(prX)}" cy="${Math.round(prY)}" r="3" fill="var(--accent-hover)"/>` : ''}
+    <svg class="sp-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+      <polyline fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="${pts}"/>
     </svg>`;
 }
 
+// The curve has two readings. For a weighted lift: estimated 1RM, or the top
+// set's weight (spec 7). For a bodyweight move neither exists, so it is best
+// set against total reps. Stored as 'best' or anything else.
 function renderStrengthCurve(movements) {
   const m = movements.find(x => x.key === strengthCurveKey);
   if (!m) return '';
   const ss = m.sessions.slice(-16);
-  const useTotal = strengthCurveMode === 'total';
-  const vals = ss.map(s => useTotal ? s.totalReps : s.best);
-  const unitLabel = m.bodyweight ? 'reps' : (useTotal ? 'reps' : 'est. 1RM');
+  const alt = strengthCurveMode !== 'best';
+  const vals = ss.map(x => !alt ? x.best : (m.bodyweight ? x.totalReps : x.topWeight));
+  const labels = m.bodyweight ? ['Best set', 'Total reps'] : ['Est. 1RM', 'Top set'];
+  const unit = m.bodyweight ? 'reps' : 'lb';
 
-  const W = 640, H = 150, PX = 34, PY = 22;
+  const W = 640, H = 150, PX = 8, PY = 20;
   const maxV = Math.max.apply(null, vals);
   const minV = Math.min.apply(null, vals);
   // Next target sits just above what you already do — the line to chase.
-  const target = useTotal ? 0 : (m.bodyweight ? m.typical + 2 : m.typical + 5);
+  const target = alt ? 0 : (m.bodyweight ? m.typical + 2 : m.typical + 5);
   const hi = Math.max(maxV, target) * 1.08;
   const lo = Math.max(0, minV - (hi - minV) * 0.25);
   const range = (hi - lo) || 1;
@@ -401,44 +390,30 @@ function renderStrengthCurve(movements) {
   const area = `${pts} ${Math.round(x(vals.length - 1))},${H - PY} ${PX},${H - PY}`;
   const prI = vals.lastIndexOf(maxV);
   const targetY = target ? y(target) : 0;
-
-  const chips = m.bodyweight || true ? `
-    <div class="str-curve-chips">
-      <button type="button" class="str-curve-chip ${useTotal ? '' : 'active'}" data-mode="best">Best set</button>
-      <button type="button" class="str-curve-chip ${useTotal ? 'active' : ''}" data-mode="total">Total reps</button>
-    </div>` : '';
-
-  const statusChip = m.stalled
-    ? `<span class="weight-goal-chip str-chip-warn">no gain · ${Math.max(1, Math.round(m.spanDays / 30))} mo</span>`
-    : `<span class="weight-goal-chip">${m.gainPct >= 0 ? '+' : ''}${m.gainPct}% all-time</span>`;
+  const gain = `${m.gainPct >= 0 ? '+' : ''}${m.gainPct}%`;
 
   return `
-    <div class="card str-card">
-      <div class="coach-head"><h2>${esc(m.name)}</h2>${statusChip}</div>
-      ${chips}
-      <svg class="str-curve" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
-        <defs><linearGradient id="strFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="rgba(109,106,248,0.26)"/><stop offset="1" stop-color="rgba(109,106,248,0)"/>
-        </linearGradient></defs>
-        ${target ? `<line x1="${PX}" y1="${targetY}" x2="${W - PX}" y2="${targetY}" stroke="var(--purple)"
-          stroke-width="1.5" stroke-dasharray="5 5" opacity="0.65"/>
-          <text x="${W - PX}" y="${targetY - 6}" text-anchor="end" font-size="10" fill="var(--purple)">next target ${target}</text>` : ''}
-        <polygon fill="url(#strFill)" points="${area}"/>
-        <polyline class="str-spark-line" fill="none" stroke="var(--accent)" stroke-width="2.5"
-          stroke-linecap="round" stroke-linejoin="round" pathLength="100" points="${pts}"/>
-        <circle cx="${Math.round(x(prI))}" cy="${Math.round(y(maxV))}" r="5" fill="var(--green)" stroke="var(--bg-card)" stroke-width="2"/>
+    <div class="dl-card sp-card" id="strCurveCard">
+      <h6 class="dl-card-h"><span>${esc(m.name)}</span>
+        <span class="dl-seg sp-seg" role="group" aria-label="Chart reading">
+          <button type="button" data-mode="best"${alt ? '' : ' aria-pressed="true"'}>${labels[0]}</button>
+          <button type="button" data-mode="alt"${alt ? ' aria-pressed="true"' : ''}>${labels[1]}</button>
+        </span></h6>
+      <svg class="sp-curve c-move" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img"
+           aria-label="${esc(m.name)}: ${esc(labels[alt ? 1 : 0])} over ${ss.length} sessions, from ${vals[0]} to ${vals[vals.length - 1]} ${unit}">
+        ${target ? `<line x1="${PX}" y1="${targetY}" x2="${W - PX}" y2="${targetY}" class="sp-curve-target"/>` : ''}
+        <polygon class="sp-curve-area" points="${area}"/>
+        <polyline class="sp-curve-line" fill="none" points="${pts}"/>
+        <circle cx="${Math.round(x(prI))}" cy="${Math.round(y(maxV))}" r="5" class="sp-curve-pr"/>
       </svg>
-      <div class="str-curve-axis">
-        <span>${formatDate(ss[0].date)}</span>
-        <span>${formatDate(ss[ss.length - 1].date)}</span>
+      <div class="sp-curve-axis"><span>${formatDate(ss[0].date)}</span>${target ? `<span>next target ${target} ${unit}</span>` : ''}<span>${formatDate(ss[ss.length - 1].date)}</span></div>
+      <div class="dl-tiles sp-curve-tiles">
+        <div class="dl-tile"><b>${m.typical}</b><span>typical</span></div>
+        <div class="dl-tile"><b>${m.prVal}</b><span>best, ${formatDate(m.prDate)}</span></div>
+        <div class="dl-tile"><b>${gain}</b><span>${m.stalled ? `flat for ${stallSpan(m.spanDays)}` : 'all-time'}</span></div>
+        <div class="dl-tile"><b>${m.sessionCount}</b><span>sessions</span></div>
       </div>
-      <div class="str-curve-foot">
-        <div><div class="str-cs-v tnum">${m.typical}</div><div class="str-cs-l">typical</div></div>
-        <div><div class="str-cs-v tnum" style="color:var(--green)">${m.prVal}</div><div class="str-cs-l">your PR</div></div>
-        <div><div class="str-cs-v tnum" style="color:${m.stalled ? 'var(--yellow)' : 'var(--green)'}">${m.gainPct >= 0 ? '+' : ''}${m.gainPct}%</div><div class="str-cs-l">all-time</div></div>
-        <div><div class="str-cs-v tnum">${m.sessionCount}</div><div class="str-cs-l">sessions</div></div>
-      </div>
-      <div class="str-curve-note">${esc(unitLabel)} per session${m.bodyweight ? '' : ' · Epley estimate'}</div>
+      <p class="sp-note">${labels[alt ? 1 : 0]} per session${m.bodyweight || alt ? '' : ', Epley estimate'}.</p>
     </div>`;
 }
 
@@ -450,59 +425,45 @@ function renderStrengthPRs(movements) {
     .sort((a, b) => b.prDate.localeCompare(a.prDate))
     .slice(0, 8);
   if (!prs.length) return '';
-  const cards = prs.map(m => {
+  const chips = prs.map(m => {
     const ageDays = Math.round((new Date(today) - new Date(m.prDate)) / 86400000);
     const fresh = ageDays <= PR_FRESH_DAYS;
-    const sess = m.sessions[m.sessions.map(s => s.best).lastIndexOf(m.prVal)] || m.sessions[m.sessions.length - 1];
-    const val = m.bodyweight
-      ? `${m.prVal}<small> reps</small>`
-      : `${sess.topWeight}<small> × ${sess.bestReps}</small>`;
-    return `
-      <div class="str-pr ${fresh ? 'is-new' : ''}">
-        ${fresh ? '<span class="str-pr-badge">PR</span>' : ''}
-        <div class="str-pr-ex">${esc(m.name)}</div>
-        <div class="str-pr-val tnum">${val}</div>
-        <div class="str-pr-meta">${formatDate(m.prDate)}${m.bodyweight ? '' : ` · 1RM ${m.prVal}`}</div>
-      </div>`;
+    const sess = m.sessions[m.sessions.map(x => x.best).lastIndexOf(m.prVal)] || m.sessions[m.sessions.length - 1];
+    const val = m.bodyweight ? `${m.prVal}` : `${sess.topWeight} x ${sess.bestReps}`;
+    return `<span class="dl-chip c-food sp-pr${fresh ? ' is-new' : ''}" title="${esc(formatDate(m.prDate))}${m.bodyweight ? '' : ` · est. 1RM ${m.prVal}`}">
+      <span class="ms" aria-hidden="true">trophy</span>${esc(m.name)} ${val}${fresh ? '<b>new</b>' : ''}</span>`;
   }).join('');
   return `
-    <div class="card str-card">
-      <div class="coach-head"><h2>Personal records</h2><span class="weight-goal-chip">${prs.length}</span></div>
-      <div class="str-pr-shelf">${cards}</div>
+    <div class="dl-card sp-card">
+      <h6 class="dl-card-h"><span>Personal records</span><em>${prs.length}</em></h6>
+      <div class="sp-prs">${chips}</div>
     </div>`;
 }
 
 function bindStrengthEvents(movements) {
   // Tap a movement row to point the curve at it.
-  document.querySelectorAll('#strengthAnalytics .str-mv:not(.is-locked)').forEach(el => {
+  document.querySelectorAll('#strengthAnalytics .sp-mv[data-mv]').forEach(el => {
     el.addEventListener('click', () => {
       strengthCurveKey = el.dataset.mv;
       renderStrength();
-      const curve = document.querySelector('#strengthAnalytics .str-curve');
+      const curve = document.getElementById('strCurveCard');
       if (curve) curve.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
   });
 
-  document.querySelectorAll('#strengthAnalytics .str-curve-chip').forEach(btn => {
+  document.querySelectorAll('#strengthAnalytics .sp-seg [data-mode]').forEach(btn => {
     btn.addEventListener('click', () => { strengthCurveMode = btn.dataset.mode; renderStrength(); });
   });
 
-  // "Try 3 × N today" — prefills the add-exercise form so the nudge is one tap
-  // from being logged, instead of just being advice.
+  // "Try 3 x N today" opens the log sheet already filled in, so the nudge is
+  // one tap from being logged instead of being advice.
   const cta = document.getElementById('strInsightCta');
   if (cta) cta.addEventListener('click', () => {
     const insight = strengthInsight(movements);
-    if (!insight) return;
-    const nameInput = document.getElementById('gymExerciseName');
-    if (nameInput) nameInput.value = insight.name;
-    if (typeof gymSets !== 'undefined') {
-      gymSets = [0, 1, 2].map(() => ({
-        reps: String(insight.targetReps),
-        weight: insight.targetWeight ? String(insight.targetWeight) : '',
-      }));
-    }
-    if (typeof renderGym === 'function') renderGym();
-    if (nameInput) nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    if (typeof showToast === 'function') showToast(`Loaded 3 × ${insight.targetReps} ${insight.name} — check the sets and Save`);
+    if (!insight || typeof openGymLogSheet !== 'function') return;
+    openGymLogSheet(insight.name, [0, 1, 2].map(() => ({
+      reps: String(insight.targetReps),
+      weight: insight.targetWeight ? String(insight.targetWeight) : '',
+    })));
   });
 }
