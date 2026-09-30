@@ -165,12 +165,6 @@ function bindEvents() {
   $('#calMonthBtn').addEventListener('click', () => { calViewMode = 'month'; renderCalendar(); });
   $('#calWeekBtn').addEventListener('click', () => { calViewMode = 'week'; renderCalendar(); });
 
-  // Mini calendar nav (if present)
-  if ($('#miniCalPrev')) {
-    $('#miniCalPrev').addEventListener('click', () => { miniCalDate.setMonth(miniCalDate.getMonth() - 1); renderMiniCalendar(); });
-    $('#miniCalNext').addEventListener('click', () => { miniCalDate.setMonth(miniCalDate.getMonth() + 1); renderMiniCalendar(); });
-  }
-
   // Today's right column (desktop): the two things the phone reaches from the
   // + in the bottom bar. New opens the task form; Say it opens voice.
   const todayNew = $('#todayNewBtn');
@@ -510,7 +504,6 @@ function render() {
   renderSidebarCategories();
   renderSidebarProjects();
   renderDashboard();
-  renderMiniCalendar();
   renderTasksView();
   renderBoard();
   renderCalendar();
@@ -519,7 +512,6 @@ function render() {
   if (typeof renderCoach === 'function') renderCoach();
   if (typeof renderInsights === 'function') renderInsights();
   if (typeof renderCardio === 'function') renderCardio();
-  if (typeof renderTodayCardio === 'function') renderTodayCardio();
   if (typeof renderTraining === 'function') renderTraining();
   if (typeof renderSleep === 'function') renderSleep();
   renderDiet();

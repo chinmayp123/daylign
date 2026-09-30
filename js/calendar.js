@@ -468,11 +468,21 @@ function saveEventFromSheet() {
   render();
 }
 
+// No confirm(): the delete undoes from the toast, like every other delete.
 function deleteEventFromSheet() {
   if (!evEditingId) return;
-  if (!confirm('Delete this event?')) return;
-  state.events = (state.events || []).filter(e => e.id !== evEditingId);
+  const list = state.events || [];
+  const at = list.findIndex(e => e.id === evEditingId);
+  if (at === -1) return;
+  const gone = list[at];
+  state.events = list.filter(e => e !== gone);
   saveData(state);
   closeEventSheet();
   render();
+  showToast(`Deleted ${gone.name || 'event'} · Undo`, () => {
+    state.events = state.events || [];
+    state.events.splice(Math.min(at, state.events.length), 0, gone);
+    saveData(state);
+    render();
+  });
 }

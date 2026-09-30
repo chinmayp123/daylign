@@ -228,12 +228,8 @@ try {
 let currentView = localStorage.getItem('tf_view') || 'today';
 if (currentView === 'dashboard') currentView = 'today';
 let calendarDate = new Date();
-let miniCalDate = new Date();
-let editingSubtasks = [];
-let activeTaskTab = null;
 let activeBoardFilter = null;
 let boardFoldersCollapsed = {};
-let scheduleDate = new Date();
 let calViewMode = 'month';
 // Blank set rows for the gym form. Count comes from the device preference
 // (Settings -> Workout defaults) so it is honoured everywhere the form resets.

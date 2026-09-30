@@ -423,13 +423,21 @@ function saveTaskFromSheet() {
   render();
 }
 
+// No confirm(): the delete undoes from the toast, like every other delete.
 function deleteTaskFromSheet() {
   if (!tsEditingId) return;
-  if (!confirm('Delete this task?')) return;
-  state.tasks = (state.tasks || []).filter(t => t.id !== tsEditingId);
+  const at = (state.tasks || []).findIndex(t => t.id === tsEditingId);
+  if (at === -1) return;
+  const gone = state.tasks[at];
+  state.tasks = state.tasks.filter(t => t !== gone);
   saveData(state);
   closeTaskSheet();
   render();
+  showToast(`Deleted ${gone.name || 'task'} · Undo`, () => {
+    state.tasks.splice(Math.min(at, state.tasks.length), 0, gone);
+    saveData(state);
+    render();
+  });
 }
 
 // ---- The old entry points, kept as names so nothing has to know this moved ----

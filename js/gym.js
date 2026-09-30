@@ -70,65 +70,6 @@ function weightTrendSeries() {
   });
 }
 
-function renderWeight() {
-  const currentEl = $('#weightCurrent');
-  if (!currentEl) return;
-  const WEIGHT_GOAL = (typeof getGoals === 'function' && getGoals().weight) || 150;
-  const log = state.weight || {};
-  const entries = Object.entries(log).sort((a, b) => a[0].localeCompare(b[0]));
-  const input = $('#weightInput');
-  const viewedVal = log[gymViewDate];
-  input.placeholder = viewedVal ? `${viewedVal} lbs` : 'lbs';
-
-  if (!entries.length) {
-    currentEl.innerHTML = '<span class="weight-empty">Log your first weigh-in</span>';
-    $('#weightSpark').innerHTML = '';
-    $('#weightGoalChip').textContent = `Goal: ${WEIGHT_GOAL} lbs`;
-    return;
-  }
-
-  const [latestDate, latestRaw] = entries[entries.length - 1];
-  const trend = weightTrendSeries();
-  const latest = trend[trend.length - 1][1];
-  const prev = trend.length > 1 ? trend[trend.length - 2][1] : null;
-  const delta = prev !== null ? Math.round((latest - prev) * 10) / 10 : null;
-  // Direction-aware: moving toward the goal is good (green), away is red
-  const losing = latest > WEIGHT_GOAL;
-  const deltaGood = delta !== null && (losing ? delta <= 0 : delta >= 0);
-  const toGo = Math.round(Math.abs(latest - WEIGHT_GOAL) * 10) / 10;
-
-  currentEl.innerHTML = `
-    <span class="weight-num">${latest}<small> lbs${trend.length > 1 ? ' trend' : ''}</small></span>
-    ${delta !== null ? `<span class="weight-delta ${deltaGood ? 'good' : 'bad'}">${delta > 0 ? '▲' : delta < 0 ? '▼' : '—'} ${Math.abs(delta)}</span>` : ''}
-    <span class="weight-date">${latestRaw !== latest ? `scale ${latestRaw} · ` : ''}${formatDate(latestDate)}</span>
-  `;
-  $('#weightGoalChip').textContent = toGo === 0
-    ? `At goal: ${WEIGHT_GOAL} lbs`
-    : `${toGo} lbs to ${losing ? 'lose' : 'gain'} → ${WEIGHT_GOAL}`;
-
-  // Sparkline of the last 12 trend points (smoothed, not raw)
-  const pts = trend.slice(-12).map(([, w]) => w);
-  if (pts.length < 2) {
-    $('#weightSpark').innerHTML = '';
-    return;
-  }
-  const min = Math.min(...pts), max = Math.max(...pts);
-  const range = max - min || 1;
-  const W = 140, H = 40, PAD = 4;
-  const coords = pts.map((w, i) => {
-    const x = PAD + (i / (pts.length - 1)) * (W - PAD * 2);
-    const y = H - PAD - ((w - min) / range) * (H - PAD * 2);
-    return `${Math.round(x * 10) / 10},${Math.round(y * 10) / 10}`;
-  });
-  const last = coords[coords.length - 1].split(',');
-  $('#weightSpark').innerHTML = `
-    <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-      <polyline points="${coords.join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2"
-        stroke-linecap="round" stroke-linejoin="round" pathLength="100" class="weight-spark-line"/>
-      <circle cx="${last[0]}" cy="${last[1]}" r="3" fill="var(--accent-hover)"/>
-    </svg>`;
-}
-
 // ---- Targets & Coach ----
 // Calorie burn is a MET estimate: cal = MET x bodyweight(kg) x hours.
 // Each set is counted as ~2 min of session time (work + rest).
@@ -1356,7 +1297,6 @@ function renderGym() {
   if (!dateInput) return;
   dateInput.value = gymViewDate;
 
-  renderWeight();
   renderGymCoach();
   renderGoalProgress();
   renderActivityBreakdown();

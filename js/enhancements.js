@@ -1,10 +1,6 @@
 // ========== Daylign UI enhancements (additive) ==========
-// Self-contained layer added during the design pass. Everything here is
-// additive — it wraps existing global render fns and reads already-rendered
-// DOM rather than modifying js/ modules, so it merges with zero conflicts.
-// Covers: mobile "More" sheet, board single-column switch, light/dark theme,
-// dashboard "Today" hero, reminders focus rail, Cmd/Ctrl-K command palette,
-// and a mobile calendar agenda.
+// Covers: the theme (System / Light / Dark), the avatar sheet, the board's
+// single-column switch on a phone, and the Ctrl K palette.
 (function () {
   'use strict';
   const THEME_KEY = 'daylign_theme';
@@ -125,34 +121,6 @@
   // belongs to the week view now, not the whole month, and it is the calendar's
   // own renderer rather than something bolted onto renderCalendar from here.
 
-  // ---------- Serving stepper (Diet log) ----------
-  function updateAddLabel() {
-    const btn = $('#dietSaveBtn'); if (!btn) return;
-    const cal = Number(($('#dietCalories') || {}).value) || 0;
-    btn.textContent = cal > 0 ? `+ Add Food \u00b7 ${cal} cal` : '+ Add Food';
-  }
-  function setupServingStepper() {
-    const inp = $('#dietServings');
-    if (!inp || $('.serv-step')) return;
-    const grp = inp.closest('.form-group'); if (grp) grp.classList.add('serv-stepper-group');
-    const mk = (txt, delta) => {
-      const b = document.createElement('button');
-      b.type = 'button'; b.className = 'serv-step'; b.textContent = txt;
-      b.addEventListener('click', () => {
-        let v = Number(inp.value) || 1;
-        v = Math.max(0.5, Math.round((v + delta) * 2) / 2);
-        inp.value = v;
-        inp.dispatchEvent(new Event('input', { bubbles: true })); // diet.js recalcs macros
-        updateAddLabel();
-      });
-      return b;
-    };
-    inp.parentNode.insertBefore(mk('\u2212', -0.5), inp);
-    inp.parentNode.insertBefore(mk('+', 0.5), inp.nextSibling);
-    const cal = $('#dietCalories'); if (cal) cal.addEventListener('input', updateAddLabel);
-    updateAddLabel();
-  }
-
   // ---------- Command palette (\u2318K), spec 10.6 ----------
   // Groups: Exercises, Tasks, Foods, Cardio, Views, then "Run as a command",
   // which hands the text to the voice sheet so its results and undo show.
@@ -265,19 +233,6 @@
     else if (e.key === 'Escape') { e.preventDefault(); closePalette(); }
   }
 
-  // ---------- Wrap globals so our extras rebuild on every render ----------
-  function wrap(name, extra) {
-    const fn = window[name];
-    if (typeof fn !== 'function' || fn.__daylignWrapped) return;
-    const wrapped = function () {
-      const r = fn.apply(this, arguments);
-      try { extra(); } catch (e) { /* never let an extra break the app */ }
-      return r;
-    };
-    wrapped.__daylignWrapped = true;
-    window[name] = wrapped;
-  }
-
   function bind() {
     initTheme();
 
@@ -304,7 +259,7 @@
     $$('.bms-btn').forEach(b => b.addEventListener('click', () => setBoardCol(b.dataset.col)));
     setBoardCol('todo');
     updateBoardCounts();
-    $$('.nav-btn, .more-item, .bottom-nav-btn').forEach(b => b.addEventListener('click', () => setTimeout(updateBoardCounts, 80)));
+    $$('.nav-btn, .bottom-nav-btn').forEach(b => b.addEventListener('click', () => setTimeout(updateBoardCounts, 80)));
 
     // Cmd/Ctrl-K → the command palette (fuzzy search across the app + run NL commands)
     document.addEventListener('keydown', e => {
@@ -314,11 +269,6 @@
       }
       if (e.key === 'Escape') closeMore();
     });
-
-    setupServingStepper();
-
-    // Hook renders and paint our extras once for the initial view.
-    wrap('renderDiet', function () { setupServingStepper(); updateAddLabel(); });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
