@@ -1,7 +1,7 @@
 // Daylign service worker — network-first with cache fallback.
 // Online: every request hits the network (no stale code), responses refresh the cache.
 // Offline: the cached app shell serves, and data loads from localStorage.
-const CACHE = 'daylign-v135';
+const CACHE = 'daylign-v136';
 // Google Fonts (Bricolage Grotesque, Geist, JetBrains Mono, Material Symbols)
 // live in their own cache so a CACHE bump doesn't throw away ~1MB of font
 // files that never change. The stylesheet is network-first like the app shell;
@@ -9,6 +9,19 @@ const CACHE = 'daylign-v135';
 const FONT_CACHE = 'daylign-fonts-v1';
 const FONT_CSS_HOST = 'fonts.googleapis.com';
 const FONT_FILE_HOST = 'fonts.gstatic.com';
+// The Firebase SDK comes from a CDN. Without a copy, a first offline load had
+// no `firebase` at all (the app now degrades to "On this device", but sync
+// could not come back without a reconnect). Its URLs carry the version, so
+// like the font files they never change: cache-first, in their own cache so a
+// CACHE bump keeps them.
+const LIB_CACHE = 'daylign-libs-v1';
+const LIB_HOST = 'www.gstatic.com';
+const LIB_PATH = '/firebasejs/';
+const LIBS = [
+  'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js',
+  'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js',
+];
 const ASSETS = [
   '.',
   'index.html',
@@ -77,6 +90,12 @@ self.addEventListener('install', (e) => {
           console.warn('[sw] could not precache', url, err && err.message);
         })
       )))
+      .then(() => caches.open(LIB_CACHE))
+      .then((c) => Promise.all(LIBS.map((url) =>
+        c.match(url).then((hit) => hit || c.add(url)).catch((err) => {
+          console.warn('[sw] could not precache', url, err && err.message);
+        })
+      )))
       .then(() => self.skipWaiting())
       // Even a catastrophic cache failure must not block activation; a worker
       // that cannot cache is still better than one that never takes over.
@@ -87,7 +106,7 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE && k !== FONT_CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE && k !== FONT_CACHE && k !== LIB_CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
@@ -102,6 +121,17 @@ self.addEventListener('fetch', (e) => {
   if (url.hostname === FONT_FILE_HOST) {
     e.respondWith(
       caches.open(FONT_CACHE).then((c) => c.match(e.request).then((hit) =>
+        hit || fetch(e.request).then((res) => {
+          if (res.ok || res.type === 'opaque') c.put(e.request, res.clone());
+          return res;
+        })
+      ))
+    );
+    return;
+  }
+  if (url.hostname === LIB_HOST && url.pathname.startsWith(LIB_PATH)) {
+    e.respondWith(
+      caches.open(LIB_CACHE).then((c) => c.match(e.request, { ignoreVary: true }).then((hit) =>
         hit || fetch(e.request).then((res) => {
           if (res.ok || res.type === 'opaque') c.put(e.request, res.clone());
           return res;
