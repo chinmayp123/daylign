@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // the viewport crosses 600px (rotation, or a resized desktop window).
   window.matchMedia('(max-width: 600px)').addEventListener('change', setHeaderDate);
   bindEvents();
-  if (currentView !== 'dashboard') {
+  if (currentView !== 'today') {
     switchView(currentView);
   } else {
     render();
@@ -228,11 +228,11 @@ function bindEvents() {
   if (typeof bindSettingsPrefs === 'function') bindSettingsPrefs();
   if (typeof bindLayoutEditor === 'function') bindLayoutEditor();
   // Search entry points for touch — the palette was Cmd/Ctrl-K only.
-  ['openSearchBtn', 'moreSearchBtn'].forEach(id => {
+  ['openSearchBtn', 'avatarSearchBtn'].forEach(id => {
     const b = document.getElementById(id);
     if (b) b.addEventListener('click', () => {
       if (typeof closeMore === 'function') closeMore();
-      const sheet = document.getElementById('moreSheet');
+      const sheet = document.getElementById('avatarSheet');
       if (sheet) sheet.classList.remove('open');
       if (typeof window.openPalette === 'function') window.openPalette();
     });
@@ -464,7 +464,7 @@ function renderModuleToggles() {
       saveData(state);
       applyModuleNav();
       // If we just turned off the module we're standing in, step back to Dashboard.
-      if (!input.checked && currentView === input.dataset.module) switchView('dashboard');
+      if (!input.checked && currentView === input.dataset.module) switchView('today');
     });
   });
 }
@@ -498,7 +498,7 @@ function updateHeaderActionBtn(view) {
 
 // Views that use the category/project sidebar sections. Everything else (the
 // fitness modules, settings) hides them — they only clutter those screens.
-const TASKMETA_VIEWS = ['dashboard', 'tasks', 'board', 'calendar'];
+const TASKMETA_VIEWS = ['today', 'tasks', 'board', 'calendar'];
 
 function switchView(view) {
   // A running rest timer would otherwise keep ticking and fire its toast from
@@ -518,23 +518,29 @@ function switchView(view) {
   // Gym and Cardio are now two modes of one Training view. Old saved views,
   // command-palette entries and voice commands still say 'gym'/'cardio', so
   // translate them into Training plus the matching mode.
+  // The view key is 'today'; the ELEMENT is still #dashboardView. Renaming it
+  // would mean rewriting the selector strings js/layout.js builds its custom
+  // dashboard-order stylesheet from - real breakage risk for no gain.
+  if (view === 'dashboard') view = 'today';
   if (view === 'gym' || view === 'cardio') {
     if (typeof setTrainingMode === 'function') setTrainingMode(view === 'cardio' ? 'cardio' : 'strength');
     view = 'training';
   }
   if (typeof moduleEnabled === 'function') {
     // Training survives as long as either of its two modules is on.
-    if (view === 'training' && !moduleEnabled('gym') && !moduleEnabled('cardio')) view = 'dashboard';
-    if (view === 'diet' && !moduleEnabled('diet')) view = 'dashboard';
+    if (view === 'training' && !moduleEnabled('gym') && !moduleEnabled('cardio')) view = 'today';
+    if (view === 'diet' && !moduleEnabled('diet')) view = 'today';
   }
   currentView = view;
   localStorage.setItem('tf_view', view);
   $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   $$('.view').forEach(v => v.classList.remove('active'));
 
-  const titles = { insights: 'Insights', dashboard: 'Today', tasks: 'All Tasks', board: 'Board', calendar: 'Calendar', training: 'Training', diet: 'Diet', settings: 'Settings' };
+  const titles = { insights: 'Insights', today: 'Today', tasks: 'Tasks', board: 'Board', calendar: 'Calendar', training: 'Training', diet: 'Diet', settings: 'Settings' };
   $('#viewTitle').textContent = titles[view];
-  $(`#${view}View`).classList.add('active');
+  const VIEW_EL = { today: 'dashboardView' };
+  const viewEl = document.getElementById(VIEW_EL[view] || (view + 'View'));
+  if (viewEl) viewEl.classList.add('active');
   updateHeaderActionBtn(view);
 
   // Categories/Projects belong to task views only.

@@ -45,18 +45,23 @@
           <span class="sidebar-profile-sub">Signed in</span>
         </span>
       </button>
+      <div class="sidebar-date">
+        <span class="sidebar-date-sub" id="sidebarDateSub">—</span>
+        <span class="sidebar-date-day" id="sidebarDateDay">—</span>
+      </div>
+      <button type="button" class="sidebar-search" id="sidebarSearch">
+        <span class="ms" aria-hidden="true" style="font-size:17px">search</span>
+        <span class="sidebar-search-label">Search</span>
+        <kbd class="sidebar-search-kbd">Ctrl K</kbd>
+      </button>
       <nav class="nav">
-        <button class="nav-btn active" data-view="dashboard">
+        <button class="nav-btn active" data-view="today">
           <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
           Today
         </button>
         <button class="nav-btn" data-view="tasks">
           <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-          All Tasks
-        </button>
-        <button class="nav-btn" data-view="board">
-          <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
-          Board
+          Tasks
         </button>
         <button class="nav-btn" data-view="calendar">
           <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -76,14 +81,6 @@
           <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>
           <span>Insights</span>
         </button>
-        <button class="nav-btn" data-view="settings">
-          <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-          Settings
-        </button>
-        <button class="sidebar-theme-btn" id="themeToggleBtn" type="button">
-          <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-          <span class="theme-nav-label">Light mode</span>
-        </button>
       </nav>
       <div class="sidebar-categories">
         <div class="sidebar-section-head">
@@ -100,6 +97,12 @@
         </div>
         <div class="project-list" id="projectList"></div>
         <button class="add-category-btn" id="addProjectBtn">+ Add Project</button>
+      </div>
+      <div class="sidebar-foot">
+        <button class="nav-btn nav-btn-pinned" data-view="settings">
+          <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          Settings
+        </button>
       </div>
     </aside>
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -139,6 +142,13 @@
             </div>
           </div>
           <button class="btn-primary" id="addTaskBtn">+ New Task</button>
+          <!-- Phone only. Everything that is not one of the five bar items
+               lives behind this: Calendar, Insights, Search, Tester reports,
+               Settings. It replaced the More sheet. -->
+          <button class="header-avatar" id="headerAvatar" type="button" aria-label="Menu and profile">
+            <span class="header-avatar-letter" id="headerAvatarLetter">D</span>
+            <span class="header-avatar-dot" id="headerAvatarDot" hidden></span>
+          </button>
         </div>
       </header>
 
@@ -209,6 +219,15 @@
 
       <!-- Tasks View -->
       <div class="view" id="tasksView">
+        <!-- Board left the nav (spec 3): it is a view inside Tasks. Without a
+             route here it would be unreachable, so the list and the board are
+             two faces of Tasks, on the phase-1 segmented control. -->
+        <div class="tasks-modeswitch">
+          <div class="dl-seg" role="tablist" aria-label="Tasks view">
+            <button type="button" class="dl-seg-btn active" data-tasks-mode="tasks" role="tab" aria-selected="true">List</button>
+            <button type="button" class="dl-seg-btn" data-tasks-mode="board" role="tab" aria-selected="false">Board</button>
+          </div>
+        </div>
         <div class="tasks-toolbar">
           <div class="filter-group">
             <select id="filterStatus">
@@ -236,6 +255,12 @@
 
       <!-- Board View -->
       <div class="view" id="boardView">
+        <div class="tasks-modeswitch">
+          <div class="dl-seg" role="tablist" aria-label="Tasks view">
+            <button type="button" class="dl-seg-btn" data-tasks-mode="tasks" role="tab" aria-selected="false">List</button>
+            <button type="button" class="dl-seg-btn active" data-tasks-mode="board" role="tab" aria-selected="true">Board</button>
+          </div>
+        </div>
         <!-- Reports filed by testers through report.html. Sits above the board
              because an unread report is the one thing here that needs a
              decision; it hides itself entirely when the inbox is empty. -->
@@ -898,30 +923,27 @@
   </div>
 
   <!-- Mobile Bottom Navigation -->
+  <!-- Five slots, the centre one the primary action. Board left the bar: it is
+       a view inside Tasks now. More left too - the avatar sheet replaced it. -->
   <nav class="bottom-nav">
-    <button class="nav-btn bottom-nav-btn active" data-view="dashboard">
-      <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    <button class="nav-btn bottom-nav-btn active" data-view="today">
+      <span class="ms" aria-hidden="true" style="font-size:20px">today</span>
       <span>Today</span>
     </button>
     <button class="nav-btn bottom-nav-btn" data-view="tasks">
-      <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      <span class="ms" aria-hidden="true" style="font-size:20px">check_circle</span>
       <span>Tasks</span>
     </button>
-    <button class="nav-btn bottom-nav-btn" data-view="board">
-      <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
-      <span>Board</span>
+    <button class="bottom-nav-add" id="bottomNavAdd" type="button" aria-label="Add">
+      <span class="ms" aria-hidden="true" style="font-size:24px">add</span>
     </button>
     <button class="nav-btn bottom-nav-btn" data-view="training">
-      <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7v10"/><path d="M18 7v10"/><path d="M3 9v6"/><path d="M21 9v6"/><path d="M6 12h12"/><rect x="5" y="7" width="2" height="10" rx="1"/><rect x="17" y="7" width="2" height="10" rx="1"/><rect x="2" y="9" width="2" height="6" rx="0.5"/><rect x="20" y="9" width="2" height="6" rx="0.5"/></svg>
+      <span class="ms" aria-hidden="true" style="font-size:20px">fitness_center</span>
       <span>Training</span>
     </button>
     <button class="nav-btn bottom-nav-btn" data-view="diet">
-      <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+      <span class="ms" aria-hidden="true" style="font-size:20px">restaurant</span>
       <span>Diet</span>
-    </button>
-    <button class="bottom-nav-btn more-nav-btn" id="moreNavBtn" type="button">
-      <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
-      <span>More</span>
     </button>
   </nav>
 
@@ -945,34 +967,25 @@
   </div>
 
   <!-- Mobile "More" sheet: the views the bottom bar can't fit + appearance -->
-  <div class="more-sheet-overlay" id="moreSheet" role="dialog" aria-modal="true">
-    <div class="more-sheet">
-      <div class="more-sheet-handle"></div>
-      <div class="more-sheet-label">More</div>
-      <button class="more-item" data-view="calendar" type="button">
-        <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        Calendar
-      </button>
-      <button class="more-item" id="moreSearchBtn" type="button">
-        <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <span>Search</span>
-      </button>
-      <button class="more-item" data-view="insights" type="button">
-        <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>
-        <span>Insights</span>
-      </button>
-      <button class="more-item" data-view="settings" type="button">
-        <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-        Settings
-      </button>
-      <div class="more-sheet-label">Appearance</div>
-      <button class="more-item more-item-toggle" id="moreThemeToggle" type="button">
-        <span class="more-item-toggle-left">
-          <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-          Light mode
+  <!-- Avatar sheet. Was #moreSheet; its theme toggle is gone - theme lives in
+       Settings now, and a one-tap Light/Dark flip sitting beside navigation
+       was the only control here that changed how the app looks rather than
+       where you are. -->
+  <div class="dl-sheet-overlay avatar-sheet-overlay" id="avatarSheet" role="dialog" aria-modal="true" aria-label="Menu and profile">
+    <div class="dl-sheet avatar-sheet">
+      <div class="dl-sheet-handle"></div>
+      <div class="avatar-sheet-id">
+        <span class="avatar-sheet-avatar" id="avatarSheetAvatar">D</span>
+        <span class="avatar-sheet-meta">
+          <span class="avatar-sheet-name" id="avatarSheetName">-</span>
+          <span class="avatar-sheet-sync" id="avatarSheetSync">Signed in</span>
         </span>
-        <span class="more-toggle-state" id="moreThemeState">Off</span>
-      </button>
+      </div>
+      <button class="avatar-item" data-view="calendar" type="button"><span class="ms" aria-hidden="true" style="font-size:20px">calendar_month</span><span>Calendar</span></button>
+      <button class="avatar-item" data-view="insights" type="button"><span class="ms" aria-hidden="true" style="font-size:20px">bar_chart</span><span>Insights</span></button>
+      <button class="avatar-item" id="avatarSearchBtn" type="button"><span class="ms" aria-hidden="true" style="font-size:20px">search</span><span>Search</span></button>
+      <button class="avatar-item" data-view="board" type="button"><span class="ms" aria-hidden="true" style="font-size:20px">inbox</span><span>Tester reports</span><span class="avatar-item-count" id="avatarReportCount" hidden>0</span></button>
+      <button class="avatar-item" data-view="settings" type="button"><span class="ms" aria-hidden="true" style="font-size:20px">settings</span><span>Settings</span></button>
     </div>
   </div>
 

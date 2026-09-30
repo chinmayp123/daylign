@@ -9,9 +9,25 @@ const firebaseConfig = {
   appId: "1:126263493016:web:e3afbc4136d45525d9abed"
 };
 
-// Initialize Firebase
-const firebaseApp = firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+// Initialize Firebase.
+//
+// Guarded, because this is an offline-first PWA and the SDK comes from a CDN
+// that is NOT in the service worker's asset list. A first load with no network,
+// a blocked CDN or an ad blocker left `firebase` undefined, and these two lines
+// threw at the top of the file - which meant every `const`/`let` below them
+// (db, DATA_REF, externalData...) stayed uninitialised in the temporal dead
+// zone. Touching any of them then threw ReferenceError rather than reading as
+// undefined, so render() died on lastExternalSyncDate() and the app showed a
+// blank screen instead of the cached local data it already had.
+//
+// Now the app simply runs local-only when the SDK is absent: `db` is null,
+// every sync call no-ops, and localStorage still drives the UI.
+const firebaseSdkLoaded = (typeof firebase !== 'undefined' && firebase && typeof firebase.initializeApp === 'function');
+if (!firebaseSdkLoaded) {
+  console.warn('[daylign] Firebase SDK unavailable — running local-only this session.');
+}
+const firebaseApp = firebaseSdkLoaded ? firebase.initializeApp(firebaseConfig) : null;
+const db = firebaseSdkLoaded ? firebase.database() : null;
 
 // Whose data this session reads and writes. Assigned in initFirebaseSync once
 // a profile has been chosen (see js/profile.js) — it is deliberately not set at
@@ -311,6 +327,13 @@ function setSyncStatus(state, message) {
       if (txt) txt.textContent = 'Not saving';
       el.title = message || 'Cloud sync failed — your changes are only on this device. Use Backup to be safe.';
       break;
+    case 'offline':
+      // No SDK at all this session. Distinct from 'error', which means the
+      // cloud is reachable but a write failed and is worth retrying.
+      el.classList.add('is-error');
+      if (txt) txt.textContent = 'On this device';
+      el.title = 'Cloud sync is unavailable this session — changes are saved on this device only.';
+      break;
     default:
       if (txt) txt.textContent = 'Connecting…';
       el.title = 'Connecting to cloud…';
@@ -463,6 +486,13 @@ function migrateOwnerData() {
 // Load from Firebase once on startup, then listen for changes.
 // Must run only after a profile is chosen — see requireProfile in js/profile.js.
 function initFirebaseSync(onDataReceived) {
+  // No SDK: stay on the cached local state rather than throwing on db.ref.
+  if (!db) {
+    setSyncStatus('offline');
+    document.body.classList.remove('app-loading');
+    if (typeof onDataReceived === 'function') onDataReceived(null);
+    return;
+  }
   setSyncStatus('connecting');
   // Drives the top progress bar + any skeletons until the first read settles.
   document.body.classList.add('app-loading');

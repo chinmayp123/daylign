@@ -15,7 +15,7 @@ function voiceKey() {
 
 // 'gym' and 'cardio' stay listed as aliases — switchView maps them onto
 // Training's two modes, so older phrasings keep working.
-const VOICE_VIEWS = ['dashboard', 'tasks', 'board', 'calendar', 'training', 'gym', 'cardio', 'diet', 'settings'];
+const VOICE_VIEWS = ['today', 'dashboard', 'tasks', 'board', 'calendar', 'training', 'gym', 'cardio', 'diet', 'settings'];
 
 const VOICE_SCHEMA = {
   type: 'object',

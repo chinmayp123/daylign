@@ -218,7 +218,10 @@ try {
   console.warn('localStorage unavailable — running in memory for this session:', e);
   state = starterState();
 }
-let currentView = localStorage.getItem('tf_view') || 'dashboard';
+// v3 renamed the view key dashboard -> today. Old installs have 'dashboard'
+// in tf_view, and an unmapped key would fall through to no view at all.
+let currentView = localStorage.getItem('tf_view') || 'today';
+if (currentView === 'dashboard') currentView = 'today';
 let calendarDate = new Date();
 let miniCalDate = new Date();
 let editingSubtasks = [];

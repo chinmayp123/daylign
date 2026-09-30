@@ -11945,3 +11945,219 @@ html.pref-reduce-motion .dl-btn:active { transform: none; }
 .c-move  { --c: var(--c-move); --c-ink: var(--c-move-ink); }
 .c-meet  { --c: var(--c-meet); --c-ink: var(--c-meet-ink); }
 .c-habit { --c: var(--c-habit); --c-ink: var(--c-habit-ink); }
+
+
+/* ==========================================================================
+   v3 Day Line - Phase 2: navigation
+   ========================================================================== */
+
+/* ---- Desktop sidebar: date block, search, ink pill, pinned Settings ---- */
+.sidebar-date { padding: 2px 14px 10px; line-height: 1; }
+.sidebar-date-sub {
+  display: block;
+  font: 600 10.5px/1.4 var(--font-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.sidebar-date-day {
+  display: block;
+  font: 800 34px/1 var(--font-display);
+  letter-spacing: -0.045em;
+  color: var(--text-primary);
+}
+
+.sidebar-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: calc(100% - 20px);
+  margin: 0 10px 12px;
+  padding: 8px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font: 400 13px/1 var(--font-body);
+  cursor: pointer;
+}
+.sidebar-search:hover { border-color: var(--accent); color: var(--text-secondary); }
+.sidebar-search-label { flex: 1; text-align: left; }
+.sidebar-search-kbd {
+  font: 500 10px/1 var(--font-mono);
+  padding: 3px 5px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-muted);
+}
+
+/* Selected nav item is an ink pill - the accent stays for the now line and
+   primary buttons only (spec 2.1: one accent). */
+.sidebar .nav-btn.active {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+}
+.sidebar .nav-btn.active .ms { color: var(--bg-primary); }
+
+/* Settings sits at the bottom of the whole sidebar, below Categories and
+   Projects - not merely last in the nav list, which left it wherever the
+   nav happened to end. */
+.sidebar .nav { display: flex; flex-direction: column; }
+/* Sticky, not just last: the sidebar scrolls once Categories and Projects
+   are listed, and margin-top:auto cannot pin anything in content that
+   overflows - Settings ended up 54px BELOW the visible sidebar. */
+.sidebar-foot {
+  margin-top: auto;
+  position: sticky;
+  bottom: 0;
+  padding-top: 12px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+}
+
+/* ---- Phone bottom bar: floating, five slots, centre action ---- */
+@media (max-width: 900px) {
+  .bottom-nav {
+    left: 12px;
+    right: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    border-radius: 18px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: var(--shadow);
+    padding: 6px 4px;
+    align-items: center;
+    justify-content: space-around;
+  }
+  .bottom-nav-add {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 14px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    cursor: pointer;
+  }
+  .bottom-nav-add:active { transform: scale(0.96); }
+  .bottom-nav-btn { position: relative; }
+  /* An unread tester report shows on Tasks, where the reports land. */
+  .nav-report-dot {
+    position: absolute;
+    top: 4px;
+    right: 50%;
+    transform: translateX(14px);
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--red);
+  }
+}
+
+/* ---- Avatar (phone) ---- */
+.header-avatar { display: none; }
+@media (max-width: 900px) {
+  .header-avatar {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 auto;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: var(--bg-card);
+    cursor: pointer;
+  }
+  .header-avatar-letter {
+    font: 700 13px/1 var(--font-body);
+    color: var(--text-primary);
+  }
+  .header-avatar-dot {
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--red);
+    border: 2px solid var(--bg-primary);
+  }
+  .header-avatar-dot[hidden] { display: none; }
+}
+
+/* ---- Avatar sheet ---- */
+.avatar-sheet-id {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 4px 4px 14px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.avatar-sheet-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: 700 15px/1 var(--font-body);
+  flex: none;
+}
+.avatar-sheet-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.avatar-sheet-name { font: 600 15px/1.2 var(--font-body); color: var(--text-primary); }
+.avatar-sheet-sync { font: 400 12px/1.2 var(--font-body); color: var(--text-muted); }
+
+.avatar-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 4px;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font: 500 15px/1 var(--font-body);
+  text-align: left;
+  cursor: pointer;
+}
+.avatar-item:active { background: var(--bg-hover); }
+.avatar-item .ms { color: var(--text-secondary); flex: none; }
+.avatar-item > span:not(.ms):not(.avatar-item-count) { flex: 1; }
+.avatar-item-count {
+  font: 700 11px/1 var(--font-mono);
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--red);
+  color: #fff;
+}
+.avatar-item-count[hidden] { display: none; }
+
+/* ---- Tasks / Board switch ---- */
+.tasks-modeswitch { margin-bottom: 14px; }
+
+
+/* The bar's centre + IS the primary action on a phone now, and it calls this
+   same button, so its contextual label (New Task / Log workout / Log food)
+   still applies. Two primary buttons on one screen was the duplication phase 2
+   introduced. Hidden, not deleted: the element stays as the click target.
+   The voice FAB stays until phase 10 moves voice onto + and the diet add bar -
+   removing it now would leave no way to reach voice on a phone. */
+@media (max-width: 600px) {
+  .primary-fab { display: none !important; }
+
+  /* Re-measured for what actually floats now: the bar (about 68px) at a 12px
+     inset, plus the voice FAB above it. Was 200px for the old FAB stack. */
+  .view.active { padding-bottom: calc(190px + env(safe-area-inset-bottom, 0px)); }
+}

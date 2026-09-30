@@ -39,9 +39,54 @@
     applyTheme(next);
   };
 
-  // ---------- More sheet ----------
-  function openMore() { const m = $('#moreSheet'); if (m) m.classList.add('open'); }
-  function closeMore() { const m = $('#moreSheet'); if (m) m.classList.remove('open'); }
+  // ---------- Avatar sheet (was the More sheet) ----------
+  function openMore() { const m = $('#avatarSheet'); if (m) { fillAvatarSheet(); m.classList.add('open'); } }
+  function closeMore() { const m = $('#avatarSheet'); if (m) m.classList.remove('open'); }
+
+  // Name, initial and sync state are read straight off the surfaces that
+  // already own them, so this sheet never becomes a second source of truth.
+  function fillAvatarSheet() {
+    const raw = ((document.getElementById('sidebarProfileName') || {}).textContent || '').trim();
+    // Before a profile is chosen the source reads an em-dash placeholder, and
+    // taking [0] of that put a dash in the avatar circle.
+    const name = /^[A-Za-z0-9]/.test(raw) ? raw : '';
+    const letter = (name[0] || 'D').toUpperCase();
+    const set = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.textContent = v; };
+    set('avatarSheetName', name || 'Daylign');
+    set('avatarSheetAvatar', letter);
+    set('headerAvatarLetter', letter);
+    const sync = document.querySelector('#syncStatus .sync-text');
+    set('avatarSheetSync', sync ? sync.textContent.trim() : 'Signed in');
+  }
+
+  // One unread count, shown in three places: the avatar, the Tasks nav item
+  // and the sheet row itself.
+  function refreshReportBadges() {
+    const n = (typeof newInboxReports === 'function') ? newInboxReports().length : 0;
+    const dot = document.getElementById('headerAvatarDot');
+    if (dot) dot.hidden = !n;
+    const count = document.getElementById('avatarReportCount');
+    if (count) { count.hidden = !n; count.textContent = n > 9 ? '9+' : String(n); }
+    document.querySelectorAll('.bottom-nav-btn[data-view="tasks"]').forEach(el => {
+      let d = el.querySelector('.nav-report-dot');
+      if (!n) { if (d) d.remove(); return; }
+      if (!d) { d = document.createElement('span'); d.className = 'nav-report-dot'; el.appendChild(d); }
+    });
+  }
+  window.refreshReportBadges = refreshReportBadges;
+
+  // The sidebar's own date block: small weekday and month, big day number.
+  function fillSidebarDate() {
+    const d = new Date();
+    const sub = document.getElementById('sidebarDateSub');
+    const day = document.getElementById('sidebarDateDay');
+    // Built from two parts rather than one toLocaleDateString: asking for
+    // weekday+month together returns them month-first ("Sep Tue").
+    const wd = d.toLocaleDateString('en-US', { weekday: 'short' });
+    const mo = d.toLocaleDateString('en-US', { month: 'short' });
+    if (sub) sub.textContent = wd + ' · ' + mo;
+    if (day) day.textContent = String(d.getDate());
+  }
 
   // ---------- Board mobile column switch ----------
   const COUNT_SRC = { todo: 'boardTodoCount', 'in-progress': 'boardProgressCount', done: 'boardDoneCount' };
@@ -157,7 +202,7 @@
   }
 
   // ---------- Command palette (\u2318K) ----------
-  const VIEWS = [['dashboard','Today'],['tasks','All Tasks'],['board','Board'],['calendar','Calendar'],['training','Training'],['diet','Diet'],['settings','Settings']];
+  const VIEWS = [['today','Today'],['tasks','Tasks'],['board','Board'],['calendar','Calendar'],['training','Training'],['diet','Diet'],['settings','Settings']];
   let cmdRows = [], cmdSel = 0;
   function ensurePalette() {
     if ($('#cmdPalette')) return;
@@ -254,15 +299,36 @@
   function bind() {
     initTheme();
 
-    const moreBtn = $('#moreNavBtn'); if (moreBtn) moreBtn.addEventListener('click', openMore);
-    const sheet = $('#moreSheet'); if (sheet) sheet.addEventListener('click', e => { if (e.target === sheet) closeMore(); });
-    $$('.more-item[data-view]').forEach(b => b.addEventListener('click', () => {
+    const avatarBtn = $('#headerAvatar'); if (avatarBtn) avatarBtn.addEventListener('click', openMore);
+    const sheet = $('#avatarSheet'); if (sheet) sheet.addEventListener('click', e => { if (e.target === sheet) closeMore(); });
+    $$('.avatar-item[data-view]').forEach(b => b.addEventListener('click', () => {
       if (typeof switchView === 'function') switchView(b.dataset.view);
       closeMore();
     }));
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMore(); });
 
-    const themeBtn = $('#themeToggleBtn'); if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
-    const moreTheme = $('#moreThemeToggle'); if (moreTheme) moreTheme.addEventListener('click', toggleTheme);
+    fillSidebarDate();
+    fillAvatarSheet();
+    refreshReportBadges();
+
+    // The centre + is the same primary action as the FAB and the header button.
+    const addBtn = $('#bottomNavAdd');
+    if (addBtn) addBtn.addEventListener('click', () => {
+      const primary = document.getElementById('primaryFab') || document.getElementById('addTaskBtn');
+      if (primary) primary.click();
+    });
+
+    // Sidebar search and its Ctrl K hint both open the command palette.
+    const sideSearch = $('#sidebarSearch');
+    if (sideSearch) sideSearch.addEventListener('click', () => {
+      if (typeof window.openPalette === 'function') window.openPalette();
+      else { const i = document.getElementById('searchInput'); if (i) i.focus(); }
+    });
+
+    // List / Board are two faces of Tasks now, not two nav destinations.
+    $$('[data-tasks-mode]').forEach(b => b.addEventListener('click', () => {
+      if (typeof switchView === 'function') switchView(b.dataset.tasksMode);
+    }));
 
     $$('.bms-btn').forEach(b => b.addEventListener('click', () => setBoardCol(b.dataset.col)));
     setBoardCol('todo');

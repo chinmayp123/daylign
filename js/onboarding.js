@@ -61,7 +61,7 @@ function finishOnboarding(save) {
   if (host) host.hidden = true;
   document.body.classList.remove('onboard-open');
   if (typeof applyModuleNav === 'function') applyModuleNav();
-  if (typeof switchView === 'function') switchView('dashboard');
+  if (typeof switchView === 'function') switchView('today');
   else if (typeof render === 'function') render();
   if (typeof showToast === 'function' && save) showToast('You’re all set');
 }
