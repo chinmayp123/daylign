@@ -587,6 +587,15 @@
           <div class="dt-main">
             <!-- ONE add bar: type it, say it, or snap it. Static on purpose -
                  rebuilding it each render threw away what was being typed. -->
+            <!-- Which meal the bar, the tiles and the photo add to. Starts on the
+                 meal the clock suggests; one tap changes it (v2 had this as a
+                 separate add row inside each meal). -->
+            <div class="dl-seg full dt-mealpick" id="dietMealPick" role="group" aria-label="Add to which meal">
+              <button type="button" data-pick-meal="breakfast">Breakfast</button>
+              <button type="button" data-pick-meal="lunch">Lunch</button>
+              <button type="button" data-pick-meal="dinner">Dinner</button>
+              <button type="button" data-pick-meal="snack">Snack</button>
+            </div>
             <div class="dt-addwrap diet-meal-addwrap" id="dietAddWrap" data-meal="breakfast">
               <div class="dt-search">
                 <span class="ms" aria-hidden="true">search</span>

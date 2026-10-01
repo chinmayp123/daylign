@@ -93,15 +93,22 @@ function renderDietAdd(mealGroups) {
   if (!wrap) return;
   const meal = activeDietMeal(mealGroups);
   const label = DIET_MEAL_LABEL[meal] || 'Meal';
-  const changed = wrap.dataset.meal !== meal || wrap.dataset.date !== dietViewDate;
+  // Only a new day clears what was typed. Picking another meal keeps it: the
+  // owner may type first and then choose where it goes.
+  const changed = wrap.dataset.date !== dietViewDate;
   wrap.dataset.meal = meal;
   wrap.dataset.date = dietViewDate;
+  document.querySelectorAll('#dietMealPick [data-pick-meal]').forEach(b => {
+    b.setAttribute('aria-pressed', b.dataset.pickMeal === meal ? 'true' : 'false');
+  });
   const input = document.getElementById('dietAddInput');
   if (input) {
     input.placeholder = `Add food to ${label.toLowerCase()}`;
     input.setAttribute('aria-label', `Add food to ${label}`);
     // A different meal or day: whatever was typed belonged to the other one.
     if (changed && input.value) { input.value = ''; const box = wrap.querySelector('.diet-inline-results'); if (box) box.innerHTML = ''; }
+    // A search already showing re-targets with the meal, so its rows add there.
+    else if (input.value.trim()) { const box = wrap.querySelector('.diet-inline-results'); if (box && box.innerHTML) renderInlineResults(wrap, input.value); }
   }
   const cam = wrap.querySelector('[data-diet-photo]');
   if (cam) { cam.dataset.dietPhoto = meal; cam.setAttribute('aria-label', `Log ${label} from a photo`); }
@@ -208,11 +215,28 @@ function mealSheetEntryRow(e, isIngredient) {
         <label class="dl-field"><span class="dl-field-label">C</span><input type="number" name="carbs" inputmode="decimal" min="0" step="0.1" value="${Math.round((e.carbs || 0) * 10) / 10}"></label>
         <label class="dl-field"><span class="dl-field-label">F</span><input type="number" name="fat" inputmode="decimal" min="0" step="0.1" value="${Math.round((e.fat || 0) * 10) / 10}"></label>
       </div>
+      <label class="dl-field"><span class="dl-field-label">Meal${e.group ? ' (moves the whole ' + esc(e.groupName || 'saved meal') + ')' : ''}</span>
+        <select name="meal">${DIET_MEALS.map(m => `<option value="${m}"${m === e.meal ? ' selected' : ''}>${DIET_MEAL_LABEL[m]}</option>`).join('')}</select></label>
       <label class="ms-check"><input type="checkbox" name="fixBank" checked> Fix it everywhere: My foods and saved meals too</label>
       <div class="ts-actions"><span class="ts-spacer"></span>
         <button type="button" class="dl-btn" data-ms-cancel>Cancel</button>
         <button type="submit" class="dl-btn primary">Save</button></div>
     </form>`;
+}
+
+// The usual foods drawn in the open meal sheet (its own list: the add bar's
+// tiles are drawn in the same render pass and index a different meal).
+let dietSheetUsualsShown = [];
+
+// Move an entry to another meal on its day. A saved-meal group moves whole,
+// so it never splits into two half-groups. Its time goes: the line places an
+// entry by `at`, and a breakfast moved to dinner would still draw at 8:00.
+function moveDietEntry(entry, meal) {
+  if (!entry || DIET_MEALS.indexOf(meal) === -1) return 0;
+  const set = entry.group ? state.diet.filter(e => e.group === entry.group && e.date === entry.date) : [entry];
+  set.forEach(e => { e.meal = meal; delete e.at; });
+  saveData(state);
+  return set.length;
 }
 
 // Which entry an open editor belongs to. The editor is keyed by index into
@@ -246,6 +270,11 @@ function renderMealSheet() {
   const label = DIET_MEAL_LABEL[meal];
   const entries = state.diet.filter(e => e.date === dietViewDate && e.meal === meal);
   const m = sumMacros(entries);
+  // This meal's usual foods and every saved meal, one tap each, into this meal.
+  dietSheetUsualsShown = mealUsuals(meal, 4);
+  const sheetCombos = (typeof comboList === 'function') ? comboList() : [];
+  const quick = dietSheetUsualsShown.map((u, i) => `<button type="button" class="dt-tile" data-sheet-usual="${i}">${esc(u.name)}</button>`).join('') +
+    sheetCombos.map(c => `<button type="button" class="dt-tile is-meal" data-sheet-combo="${esc(c.id)}" title="${esc(c.items.map(i => i.food).join(', '))}">${esc(c.name)}<em>${Math.round(comboTotals(c).calories)}</em></button>`).join('');
 
   const title = document.getElementById('mealSheetTitle');
   if (title) title.innerHTML = `${label} <span class="ms-total">${Math.round(m.calories)}</span>`;
@@ -282,6 +311,7 @@ function renderMealSheet() {
     ${entries.length
       ? `<p class="ms-macro">${Math.round(m.protein)}g protein · ${Math.round(m.carbs)}g carbs · ${Math.round(m.fat)}g fat</p><div class="ms-list">${blocks}</div>`
       : `<p class="ms-empty">Nothing in ${label.toLowerCase()} yet.</p>`}
+    ${quick ? `<div class="ms-quick" role="group" aria-label="Quick add to ${label}"><span class="ms-quick-h">Quick add</span><div class="dt-tiles">${quick}</div></div>` : ''}
     <div class="dt-addwrap diet-meal-addwrap" data-meal="${meal}"${dietSheetSearch ? '' : ' hidden'}>
       <div class="dt-search">
         <span class="ms" aria-hidden="true">search</span>
@@ -395,6 +425,20 @@ function bindMealSheet() {
       return;
     }
     if (t.closest('[data-ms-savecombo]')) { if (typeof openComboSaver === 'function') openComboSaver(dietSheetMeal); return; }
+    // Quick adds in a meal's sheet go into THAT meal, whatever the time.
+    const su = t.closest('[data-sheet-usual]');
+    if (su) {
+      const u = dietSheetUsualsShown[Number(su.dataset.sheetUsual)];
+      if (u) { quickAddToMeal(dietSheetMeal, { name: u.name, data: u.per }, false); showToast(`${u.name} added to ${DIET_MEAL_LABEL[dietSheetMeal].toLowerCase()}`); }
+      return;
+    }
+    const sc = t.closest('[data-sheet-combo]');
+    if (sc) {
+      const c = comboList().find(x => x.id === sc.dataset.sheetCombo);
+      addComboToMeal(sc.dataset.sheetCombo, dietSheetMeal);
+      if (c) showToast(`${c.name} added to ${DIET_MEAL_LABEL[dietSheetMeal].toLowerCase()}`);
+      return;
+    }
     const cam = t.closest('[data-diet-photo]');
     if (cam && typeof startMealPhoto === 'function') { const meal = cam.dataset.dietPhoto; closeMealSheet(); startMealPhoto(meal); }
   });
@@ -405,13 +449,18 @@ function bindMealSheet() {
     ev.preventDefault();
     const fd = new FormData(form);
     const fix = fd.get('fixBank') === 'on';
-    const ok = updateDietEntry(Number(form.dataset.msForm), {
+    const idx = Number(form.dataset.msForm);
+    const entry = state.diet[idx];
+    const ok = updateDietEntry(idx, {
       food: fd.get('food'), calories: fd.get('calories'), protein: fd.get('protein'), carbs: fd.get('carbs'), fat: fd.get('fat'),
       fixBank: fix,
     });
+    const to = fd.get('meal');
+    const moved = ok && entry && to && to !== entry.meal ? moveDietEntry(entry, to) : 0;
     dietEditFormIdx = null;
     renderDiet();
-    if (ok) showToast(fix ? 'Fixed here, in My foods and in your saved meals' : 'Fixed this entry');
+    if (moved) showToast(`Moved to ${DIET_MEAL_LABEL[to]}${moved > 1 ? ` (${moved} items)` : ''}`);
+    else if (ok) showToast(fix ? 'Fixed here, in My foods and in your saved meals' : 'Fixed this entry');
   });
 
   wrap.addEventListener('input', (ev) => {
@@ -450,6 +499,14 @@ function bindDietDay() {
     const t = ev.target;
     const open = t.closest('[data-open-meal]');
     if (open) { openMealSheet(open.dataset.openMeal); return; }
+    const pick = t.closest('[data-pick-meal]');
+    if (pick) {
+      // The same choice v2's meal tap made, for this day only.
+      dietOpenMeal = pick.dataset.pickMeal;
+      dietOpenMealDate = dietViewDate;
+      renderDiet();
+      return;
+    }
     const usual = t.closest('[data-usual-idx]');
     if (usual) {
       const u = dietUsualsShown[Number(usual.dataset.usualIdx)];

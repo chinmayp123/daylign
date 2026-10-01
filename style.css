@@ -5818,7 +5818,7 @@ details[open] > summary .cd-more-chev { transform: rotate(180deg); }
 .dt-week { order: 2; }
 .dt-sum { order: 3; }
 .dt-sum-foot { order: 4; }
-#dietAddWrap { order: 5; }
+#dietMealPick, #dietAddWrap { order: 5; }   /* the picker sits directly above the bar it targets */
 .dt-tiles { order: 6; }
 #dietPhotoPending { order: 7; }
 .dt-water { order: 8; }
@@ -5968,6 +5968,11 @@ button.dl-line-item:focus-visible { outline: 2px solid var(--accent); outline-of
 .ms-row .ss-act, .ms-grouphead .ss-act { width: 44px; height: 44px; }
 .ms-grouptoggle { min-height: 44px; }
 .ms-foot { display: flex; align-items: center; gap: 8px; }
+.dt-mealpick { margin-bottom: 8px; }
+.dt-mealpick > button { min-height: 40px; }
+.ms-quick { display: grid; gap: 6px; }
+.ms-quick-h { font: 600 10.5px var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--text-secondary); }
+.ms-quick .dt-tile { min-height: 40px; }
 .ms-foot .dl-btn { min-height: 44px; }
 .ms-foot .dl-btn .ms { font-size: 18px; }
 .ms-foot .ms-foot-add { flex: 1; }
