@@ -88,7 +88,9 @@ function bindHeaderCondense() {
   // changes height as it condenses, so its live height is published for the
   // CSS; with a fixed offset the block slid underneath the header and hid.
   const publish = () => document.documentElement.style.setProperty('--header-h', header.offsetHeight + 'px');
-  if (typeof ResizeObserver === 'function') new ResizeObserver(publish).observe(header);
+  // border-box: condensing changes the header's padding, not its content box,
+  // and a default observer never hears about it.
+  if (typeof ResizeObserver === 'function') new ResizeObserver(publish).observe(header, { box: 'border-box' });
   publish();
 }
 
