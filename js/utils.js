@@ -469,6 +469,9 @@ function dlSheetSyncInert() {
     if (!keep && !el.inert) { el.inert = true; el.setAttribute('data-dl-inert', ''); }
     else if (keep && mine) { el.inert = false; el.removeAttribute('data-dl-inert'); }
   });
+  // And the page behind stops scrolling: on an iPhone a drag on the dimmed
+  // backdrop otherwise scrolled the page underneath the sheet.
+  document.documentElement.classList.toggle('dl-sheet-locked', !!top);
 }
 
 // The focusable things in a sheet, in Tab order.

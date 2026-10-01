@@ -137,9 +137,9 @@ function renderDietLine(mealGroups, totals) {
 
   const rows = mealGroups.map(g => {
     const kcal = Math.round(sumMacros(g.entries).calories);
-    // When it was eaten: the earliest entry that carries a time, else the slot.
-    const at = g.entries.reduce((a, e) => (e.at && (!a || e.at < a) ? e.at : a), null);
-    const min = (typeof lineMinutesFrom === 'function') ? lineMinutesFrom(at, DIET_MEAL_SLOT[g.meal]) : DIET_MEAL_SLOT[g.meal];
+    // The same placement as Today's line: a plausible logged time, else the
+    // meal's usual slot (js/line.js mealLineMinutes).
+    const min = (typeof mealLineMinutes === 'function') ? mealLineMinutes(g.meal, g.entries) : DIET_MEAL_SLOT[g.meal];
     const names = groupMealEntries(g.entries)
       .map(b => b.type === 'group' ? b.name : ((b.entry && b.entry.food) || ''))
       .filter(Boolean);
@@ -323,7 +323,7 @@ function renderMealSheet() {
     <div class="ts-actions sheet-foot ms-foot">
       <button type="button" class="dl-btn" data-diet-photo="${meal}" aria-label="Add to ${label} from a photo"><span class="ms" aria-hidden="true">photo_camera</span>Photo</button>
       ${entries.length >= 2 ? `<button type="button" class="dl-btn" data-ms-savecombo aria-label="Save these ${entries.length} as a meal"><span class="ms" aria-hidden="true">bookmark_add</span>Save meal</button>` : ''}
-      <button type="button" class="dl-btn primary ms-foot-add" data-ms-add aria-expanded="${dietSheetSearch}"><span class="ms" aria-hidden="true">${dietSheetSearch ? 'close' : 'add'}</span>${dietSheetSearch ? 'Close search' : 'Add food'}</button>
+      <button type="button" class="dl-btn primary ms-foot-add" data-ms-add aria-expanded="${dietSheetSearch}"><span class="ms" aria-hidden="true">${dietSheetSearch ? 'close' : 'add'}</span>${dietSheetSearch ? 'Done' : 'Add food'}</button>
     </div>`;
 
   if (typed) {

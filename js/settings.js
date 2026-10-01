@@ -289,7 +289,7 @@ function renderTaxonomyManager() {
       <div class="set-tax-row">
         <span class="set-tax-sw" aria-hidden="true"></span>
         <input type="text" class="set-tax-name" value="${esc(item.name)}" maxlength="30" aria-label="Name of ${esc(item.name)}" data-tax-name>
-        <span class="set-tax-count">${count} ${noun}</span>
+        <span class="set-tax-count">${count} ${count === 1 && noun === 'tasks' ? 'task' : noun}</span>
         <button type="button" class="set-tax-btn" data-tax-color aria-expanded="${open}" aria-label="Colour for ${esc(item.name)}"><span class="ms" aria-hidden="true">palette</span></button>
         <button type="button" class="set-tax-btn" data-tax-del aria-label="Delete ${esc(item.name)}"><span class="ms" aria-hidden="true">close</span></button>
       </div>

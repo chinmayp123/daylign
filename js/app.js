@@ -84,6 +84,12 @@ function bindHeaderCondense() {
     if (!ticking) { ticking = true; requestAnimationFrame(update); }
   }, { passive: true });
   update();
+  // Today's now block sticks just under the header. On a phone the header
+  // changes height as it condenses, so its live height is published for the
+  // CSS; with a fixed offset the block slid underneath the header and hid.
+  const publish = () => document.documentElement.style.setProperty('--header-h', header.offsetHeight + 'px');
+  if (typeof ResizeObserver === 'function') new ResizeObserver(publish).observe(header);
+  publish();
 }
 
 // ========== Events ==========
