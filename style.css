@@ -1297,7 +1297,7 @@ html select:not([multiple]) {
 }
 
 /* ---- Sticky header (desktop) ---- */
-@media (min-width: 601px) {
+@media (min-width: 901px) {
   .header {
     position: sticky;
     top: 0;
@@ -3143,8 +3143,10 @@ html.pref-large-text { font-size: 112.5%; }
    One row now, with the date tucked under the title, and the title collapses
    into a compact bar on scroll — the iOS convention since iOS 11. You get the
    generous title at rest and a thin bar while reading.
+   Up to 900px: tablets and a phone held sideways get the bottom nav, so they
+   get this header too (sideways, the full one took a third of the screen).
    ========================================================================== */
-@media (max-width: 600px) {
+@media (max-width: 900px) {
   .header {
     position: sticky;
     top: 0;
@@ -3260,6 +3262,14 @@ html.pref-large-text { font-size: 112.5%; }
    Desktop keeps the header button and never sees this: a cursor has no reach
    problem, and a floating pill over content would only be in the way.
    ========================================================================== */
+
+/* Tablets (601-900px) get the bottom nav too, and its + IS this action, so
+   the header twin and the second search field go there as well. On an iPad
+   they crowded the header until the date wrapped onto two lines. */
+@media (max-width: 900px) {
+  .header #addTaskBtn { display: none !important; }
+  .header .search-box { display: none; }
+}
 
 @media (max-width: 600px) {
   /* The header twin would be a duplicate control on the same screen. */
@@ -4674,7 +4684,7 @@ html.pref-reduce-motion .dl-btn:active { transform: none; }
 /* The now block sticks under the header. On DESKTOP the header had no
    position, so the block scrolled up over the screen title and sat on top of
    the words. The header sticks at every width now, and outranks the block. */
-@media (min-width: 601px) {
+@media (min-width: 901px) {
   .header {
     position: sticky;
     top: 0;
@@ -4685,9 +4695,14 @@ html.pref-reduce-motion .dl-btn:active { transform: none; }
   }
   .now-block { top: 84px; }
 }
-@media (max-width: 600px) {
+@media (max-width: 900px) {
   /* --header-h is the header's live height (js/app.js bindHeaderCondense). */
   .now-block { top: var(--header-h, 48px); }
+}
+/* Tablet and sideways phone: .main pads 24px 32px here, so the compact header
+   bleeds by that much to stay full width and flush with the top. */
+@media (min-width: 601px) and (max-width: 900px) {
+  .header { margin: -24px -32px 14px; padding: 8px 32px; }
 }
 
 /* ============================================================
