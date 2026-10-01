@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (typeof bindCsvImport === 'function') bindCsvImport();
   // The date format is breakpoint-dependent, so it has to be re-derived when
   // the viewport crosses 600px (rotation, or a resized desktop window).
-  window.matchMedia('(max-width: 600px)').addEventListener('change', setHeaderDate);
+  window.matchMedia('(max-width: 900px)').addEventListener('change', setHeaderDate);
   bindEvents();
   if (currentView !== 'today') {
     switchView(currentView);
@@ -60,7 +60,7 @@ function setHeaderDate() {
     ? dietViewDate
     : (todayActive && typeof lineViewDate !== 'undefined' && lineViewDate) ? lineViewDate : null;
   const d = viewing ? new Date(viewing + 'T00:00:00') : new Date();
-  const narrow = window.matchMedia('(max-width: 600px)').matches;
+  const narrow = window.matchMedia('(max-width: 900px)').matches;
   $('#headerDate').textContent = d.toLocaleDateString('en-US', narrow
     ? { weekday: 'short', month: 'short', day: 'numeric' }
     : { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
