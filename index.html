@@ -8,7 +8,17 @@
        home indicator. -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Daylign</title>
-  <meta name="theme-color" content="#0b0b10">
+  <meta name="theme-color" content="#0e0f0e">
+  <!-- The theme, before first paint. 'light' or 'dark' if one was chosen in
+       Settings, otherwise whatever the device is set to. js/enhancements.js
+       holds the same rule and keeps following the device afterwards. -->
+  <script>
+    try {
+      var t = localStorage.getItem('daylign_theme');
+      if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {}
+  </script>
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <!-- Both: the apple- prefix is deprecated but still what older iOS reads. -->
@@ -19,7 +29,7 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%236d6af8'/%3E%3Cstop offset='1' stop-color='%23a78bfa'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='8' fill='url(%23g)'/%3E%3Cpath d='M9 17a7 7 0 0 1 14 0z' fill='white'/%3E%3Crect x='8' y='20' width='16' height='3' rx='1.5' fill='white'/%3E%3Crect x='11' y='25' width='10' height='3' rx='1.5' fill='white' opacity='0.55'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Material+Symbols+Rounded:opsz,wght,FILL@20..24,400,0..1&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -45,18 +55,23 @@
           <span class="sidebar-profile-sub">Signed in</span>
         </span>
       </button>
+      <div class="sidebar-date">
+        <span class="sidebar-date-sub" id="sidebarDateSub">—</span>
+        <span class="sidebar-date-day" id="sidebarDateDay">—</span>
+      </div>
+      <button type="button" class="sidebar-search" id="sidebarSearch">
+        <span class="ms" aria-hidden="true" style="font-size:17px">search</span>
+        <span class="sidebar-search-label">Search</span>
+        <kbd class="sidebar-search-kbd">Ctrl K</kbd>
+      </button>
       <nav class="nav">
-        <button class="nav-btn active" data-view="dashboard">
+        <button class="nav-btn active" data-view="today">
           <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
           Today
         </button>
         <button class="nav-btn" data-view="tasks">
           <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-          All Tasks
-        </button>
-        <button class="nav-btn" data-view="board">
-          <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
-          Board
+          Tasks
         </button>
         <button class="nav-btn" data-view="calendar">
           <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -76,30 +91,26 @@
           <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>
           <span>Insights</span>
         </button>
-        <button class="nav-btn" data-view="settings">
-          <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-          Settings
-        </button>
-        <button class="sidebar-theme-btn" id="themeToggleBtn" type="button">
-          <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-          <span class="theme-nav-label">Light mode</span>
-        </button>
       </nav>
       <div class="sidebar-categories">
         <div class="sidebar-section-head">
           <h3>Categories</h3>
-          <button class="sidebar-manage-btn" data-manage-taxonomy title="Add, rename or delete">Manage</button>
+          <button class="sidebar-manage-btn" data-manage-taxonomy title="Add, rename, recolour or delete, in Settings">Manage</button>
         </div>
         <div class="category-list" id="categoryList"></div>
-        <button class="add-category-btn" id="addCategoryBtn">+ Add Category</button>
       </div>
       <div class="sidebar-projects">
         <div class="sidebar-section-head">
           <h3>Projects</h3>
-          <button class="sidebar-manage-btn" data-manage-taxonomy title="Add, rename or delete">Manage</button>
+          <button class="sidebar-manage-btn" data-manage-taxonomy title="Add, rename, recolour or delete, in Settings">Manage</button>
         </div>
         <div class="project-list" id="projectList"></div>
-        <button class="add-category-btn" id="addProjectBtn">+ Add Project</button>
+      </div>
+      <div class="sidebar-foot">
+        <button class="nav-btn nav-btn-pinned" data-view="settings">
+          <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          Settings
+        </button>
       </div>
     </aside>
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -139,840 +150,815 @@
             </div>
           </div>
           <button class="btn-primary" id="addTaskBtn">+ New Task</button>
+          <!-- Phone only. Everything that is not one of the five bar items
+               lives behind this: Calendar, Insights, Search, Tester reports,
+               Settings. It replaced the More sheet. -->
+          <button class="header-avatar" id="headerAvatar" type="button" aria-label="Menu and profile">
+            <span class="header-avatar-letter" id="headerAvatarLetter">D</span>
+            <span class="header-avatar-dot" id="headerAvatarDot" hidden></span>
+          </button>
         </div>
       </header>
 
       <!-- Dashboard View -->
       <div class="view active" id="dashboardView">
-                <div class="layout-bar"><button type="button" class="layout-edit-btn" id="layoutEditBtn">Edit layout</button></div>
+        <!-- Today is a fixed skeleton: the now block, then the day itself, and
+             three sections that Arrange Today can reorder or hide (spec 4.7).
+             DOM order here is not the screen order — js/layout.js writes CSS
+             `order`, because every render rewrites these sections' contents and
+             moving nodes would be undone constantly.
 
-        <!-- Health strip FIRST. Measured on a phone, this used to start at
-             screen 1.17 - every number below 986px of brief, triage and task
-             counters. Chinmay: "not even reading the today section and
-             scrolling down everytime to see all the data". So the data leads.
-             The counters that sat here are gone entirely; 17 total / 0 in
-             progress / 14 completed said almost nothing and cost 150px. -->
-        <div class="health-grid" id="healthGrid"></div>
+             The two wrappers are the desktop columns. On a phone they are
+             `display: contents`, so every section is one flat stack and
+             `order` runs across all of them. -->
 
-        <!-- Daily brief: the morning read across training, food and tasks (js/brief.js) -->
-        <div id="dailyBrief"></div>
+        <div class="today-main">
+        <!-- Zero-height marker at the now block's resting position. The block is
+             sticky, so it never leaves the viewport and an observer on the
+             block itself would never fire; this is what "scrolled past" means. -->
+        <div id="nowBlockTop" aria-hidden="true"></div>
+        <!-- The now block (spec 4.2). Locked: not hideable, not reorderable. -->
+        <section class="now-block" id="nowBlock" aria-label="Today's numbers"></section>
 
-        <!-- Today plan: triage nudge + two lanes (Scheduled / Anytime).
-             Populated by js/today.js. The Overview below is demoted, not removed. -->
-        <div id="todayPlan" class="today-plan"></div>
+        <!-- Brief and actions (spec 4.5): one coach sentence and up to three
+             chips. Replaced #dailyBrief and the six #remindersBar cards. -->
+        <div id="todayBrief" class="today-brief"></div>
 
-        <!-- Project Filter -->
-        <div class="dashboard-project-filter" id="dashboardProjectFilter"></div>
+        <!-- The line (spec 4.3): one spine for the whole day, with the tray
+             (spec 4.4) rendered into it at the now marker. Locked. -->
+        <div id="dayLine"></div>
 
-        <!-- Daily cardio one-tap (js/cardio.js) — a daily habit behind a nav
-             tab never gets logged, so it surfaces here too. -->
-        <div id="todayCardio"></div>
+        <div class="today-arrange">
+          <button type="button" class="dl-btn" id="arrangeBtn"><span class="ms">tune</span>Arrange Today</button>
+        </div>
+        </div>
 
-        <!-- Reminders -->
-        <div class="reminders-bar" id="remindersBar"></div>
+        <div class="today-rail">
+        <!-- Due soon (spec 4.6): replaced the My Tasks board and Deadlines. -->
+        <div id="todayDue" class="today-due"></div>
 
-        <!-- Dashboard Grid -->
-        <div class="dashboard-grid">
-          <!-- My Tasks Board — collapsed on mobile; the two-lane plan above is
-               the primary task view there. -->
-          <div class="card my-tasks-board-card collapsible" data-collapse="mobile" data-collapse-key="mytasks">
-            <h2>My Tasks</h2>
-            <div class="my-tasks-tabs" id="myTasksTabs"></div>
-            <div class="my-tasks-board" id="myTasksBoard"></div>
-          </div>
+        <!-- This week (spec 4.6): desktop right column only. -->
+        <div id="todayWeek" class="today-week"></div>
 
-          <!-- Upcoming Deadlines -->
-          <div class="card deadlines-card">
-            <h2>Upcoming Deadlines</h2>
-            <div class="deadlines-list" id="deadlinesList"></div>
-          </div>
-
-          <!-- Daily Schedule -->
-          <div class="card schedule-card" id="scheduleCard">
-            <div class="schedule-header">
-              <button type="button" class="schedule-collapse-btn" id="scheduleCollapseBtn" aria-label="Show or hide the schedule">
-                <h2 id="scheduleTitle">Today's Schedule</h2>
-                <span class="schedule-chevron">▾</span>
-              </button>
-              <div class="schedule-nav">
-                <button class="schedule-nav-btn" id="schedulePrev" aria-label="Previous day">&lt;</button>
-                <button class="schedule-nav-btn schedule-today-btn" id="scheduleToday">Today</button>
-                <button class="schedule-nav-btn" id="scheduleNext" aria-label="Next day">&gt;</button>
-                <span class="schedule-date-label" id="scheduleDate"></span>
-              </div>
-            </div>
-            <div class="schedule-unscheduled" id="scheduleUnscheduled"></div>
-            <div class="schedule-timeline" id="scheduleTimeline"></div>
-          </div>
+        <!-- Desktop right column tail; the phone reaches both from the + bar. -->
+        <div class="today-actions">
+          <button type="button" class="dl-btn primary" id="todayNewBtn"><span class="ms">add</span>New</button>
+          <button type="button" class="dl-btn" id="todaySayBtn"><span class="ms">mic</span>Say it</button>
+        </div>
         </div>
       </div>
 
       <!-- Tasks View -->
+      <!-- Tasks (spec 5): ONE view. List and Board are two faces of it, on the
+           phase-1 segmented control, and the choice is remembered per device in
+           daylign_prefs.tasksMode. Board left the nav; its markup lives here. -->
       <div class="view" id="tasksView">
-        <div class="tasks-toolbar">
-          <div class="filter-group">
-            <select id="filterStatus">
-              <option value="all">All Status</option>
-              <option value="todo">To Do</option>
-              <option value="in-progress">In Progress</option>
-              <option value="done">Done</option>
-              <option value="archived">Archived</option>
-            </select>
-            <select id="filterCategory">
-              <option value="all">All Categories</option>
-            </select>
-          </div>
-          <div class="sort-group">
-            <select id="sortBy">
-              <option value="created">Date Created</option>
-              <option value="dueDate">Due Date</option>
-              <option value="name">Name</option>
-            </select>
+        <div class="tasks-modeswitch">
+          <div class="dl-seg" role="tablist" aria-label="Tasks view">
+            <button type="button" class="dl-seg-btn" data-tasks-mode="list" role="tab" aria-selected="true">List</button>
+            <button type="button" class="dl-seg-btn" data-tasks-mode="board" role="tab" aria-selected="false">Board</button>
           </div>
         </div>
-        <div class="tasks-list" id="tasksList"></div>
-        <div class="tasks-archived-section" id="tasksArchivedSection"></div>
+
+        <div class="tasks-pane" id="tasksListPane">
+          <div class="tk-filters" id="tkFilters"></div>
+          <div class="tk-projects" id="tkProjects"></div>
+          <div class="tasks-list" id="tasksList"></div>
+          <div class="tasks-archived-section" id="tasksArchivedSection"></div>
+        </div>
+
+        <div class="tasks-pane" id="tasksBoardPane" hidden>
+          <!-- Reports filed by testers through report.html. Sits above the board
+               because an unread report is the one thing here that needs a
+               decision; it hides itself entirely when the inbox is empty. -->
+          <div class="inbox-panel" id="inboxPanel" hidden></div>
+          <div class="board-mobile-switch" id="boardMobileSwitch">
+            <button class="bms-btn active" data-col="todo" type="button">To do <span class="bms-count" id="bmsTodo">0</span></button>
+            <button class="bms-btn" data-col="in-progress" type="button">Doing <span class="bms-count" id="bmsProgress">0</span></button>
+            <button class="bms-btn" data-col="done" type="button">Done <span class="bms-count" id="bmsDone">0</span></button>
+          </div>
+          <div class="board-filters" id="boardFilters"></div>
+          <div class="board" data-mobile-col="todo">
+            <div class="board-column" data-status="todo">
+              <div class="column-header">
+                <span class="column-dot todo"></span>
+                <h3>To do</h3>
+                <span class="column-count" id="boardTodoCount">0</span>
+              </div>
+              <div class="column-tasks" id="boardTodo"></div>
+            </div>
+            <div class="board-column" data-status="in-progress">
+              <div class="column-header">
+                <span class="column-dot in-progress"></span>
+                <h3>Doing</h3>
+                <span class="column-count" id="boardProgressCount">0</span>
+              </div>
+              <div class="column-tasks" id="boardProgress"></div>
+            </div>
+            <div class="board-column" data-status="done">
+              <div class="column-header">
+                <span class="column-dot done"></span>
+                <h3>Done</h3>
+                <span class="column-count" id="boardDoneCount">0</span>
+              </div>
+              <div class="column-tasks" id="boardDone"></div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- Board View -->
-      <div class="view" id="boardView">
-        <!-- Reports filed by testers through report.html. Sits above the board
-             because an unread report is the one thing here that needs a
-             decision; it hides itself entirely when the inbox is empty. -->
-        <div class="inbox-panel" id="inboxPanel" hidden></div>
-        <div class="board-filters" id="boardFilters"></div>
-        <div class="board-mobile-switch" id="boardMobileSwitch">
-          <button class="bms-btn active" data-col="todo" type="button">To Do <span class="bms-count" id="bmsTodo">0</span></button>
-          <button class="bms-btn" data-col="in-progress" type="button">Doing <span class="bms-count" id="bmsProgress">0</span></button>
-          <button class="bms-btn" data-col="done" type="button">Done <span class="bms-count" id="bmsDone">0</span></button>
-        </div>
-        <div class="board" data-mobile-col="todo">
-          <div class="board-column" data-status="todo">
-            <div class="column-header">
-              <span class="column-dot todo"></span>
-              <h3>To Do</h3>
-              <span class="column-count" id="boardTodoCount">0</span>
-            </div>
-            <div class="column-tasks" id="boardTodo"></div>
-          </div>
-          <div class="board-column" data-status="in-progress">
-            <div class="column-header">
-              <span class="column-dot in-progress"></span>
-              <h3>In Progress</h3>
-              <span class="column-count" id="boardProgressCount">0</span>
-            </div>
-            <div class="column-tasks" id="boardProgress"></div>
-          </div>
-          <div class="board-column" data-status="done">
-            <div class="column-header">
-              <span class="column-dot done"></span>
-              <h3>Done</h3>
-              <span class="column-count" id="boardDoneCount">0</span>
-            </div>
-            <div class="column-tasks" id="boardDone"></div>
-          </div>
-        </div>
-      </div>
 
       <!-- Calendar View -->
       <div class="view" id="calendarView">
-        <div class="calendar-header">
-          <button class="cal-nav" id="calPrev">&lt;</button>
-          <h2 id="calMonth"></h2>
-          <button class="cal-nav" id="calNext">&gt;</button>
-          <div class="cal-view-toggle">
-            <button class="cal-toggle-btn active" id="calMonthBtn">Month</button>
-            <button class="cal-toggle-btn" id="calWeekBtn">Week</button>
+        <div class="cal-head">
+          <div class="dl-seg cal-mode" role="tablist" aria-label="Calendar view">
+            <button type="button" id="calMonthBtn" role="tab" aria-selected="true">Month</button>
+            <button type="button" id="calWeekBtn" role="tab" aria-selected="false">Week</button>
           </div>
-          <!-- Creating an event used to require DOUBLE-CLICKING a day cell, a
-               gesture nothing hinted at and that touch has no equivalent for -
-               so on a phone there was no way to add an event at all. -->
-          <button class="cal-add-btn" id="calAddBtn" type="button">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            <span>Add event</span>
-          </button>
+          <div class="cal-nav-row">
+            <button class="cal-nav" id="calPrev" type="button" aria-label="Previous"><span class="ms" aria-hidden="true">chevron_left</span></button>
+            <h2 id="calMonth"></h2>
+            <button class="cal-nav" id="calNext" type="button" aria-label="Next"><span class="ms" aria-hidden="true">chevron_right</span></button>
+            <!-- Creating an event used to require DOUBLE-CLICKING a day cell, a
+                 gesture nothing hinted at and that touch has no equivalent for -
+                 so on a phone there was no way to add an event at all. -->
+            <button class="dl-btn cal-add-btn" id="calAddBtn" type="button"><span class="ms" aria-hidden="true">add</span><span>Add event</span></button>
+          </div>
         </div>
-        <!-- Month View -->
-        <div class="calendar-grid" id="calMonthView">
-          <div class="cal-day-name">Sun</div>
-          <div class="cal-day-name">Mon</div>
-          <div class="cal-day-name">Tue</div>
-          <div class="cal-day-name">Wed</div>
-          <div class="cal-day-name">Thu</div>
-          <div class="cal-day-name">Fri</div>
-          <div class="cal-day-name">Sat</div>
+        <!-- Month: the grid, then the selected day rendered as the SAME .dl-line
+             Today uses (js/line.js renderLine takes a date and a host). -->
+        <div class="cal-month" id="calMonthView">
+          <div class="cal-grid" id="calGrid"></div>
+          <div class="cal-day-panel" id="calDayPanel">
+            <div class="cal-day-panel-head">
+              <h3 id="calDayTitle"></h3>
+              <button class="dl-btn cal-day-add" id="calDayAdd" type="button"><span class="ms" aria-hidden="true">add</span><span>Event</span></button>
+            </div>
+            <div id="calDayLine"></div>
+            <div class="cal-due" id="calDayDue" hidden></div>
+            <div class="cal-day-empty" id="calDayEmpty" hidden>Nothing on this day yet.</div>
+          </div>
         </div>
-        <!-- Week View -->
-        <div class="calendar-week" id="calWeekView" style="display:none">
-          <div class="week-grid" id="weekGrid"></div>
+        <!-- Week. Desktop gets the hour grid and the "any time" strip; the phone
+             gets the agenda below, because seven columns of hours on a 390px
+             screen is unreadable. -->
+        <div class="calendar-week" id="calWeekView" hidden>
+          <div class="calw" id="calWeekGrid"></div>
         </div>
-        <!-- Agenda (phones — populated by js/enhancements.js) -->
-        <div class="calendar-agenda" id="calAgenda"></div>
+        <div class="calendar-agenda" id="calAgenda" hidden></div>
       </div>
+
 
       <!-- Gym View -->
       <!-- Training View: Gym + Cardio merged behind one nav item. The shared
            shell (weight readout, mode toggle, combined week) stays put; only the
            pane below it swaps, so neither mode feels heavier than it did alone. -->
       <div class="view" id="trainingView">
+        <!-- v3 section 7: one header on every sub-tab. The week's session count
+             is the first thing you want ("am I training enough?"), the
+             body-weight pill is the only weight readout left on this screen and
+             it opens the one weigh-in sheet. -->
         <div class="training-shell">
-          <div class="training-head">
-            <div class="training-toggle" id="trainingToggle" role="tablist" aria-label="Training mode">
-              <button class="training-mode-btn active" type="button" role="tab" data-mode="strength">Strength</button>
-              <button class="training-mode-btn" type="button" role="tab" data-mode="cardio">Cardio</button>
+          <!-- The mockup draws the screen title here because its phone frame has
+               no app header. The real app does: #viewTitle already reads
+               "Training" two rows up, so repeating it would be the same word
+               twice on one screen. The eyebrow and the weight pill are what this
+               header actually adds. -->
+          <div class="dl-vhead">
+            <div class="dl-vhead-txt">
+              <span class="dl-eyebrow" id="trainingWeekLine">This week</span>
             </div>
             <div class="training-weight" id="trainingWeight"></div>
           </div>
-          <div class="training-week" id="trainingWeek"></div>
-          <!-- Section tabs. The Strength pane stacked eight cards in one
-               scroll, so anything past the log needed a long thumb journey and
-               the page felt endless. Each tab is roughly one screen. -->
-          <div class="training-tabs" id="trainingTabs" role="tablist" aria-label="Training section">
-            <button type="button" class="training-tab active" role="tab" data-train-tab="log" aria-selected="true">Log</button>
-            <button type="button" class="training-tab" role="tab" data-train-tab="progress" aria-selected="false">Progress</button>
-            <button type="button" class="training-tab" role="tab" data-train-tab="coach" aria-selected="false">Coach</button>
+          <!-- Strength, Cardio, Coach, Sleep - remembered across visits.
+               The old control was two axes crossed (Strength/Cardio mode by
+               Log/Progress/Coach section), so Coach and Recovery lived inside
+               whichever mode happened to be selected and the same card could be
+               reached two ways or not at all. One axis now. -->
+          <div class="dl-seg full" id="trainingTabs" role="tablist" aria-label="Training section">
+            <button type="button" role="tab" data-train-tab="strength" aria-selected="true">Strength</button>
+            <button type="button" role="tab" data-train-tab="cardio" aria-selected="false">Cardio</button>
+            <button type="button" role="tab" data-train-tab="coach" aria-selected="false">Coach</button>
+            <button type="button" role="tab" data-train-tab="sleep" aria-selected="false">Sleep</button>
           </div>
-          <!-- Apple Watch sync freshness. Lives in the Log tab because
-               "did last night sync?" is a daily question. -->
+          <!-- Seven day chips. Filled only on a FULL session (isFullSession):
+               one set of push ups and one of sit ups is logged every single day
+               as a standing habit, so "anything logged" would paint all seven
+               chips and the row would say nothing at all. -->
+          <div class="training-week" id="trainingWeek"></div>
+          <!-- Apple Watch sync freshness - a daily question, so it sits with
+               the logging tabs. -->
           <div id="watchSync"></div>
         </div>
 
-        <!-- Desktop: center logs the active mode, right rail carries the shared
-             cross-mode cards (ref 11c). On mobile it's one column, rail below. -->
         <div class="training-layout">
         <div class="training-center">
 
         <div class="training-pane" id="trainingStrength">
-        <!-- Date Navigation -->
-        <div class="gym-date-bar">
-          <button class="gym-date-nav" id="gymPrevDay" aria-label="Previous day">&lt;</button>
-          <button class="gym-date-today" id="gymToday">Today</button>
-          <button class="gym-date-nav" id="gymNextDay" aria-label="Next day">&gt;</button>
-          <span class="gym-date-label" id="gymDateLabel"></span>
-          <input type="date" id="gymDate" class="gym-date-input">
+        <!-- Today logs; Progress answers "am I getting better?". That split
+             keeps the analytics off the logging path. -->
+        <div class="dl-seg" id="strengthSubSeg" role="tablist" aria-label="Strength view">
+          <button type="button" role="tab" data-strength-sub="today" aria-selected="true">Today</button>
+          <button type="button" role="tab" data-strength-sub="progress" aria-selected="false">Progress</button>
+        </div>
+        <div class="strength-sub" data-strength-pane="today">
+        <!-- Day stepper. The date input sits invisibly over the label, so
+             tapping the date opens the native picker. -->
+        <div class="dl-daynav">
+          <button type="button" class="dl-line-day-btn" id="gymPrevDay" aria-label="Previous day"><span class="ms" aria-hidden="true">chevron_left</span></button>
+          <label class="dl-daynav-label"><span id="gymDateLabel"></span><input type="date" id="gymDate" class="dl-daynav-input" aria-label="Pick a day"></label>
+          <button type="button" class="dl-line-day-btn" id="gymNextDay" aria-label="Next day"><span class="ms" aria-hidden="true">chevron_right</span></button>
+          <button type="button" class="dl-line-btn" id="gymToday" hidden>Today</button>
         </div>
 
-        <!-- Logging sheet. On mobile this is a full-screen page opened from the
-             primary action; on desktop it opens as a centered popup, like the
-             New Task modal. Either way the form itself is identical — only the
-             .gym-log-sheet-panel wrapper's presentation differs by breakpoint. -->
-        <div class="gym-log-sheet" id="gymLogSheet">
-          <div class="gym-log-sheet-panel">
-          <div class="gym-log-sheet-head">
-            <h2 id="gymLogSheetTitle">Log exercise</h2>
-            <button type="button" class="gym-log-close" id="gymLogClose" aria-label="Close">&times;</button>
-          </div>
-        <!-- Add Exercise (primary action — kept at top so logging never needs a scroll) -->
-        <div class="gym-add-bar">
-          <input type="text" id="gymExerciseName" placeholder="Add exercise..." class="gym-exercise-input" list="exerciseSuggestions" autocomplete="off">
-          <div class="gym-suggest" id="gymSuggest"></div>
-          <div id="gymLastTime"></div>
-          <datalist id="exerciseSuggestions"></datalist>
-          <div class="gym-sets-inline" id="gymSetsList"></div>
-          <div class="gym-add-actions">
-            <button type="button" class="gym-add-set-btn" id="gymAddSetBtn">+ Set</button>
-            <button type="button" class="gym-rest-btn" data-rest="60">Rest 60s</button>
-            <button type="button" class="gym-rest-btn" data-rest="90">Rest 90s</button>
-            <button type="button" class="btn-primary gym-save-btn" id="gymSaveExerciseBtn">Add Exercise</button>
-          </div>
-        </div>
-          </div>
+        <!-- The session (spec 7): one tinted card. js/gym.js writes the header
+             into #gymStats and one row per exercise into #gymTodayList. -->
+        <div class="dl-card tint c-move str-session" id="gymSession">
+          <div id="gymStats"></div>
+          <div id="gymTodayList"></div>
         </div>
 
-        <!-- Today's log. The stats fold into this card's header instead of a
-             standalone band, and the whole card sits at the top of the pane —
-             the log is the first thing you see, not the coach. -->
-        <div class="card gym-log-card">
-          <div class="gym-stats" id="gymStats"></div>
-          <div class="gym-workout" id="gymTodayList">
-            <div class="empty-state"><svg aria-hidden="true" focusable="false" class="empty-state-icon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg><p class="empty-state-title">No exercises yet</p><p class="empty-state-hint">Tap “+ Add Exercise” to start this session.</p></div>
-          </div>
+        <!-- The primary action, spelled out in the pane (spec section 7). It
+             used to exist only as the header button and the thumb FAB, which is
+             invisible on a desktop screenshot and easy to miss on a phone. -->
+        <button type="button" class="dl-btn primary full training-log-btn" id="gymLogOpenBtn"><span class="ms" aria-hidden="true">add</span> Log exercise</button>
+
+        <!-- Consistency: 16 weeks, the streak, and the next training day. -->
+        <div class="dl-card streak-card">
+          <h6 class="dl-card-h"><span>Consistency</span><em id="streakSummary"></em></h6>
+          <div class="gym-cal-wrap"><div class="gym-cal" id="streakHeatmap"></div></div>
+          <p class="str-note" id="streakStats"></p>
         </div>
+        </div><!-- /Strength: Today -->
 
-        <!-- Activity breakdown: the watch's exercise minutes split into strength
-             (estimated from sets), logged cardio (real minutes) and walking.
-             Rendered by js/gym.js activityBreakdown(). -->
-        <div id="activityBreakdown"></div>
-
-        <!-- Coach: one card — the decision (js/coach.js → #coachPanel) plus the
-             burn/pace targets and recommendations (js/gym.js) that used to be a
-             separate "Targets & Coach" card. Sits under the log now. -->
-        <div class="card coach-card coach-merged">
-          <div id="coachPanel"></div>
-          <div class="coach-head coach-merged-head">
-            <h2>Targets</h2>
-            <span class="weight-goal-chip" id="burnGoalChip" title="Edit goals"></span>
-          </div>
-          <div class="coach-targets" id="coachTargets"></div>
-          <div class="coach-recs" id="coachRecs"></div>
-        </div>
-
-        <!-- Goal Progress: ties each logged session to WHY you train. Read from
-             existing data (js/gym.js goalProgress). Golf deferred. -->
-        <div class="card goal-progress-card collapsible" data-collapse="mobile" data-collapse-key="traingoals">
-          <div class="coach-head">
-            <h2>Goal Progress</h2>
-          </div>
-          <div id="goalProgressBody"></div>
-        </div>
-
-        <!-- Body Weight now lives in the weight-trend sheet (opened from the
-             shell's weight readout, ref 5a/5b) — not inline in the pane. -->
-
+        <div class="strength-sub" data-strength-pane="progress" hidden>
         <!-- Strength analytics: 30-day summary + plateau insight, movement
              list, progression curve, PRs. Rendered by js/strength.js. -->
         <div id="strengthAnalytics"></div>
-
-        <!-- Consistency -->
-        <div class="card streak-card collapsible" data-collapse="mobile" data-collapse-key="trainstreak">
-          <div class="coach-head">
-            <h2>Consistency</h2>
-            <span class="weight-goal-chip" id="streakSummary"></span>
-          </div>
-          <div class="streak-stats" id="streakStats"></div>
-          <div class="gym-cal-wrap"><div class="gym-cal" id="streakHeatmap"></div></div>
-        </div>
+        </div><!-- /Strength: Progress -->
         </div><!-- /#trainingStrength -->
 
         <div class="training-pane" id="trainingCardio" hidden>
-        <div class="gym-date-bar">
-          <button class="gym-date-nav" id="cardioPrevDay" aria-label="Previous day">&lt;</button>
-          <button class="gym-date-today" id="cardioToday">Today</button>
-          <button class="gym-date-nav" id="cardioNextDay" aria-label="Next day">&gt;</button>
-          <span class="gym-date-label" id="cardioDateLabel"></span>
-          <input type="date" id="cardioDate" class="gym-date-input">
-        </div>
-
-        <!-- One-tap "same as usual" logger + streak (js/cardio.js) -->
+        <!-- Your usual session: one tap, with the streak (js/cardio.js). The
+             same action as the ride on Today's line. -->
         <div id="cardioQuick"></div>
 
-        <!-- Log a session (top, so logging never needs a scroll) -->
-        <div class="cardio-add-card">
-          <div class="cardio-type-tabs" id="cardioTypeTabs"></div>
-          <div class="cardio-watch-chip" id="cardioWatchChip" hidden></div>
+        <div class="dl-daynav">
+          <button type="button" class="dl-line-day-btn" id="cardioPrevDay" aria-label="Previous day"><span class="ms" aria-hidden="true">chevron_left</span></button>
+          <label class="dl-daynav-label"><span id="cardioDateLabel"></span><input type="date" id="cardioDate" class="dl-daynav-input" aria-label="Pick a day"></label>
+          <button type="button" class="dl-line-day-btn" id="cardioNextDay" aria-label="Next day"><span class="ms" aria-hidden="true">chevron_right</span></button>
+          <button type="button" class="dl-line-btn" id="cardioToday" hidden>Today</button>
+        </div>
 
-          <!-- Run intensity chips — runs only (populated by renderCardioRunTypes) -->
-          <div class="cardio-runtypes" id="cardioRunTypes" hidden></div>
-
-          <div class="cardio-add-grid">
-            <div class="cardio-field">
+        <!-- Log a session. Distance, time and a live pace in the sport's own
+             unit; the run-only detail folds away so a ride is three fields. -->
+        <div class="cd-form">
+          <div class="dl-seg full" id="cardioTypeTabs" role="group" aria-label="Sport"></div>
+          <div class="cd-fields">
+            <div class="dl-field">
               <label id="cardioDistanceLabel" for="cardioDistance">Distance (mi)</label>
               <input type="number" id="cardioDistance" step="0.01" min="0" inputmode="decimal" placeholder="3.1">
             </div>
-            <div class="cardio-field">
-              <label for="cardioDuration">Duration (min)</label>
+            <div class="dl-field">
+              <label for="cardioDuration">Time (min)</label>
               <input type="number" id="cardioDuration" step="0.1" min="0" inputmode="decimal" placeholder="28">
             </div>
-            <div class="cardio-field">
+            <div class="dl-field">
               <label for="cardioPace">Pace</label>
-              <input type="text" id="cardioPace" readonly placeholder="auto" class="cardio-pace-readout">
+              <input type="text" id="cardioPace" readonly placeholder="auto" tabindex="-1" class="cd-pace">
             </div>
           </div>
 
-          <!-- Run detail: HR + zone bar, elevation, RPE — runs only -->
-          <div class="cardio-rundetail" id="cardioRunDetail" hidden>
-            <div class="cardio-add-grid">
-              <div class="cardio-field">
-                <label for="cardioHr">Avg HR</label>
-                <input type="number" id="cardioHr" step="1" min="0" max="230" inputmode="numeric" placeholder="bpm">
+          <!-- Run intensity chips - runs only (renderCardioRunTypes) -->
+          <div class="cd-chips" id="cardioRunTypes" hidden></div>
+
+          <!-- Run detail - runs only -->
+          <details class="cd-more" id="cardioRunDetail" hidden>
+            <summary><span class="ms" aria-hidden="true">tune</span><span class="cd-more-t">Heart rate, elevation, effort, zones</span><span class="ms cd-more-chev" aria-hidden="true">expand_more</span></summary>
+            <div class="cd-fields">
+              <div class="dl-field">
+                <label for="cardioHr">Avg HR (bpm)</label>
+                <input type="number" id="cardioHr" step="1" min="0" max="230" inputmode="numeric" placeholder="148">
               </div>
-              <div class="cardio-field">
+              <div class="dl-field">
                 <label for="cardioElev">Elevation (ft)</label>
                 <input type="number" id="cardioElev" step="1" min="0" inputmode="numeric" placeholder="0">
               </div>
-              <div class="cardio-field">
-                <label for="cardioRpe">Effort (RPE) · <span id="cardioRpeVal">5</span></label>
-                <input type="range" id="cardioRpe" min="1" max="10" step="1" value="5" class="cardio-rpe-slider">
+              <div class="dl-field">
+                <label for="cardioRpe">Effort, RPE <span id="cardioRpeVal">5</span></label>
+                <input type="range" id="cardioRpe" min="1" max="10" step="1" value="5" class="cd-rpe">
               </div>
             </div>
-            <div class="cardio-zone-bar" id="cardioZoneBar"></div>
+            <div class="cd-zones" id="cardioZoneBar"></div>
+          </details>
+
+          <div class="dl-field">
+            <label for="cardioNotes">Notes</label>
+            <input type="text" id="cardioNotes" placeholder="easy pace, felt strong" maxlength="120">
           </div>
 
-          <div class="cardio-add-grid">
-            <div class="cardio-field cardio-field-wide">
-              <label for="cardioNotes">Notes</label>
-              <input type="text" id="cardioNotes" placeholder="easy pace, felt strong" maxlength="120">
-            </div>
-          </div>
-          <button class="btn-primary cardio-save-btn" id="cardioSaveBtn">Log session</button>
+          <!-- Watch cross-check, with Use this -->
+          <div class="cd-watch" id="cardioWatchChip" hidden></div>
+
+          <button type="button" class="dl-btn primary full" id="cardioSaveBtn">Log session</button>
         </div>
 
         <!-- Apple Watch workouts (imported from Apple Health) -->
         <div id="cardioWatchWorkouts" hidden></div>
 
         <!-- This day -->
-        <div class="cardio-day" id="cardioDayList"></div>
+        <div id="cardioDayList"></div>
 
-        <!-- This week -->
-        <div class="card cardio-card">
-          <h2>This week</h2>
-          <div class="cardio-week" id="cardioWeekStats"></div>
+        <!-- This week, and the race beside it -->
+        <div class="cd-week">
+          <div id="cardioWeekStats"></div>
+          <div class="dl-card tint c-meet cd-race" id="cardioRace"></div>
         </div>
 
-        <!-- Race -->
-        <div class="card cardio-card cardio-race" id="cardioRace"></div>
-
-        <div class="card cardio-card collapsible" data-collapse="mobile" data-collapse-key="cardioracetarget">
-          <h2>Race target</h2>
-          <div class="cardio-race-form">
-            <div class="cardio-field">
+        <details class="dl-card cd-target" data-cardio-racetarget>
+          <summary><span class="cd-more-t">Race target</span><span class="ms cd-more-chev" aria-hidden="true">expand_more</span></summary>
+          <div class="cd-fields">
+            <div class="dl-field">
               <label for="cardioRaceType">Distance</label>
               <select id="cardioRaceType"></select>
             </div>
-            <div class="cardio-field">
+            <div class="dl-field">
               <label for="cardioRaceDate">Race date</label>
               <input type="date" id="cardioRaceDate">
             </div>
-            <div class="cardio-field">
-              <label for="cardioWeeklyTarget">Weekly run target (mi)</label>
+            <div class="dl-field">
+              <label for="cardioWeeklyTarget">Weekly run (mi)</label>
               <input type="number" id="cardioWeeklyTarget" step="1" min="0" inputmode="numeric">
             </div>
           </div>
-        </div>
-
-        <!-- Coach -->
-        <div class="card cardio-card collapsible" data-collapse="mobile" data-collapse-key="cardiocoach">
-          <h2>Coach</h2>
-          <div class="cardio-coach" id="cardioCoach"></div>
-        </div>
+        </details>
         </div><!-- /#trainingCardio -->
 
-          <!-- Moved off Today: these answer "how am I trending?",
-               which is a Training question, not a "what do I do now?" one.
-               The daily brief still states sleep and readiness in words. -->
-          <!-- Recovery: Sleep + Readiness in one card (rendered by js/sleep.js).
-               The two inner cards drop their own frame so they read as columns
-               of a single Recovery card. -->
-          <div class="card recovery-card">
-            <div class="coach-head"><h2>Recovery</h2></div>
-            <div class="sleep-readiness-row">
-              <div id="sleepCard"></div>
-              <div id="readinessCard"></div>
+        <!-- Coach: one rule-based read on what to do next. These cards
+             used to be scattered across the Strength and Cardio panes, so
+             the same advice was reachable twice or not at all. -->
+        <div class="training-pane" id="trainingCoach" hidden>
+          <p class="co-empty" id="coachEmpty" hidden>The coach starts with your first logged exercise. Log one in Strength and it has something to read.</p>
+          <div id="coachBody">
+            <!-- The verdict sentence, the evidence chips and the rows Do this /
+                 Volume / Recovery / Cardio (js/coach.js). -->
+            <div id="coachPanel"></div>
+            <!-- Burn against its target and the weigh-in pace (js/gym.js). -->
+            <div class="co-targets-h">
+              <span class="ts-label">Targets</span>
+              <button type="button" class="cd-link" id="burnGoalChip" aria-label="Edit goals"></button>
+            </div>
+            <div class="co-tiles" id="coachTargets"></div>
+            <div id="coachRecs"></div>
+            <div id="coachLadder"></div>
+            <!-- Goals, with where the day's active minutes went underneath. -->
+            <div class="dl-card co-card">
+              <h6 class="dl-card-h"><span>Goals</span></h6>
+              <div id="goalProgressBody"></div>
+              <div id="activityBreakdown"></div>
             </div>
           </div>
+        </div><!-- /#trainingCoach -->
 
-          <!-- Weight Trend — collapsed on mobile (reference) -->
-          <div class="card weight-trend-card collapsible" data-collapse="mobile" data-collapse-key="weighttrend">
-            <div class="weight-trend-head">
-              <h2>Weight Trend</h2>
-              <span class="weight-trend-meta" id="weightTrendMeta"></span>
-            </div>
-            <div id="weightTrendChart"></div>
-          </div>
+        <!-- Sleep is the only readiness surface (spec section 7). The
+             desktop rail carried a second readiness ring and a second
+             consistency heatmap; both are gone, along with the Weight Trend
+             card the weigh-in sheet already draws. -->
+        <div class="training-pane" id="trainingSleep" hidden>
+          <!-- Readiness ring and verdict, then last night and the week
+               (js/sleep.js). -->
+          <div id="readinessCard"></div>
+          <div id="sleepCard"></div>
+        </div><!-- /#trainingSleep -->
 
         </div><!-- /.training-center -->
-        <aside class="training-rail" id="trainingRail">
-          <div id="trainingRailWeek"></div>
-          <div id="trainingRailReadiness"></div>
-          <div id="trainingRailConsistency"></div>
-        </aside>
         </div><!-- /.training-layout -->
       </div><!-- /#trainingView -->
 
       <div class="view" id="dietView">
-        <!-- Date navigation and the week strip are ONE control: the strip is
-             the day picker, the arrows step it, and the label says where you
-             are. Stacked as two separate rows they duplicated each other. -->
-        <div class="diet-datehead">
-          <div class="diet-date-bar">
-            <button class="gym-date-nav" id="dietPrevDay" aria-label="Previous day">&lt;</button>
-            <span class="diet-date-label" id="dietDateLabel"></span>
-            <button class="gym-date-nav" id="dietNextDay" aria-label="Next day">&gt;</button>
-            <span class="diet-datehead-spacer"></span>
-            <button class="gym-date-today" id="dietToday">Today</button>
-            <input type="date" id="dietDate" class="gym-date-input">
+        <!-- Diet (spec 8). Two screens in one view: the day, and the Food
+             library, which takes the whole view while it is open. -->
+        <div class="diet-day" id="dietDay">
+          <!-- Day stepper; the date is the picker. The book opens the library. -->
+          <div class="dl-daynav dt-nav">
+            <button type="button" class="dl-line-day-btn" id="dietPrevDay" aria-label="Previous day"><span class="ms" aria-hidden="true">chevron_left</span></button>
+            <label class="dl-daynav-label"><span id="dietDateLabel"></span><input type="date" id="dietDate" class="dl-daynav-input" aria-label="Pick a day"></label>
+            <button type="button" class="dl-line-day-btn" id="dietNextDay" aria-label="Next day"><span class="ms" aria-hidden="true">chevron_right</span></button>
+            <button type="button" class="dl-line-btn" id="dietToday" hidden>Today</button>
+            <button type="button" class="dl-line-day-btn" id="openFoodLibraryBtn" aria-label="Food library"><span class="ms" aria-hidden="true">menu_book</span></button>
           </div>
 
-          <!-- Seven rings, one per day of the week being viewed. See renderDietWeek. -->
-          <div class="diet-week" id="dietWeek"></div>
+          <!-- Seven small rings, one per day of the week being viewed. -->
+          <div class="dt-week" id="dietWeek"></div>
+
+          <!-- The columns on desktop. On a phone both are display: contents and
+               the sections stack in the order set in style.css. -->
+          <div class="dt-rail">
+            <!-- Calorie ring, macro bars, one caption (js/diet-goals.js). -->
+            <div class="dt-sum" id="dietGoals"></div>
+            <div class="dt-sum-foot"><button type="button" class="cd-link" id="editGoalsBtn">Edit goals</button></div>
+
+            <!-- Water: three quick adds, Other as an inline field, Undo. -->
+            <div class="dl-card tint c-water dt-water" id="waterTracker">
+              <h6 class="dl-card-h"><span>Water</span><em id="waterProgress">0 / 66 oz</em></h6>
+              <span class="dl-meter c-water dt-water-m"><i id="waterBarFill"></i></span>
+              <div class="dt-water-btns">
+                <button type="button" class="dl-btn water-btn" data-oz="8" aria-label="Add 8 ounces">+8</button>
+                <button type="button" class="dl-btn water-btn" data-oz="16" aria-label="Add 16 ounces">+16</button>
+                <button type="button" class="dl-btn water-btn" data-oz="24" aria-label="Add 24 ounces">+24</button>
+                <button type="button" class="dl-btn" id="waterCustomBtn" aria-expanded="false" aria-controls="waterOther">Other</button>
+                <button type="button" class="dl-btn danger dt-water-undo" id="waterUndoBtn" hidden>Undo</button>
+              </div>
+              <div class="dt-water-other" id="waterOther" hidden>
+                <input type="number" id="waterOtherInput" inputmode="numeric" min="1" max="200" placeholder="oz" aria-label="Ounces to add">
+                <button type="button" class="dl-btn primary" id="waterOtherAdd">Add</button>
+              </div>
+            </div>
+
+            <!-- Folded rows that open (renderDietRecs / renderYesterdayAdvice /
+                 renderDietReview). Each hides itself when it has nothing to say. -->
+            <div class="dt-folds">
+              <details class="dt-fold" id="dietRecs" hidden></details>
+              <details class="dt-fold" id="dietYesterday" hidden></details>
+              <details class="dt-fold" id="dietReview" hidden></details>
+            </div>
+          </div>
+
+          <div class="dt-main">
+            <!-- ONE add bar: type it, say it, or snap it. Static on purpose -
+                 rebuilding it each render threw away what was being typed. -->
+            <!-- Which meal the bar, the tiles and the photo add to. Starts on the
+                 meal the clock suggests; one tap changes it (v2 had this as a
+                 separate add row inside each meal). -->
+            <div class="dl-seg full dt-mealpick" id="dietMealPick" role="group" aria-label="Add to which meal">
+              <button type="button" data-pick-meal="breakfast">Breakfast</button>
+              <button type="button" data-pick-meal="lunch">Lunch</button>
+              <button type="button" data-pick-meal="dinner">Dinner</button>
+              <button type="button" data-pick-meal="snack">Snack</button>
+            </div>
+            <div class="dt-addwrap diet-meal-addwrap" id="dietAddWrap" data-meal="breakfast">
+              <div class="dt-search">
+                <span class="ms" aria-hidden="true">search</span>
+                <input type="text" id="dietAddInput" class="dt-search-input" placeholder="Add food" autocomplete="off" enterkeyhint="search" aria-label="Add food">
+                <button type="button" class="dt-search-btn" data-diet-voice aria-label="Say what you ate"><span class="ms" aria-hidden="true">mic</span></button>
+                <button type="button" class="dt-search-btn" data-diet-photo="breakfast" aria-label="Log a meal from a photo"><span class="ms" aria-hidden="true">photo_camera</span></button>
+              </div>
+              <div class="diet-inline-results"></div>
+            </div>
+            <!-- Usual foods for this meal, and saved meals (outlined). -->
+            <div class="dt-tiles" id="dietTiles" hidden></div>
+            <!-- A photo analysis that is still waiting to be confirmed. -->
+            <div id="dietPhotoPending" hidden></div>
+            <!-- The four meals as a line. Tap one for its sheet. -->
+            <div id="dietMealsList"></div>
+          </div>
         </div>
-        <div class="diet-layout">
-          <!-- Food Library page: manual log form + Snap + key (back button first) -->
-          <button type="button" class="diet-library-back diet-lib-section" id="closeFoodLibraryBtn">&larr; Back to today</button>
-          <!-- Log Food Panel -->
-          <div class="card diet-bank-card diet-lib-section">
-            <h2>Add a food to your bank</h2>
-            <p class="settings-desc">For something you want saved before you eat it. Anything you log is banked automatically.</p>
-            <div class="diet-food-form">
-              <input type="text" id="dietFoodName" placeholder="Food name" class="diet-search-input" autocomplete="off">
-              <div class="diet-serving-info" id="dietServingInfo"></div>
-              <div class="diet-macro-inputs">
-                <div class="form-group">
-                  <label for="dietCalories">Calories</label>
-                  <input type="number" id="dietCalories" placeholder="0" min="0" inputmode="numeric">
-                </div>
-                <div class="form-group">
-                  <label for="dietProtein">Protein (g)</label>
-                  <input type="number" id="dietProtein" placeholder="0" min="0" step="0.1" inputmode="decimal">
-                </div>
-                <div class="form-group">
-                  <label for="dietCarbs">Carbs (g)</label>
-                  <input type="number" id="dietCarbs" placeholder="0" min="0" step="0.1" inputmode="decimal">
-                </div>
-                <div class="form-group">
-                  <label for="dietFat">Fat (g)</label>
-                  <input type="number" id="dietFat" placeholder="0" min="0" step="0.1" inputmode="decimal">
-                </div>
-              </div>
-              <div class="diet-btn-row">
-                <button type="button" class="btn-primary diet-save-custom-btn" id="dietSaveCustomBtn" aria-label="Save this food to your bank">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
-                  <span id="dietSaveCustomLabel">Save as My Food</span>
-                </button>
-                <button type="button" class="btn-secondary diet-edit-done" id="dietEditDoneBtn">Done</button>
-              </div>
-              <!-- Read by the save path and by diet-goals; kept out of sight
-                   rather than deleted, because unpicking every reader is a
-                   separate change from removing this card. -->
-              <input type="hidden" id="dietServings" value="1">
-              <input type="hidden" id="dietMeal" value="breakfast">
-              <div id="dietSearchDropdown" hidden></div>
-            </div>
+
+        <!-- Food library: full screen inside the view (js/diet-view.js). -->
+        <div class="dt-lib" id="dietLibrary" hidden>
+          <div class="lib-head">
+            <h3>Food library</h3>
+            <button type="button" class="dl-line-day-btn" id="closeFoodLibraryBtn" aria-label="Close the food library"><span class="ms" aria-hidden="true">close</span></button>
           </div>
-
-          <!-- LOG FIRST. Everything above used to live in one tall card with the
-               log at the bottom, under the ring, the bars, the advice and the
-               water - so the reason you open this tab was the last thing on it.
-               The log is now its own column and the day's numbers sit in a rail
-               beside it, where they can never push it down again. -->
-          <div class="diet-log">
-              <div class="diet-meals-list" id="dietMealsList"></div>
+          <div class="dl-seg full" id="libTabs" role="group" aria-label="Library section">
+            <button type="button" data-lib-tab="foods" aria-pressed="true">My foods</button>
+            <button type="button" data-lib-tab="meals">Meals</button>
+            <button type="button" data-lib-tab="recent">Recent</button>
+            <button type="button" data-lib-tab="history">History</button>
           </div>
-
-          <aside class="diet-rail">
-            <div class="card diet-summary-card">
-              <div class="diet-summary-header">
-                <h2 id="dietSummaryTitle">Today's Nutrition</h2>
-                <button class="goals-edit-btn" id="editGoalsBtn" title="Edit your daily goals">
-                  <svg aria-hidden="true" focusable="false" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-                  Goals
-                </button>
-              </div>
-              <div class="diet-goals" id="dietGoals"></div>
-              <div class="diet-recs" id="dietRecs"></div>
-            </div>
-
-            <div class="card diet-water-card">
-              <div class="water-tracker" id="waterTracker">
-                <div class="water-header">
-                  <div class="water-title">
-                    <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"/></svg>
-                    Water
-                  </div>
-                  <span class="water-progress" id="waterProgress">0 / 66 oz</span>
-                </div>
-                <div class="water-bar-track">
-                  <div class="water-bar-fill" id="waterBarFill" style="width:0%"></div>
-                </div>
-                <div class="water-btns">
-                  <button class="water-btn" data-oz="8">+8 oz</button>
-                  <button class="water-btn" data-oz="12">+12 oz</button>
-                  <button class="water-btn" data-oz="16">+16 oz</button>
-                  <button class="water-btn" data-oz="20">+20 oz</button>
-                  <button class="water-btn" data-oz="40">+40 oz</button>
-                  <button class="water-btn water-btn-custom" id="waterCustomBtn">Custom</button>
-                  <button class="water-btn water-btn-undo" id="waterUndoBtn">Undo</button>
-                </div>
-                <div class="water-log" id="waterLog"></div>
-              </div>
-            </div>
-
-              <div class="diet-yesterday" id="dietYesterday"></div>
-              <div class="diet-review" id="dietReview"></div>
-          </aside>
-
-
-          <!-- Food Library page: recent foods, food bank, diet history -->
-          <div class="card diet-history-card diet-lib-section">
-            <h2>Recent Foods</h2>
-            <div class="diet-custom-list" id="dietCustomList">
-              <div class="empty-state"><svg aria-hidden="true" focusable="false" class="empty-state-icon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg><p class="empty-state-title">No saved foods yet</p><p class="empty-state-hint">Anything you log is remembered here for one-tap re-adding.</p></div>
-            </div>
-            <h2 class="diet-history-title">Diet History</h2>
-            <div class="diet-history-list" id="dietHistoryList">
-              <div class="empty-state"><svg aria-hidden="true" focusable="false" class="empty-state-icon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><p class="empty-state-title">No history yet</p><p class="empty-state-hint">Log a day of meals and it will appear here.</p></div>
-            </div>
+          <div class="dt-search" id="libSearchWrap">
+            <span class="ms" aria-hidden="true">search</span>
+            <input type="text" id="libSearch" class="dt-search-input" placeholder="Search, or look it up online" autocomplete="off" aria-label="Search the food library">
           </div>
+          <div id="libBody"></div>
+          <div class="dl-card lib-form" id="libForm">
+            <h6 class="dl-card-h"><span id="libFormTitle">Not found? Add it</span></h6>
+            <label class="dl-field"><span class="dl-field-label">Name</span>
+              <input type="text" id="libName" maxlength="80" autocomplete="off" placeholder="Ragi mudde"></label>
+            <div class="ms-macros">
+              <label class="dl-field"><span class="dl-field-label">Kcal</span><input type="number" id="libKcal" min="0" inputmode="numeric" placeholder="0"></label>
+              <label class="dl-field"><span class="dl-field-label">P</span><input type="number" id="libP" min="0" step="0.1" inputmode="decimal" placeholder="0"></label>
+              <label class="dl-field"><span class="dl-field-label">C</span><input type="number" id="libC" min="0" step="0.1" inputmode="decimal" placeholder="0"></label>
+              <label class="dl-field"><span class="dl-field-label">F</span><input type="number" id="libF" min="0" step="0.1" inputmode="decimal" placeholder="0"></label>
+            </div>
+            <div class="ts-actions"><span class="ts-spacer"></span>
+              <button type="button" class="dl-btn" id="libCancel" hidden>Cancel</button>
+              <button type="button" class="dl-btn primary" id="libSave">Add to my foods</button></div>
+          </div>
+          <p class="ts-hint">Macros are per serving. Online search uses Open Food Facts, then USDA. Foods you log are remembered automatically.</p>
         </div>
       </div>
 
       <div class="view" id="insightsView">
-          <!-- Weekly Report — collapsed on mobile (reference) -->
-          <div class="card weekly-report-card collapsible" data-collapse="mobile" data-collapse-key="weeklyreport">
-            <div class="weight-trend-head">
-              <h2>Weekly Report</h2>
-              <span class="weight-trend-meta" id="weeklyReportMeta"></span>
-            </div>
-            <div id="weeklyReport"></div>
-          </div>
+        <!-- Insights (spec 9): range and export, the weekly report, tiles, then
+             the charts. All of it is rendered by js/insights.js. -->
         <div id="insightsBody"></div>
       </div>
 
-      <!-- Settings View -->
+      <!-- Settings (spec 10.1): a grouped index with a page behind each row. The
+           index and the navigation are js/settings.js; each page is filled by
+           the module that owns it, which is why the ids in here are old ones. -->
       <div class="view" id="settingsView">
-        <div class="settings-wrap">
+        <div class="set-wrap" id="setWrap">
+          <nav class="set-index" id="setIndex" aria-label="Settings"></nav>
+          <div class="set-pages">
 
-
-          <section class="settings-group">
-
-            <h3 class="settings-group-label">Account</h3>
-          <section class="settings-card">
-            <div class="settings-sync" id="settingsSync"></div>
-            <h2>Who's using this device</h2>
-            <p class="settings-desc">Signed in as <strong id="profileCurrentName">—</strong>. Each person's tasks, workouts, meals and weight are stored separately in the cloud. Switching clears this device's local copy and reloads the other person's data — theirs stays untouched.</p>
-            <div class="settings-btn-row">
-              <button class="btn-secondary" id="switchProfileBtn">Switch profile</button>
-              <button class="btn-secondary settings-btn-danger" id="resetProfileBtn">Start fresh (erase this profile)</button>
-            </div>
-          </section>
-
-          <section class="settings-card">
-            <h2>Connect Apple Watch</h2>
-            <p class="settings-desc">Sync steps, active energy, exercise minutes, resting heart rate and sleep from Apple Health into Daylign — automatically, once a night. iPhone + Apple Watch only.</p>
-            <div class="watch-connect" id="watchConnect"></div>
-          </section>
-
-          </section>
-
-          <section class="settings-group">
-
-            <h3 class="settings-group-label">Daily goals</h3>
-          <section class="settings-card">
-            <h2>Your goals</h2>
-            <p class="settings-desc">Daily targets and your goal weight, in one place. These drive the rings, the coach and the weekly report.</p>
-            <div class="goals-summary" id="goalsSummary"></div>
-            <button class="btn-secondary" id="editGoalsSettingsBtn">Edit goals</button>
-          </section>
-
-          </section>
-
-          <section class="settings-group">
-
-            <h3 class="settings-group-label">Preferences</h3>
-          <section class="settings-card">
-            <div class="pref-row">
-              <div class="pref-row-text">
-                <span class="pref-row-title">Appearance</span>
-                <span class="pref-row-sub">Stored on this device</span>
+            <section class="set-page" data-set-page="profile" hidden>
+              <header class="set-head">
+                <button type="button" class="set-back" data-set-back aria-label="Back to Settings"><span class="ms" aria-hidden="true">arrow_back</span></button>
+                <div><span class="dl-eyebrow">Settings</span><h2>Profile and goals</h2></div>
+              </header>
+              <div class="dl-card set-who">
+                <span class="set-who-avatar" id="profileCurrentAvatar" aria-hidden="true">D</span>
+                <div>
+                  <b id="profileCurrentName">&mdash;</b>
+                  <p class="set-sub">Each person's tasks, workouts, meals and weight are kept separately in the cloud.</p>
+                </div>
               </div>
-              <div class="segmented" id="themeSegmented">
-                <button type="button" class="segmented-btn" data-theme="dark">Dark</button>
-                <button type="button" class="segmented-btn" data-theme="light">Light</button>
+              <div class="dl-card">
+                <div class="dl-card-h"><span>Goals</span><em>the rings and the coach</em></div>
+                <div class="set-kv" id="goalsSummary"></div>
+                <div class="set-btnrow"><button type="button" class="dl-btn" id="editGoalsSettingsBtn">Edit goals</button></div>
               </div>
-            </div>
-          </section>
+            </section>
 
-          <section class="settings-card">
-            <h2>Modules</h2>
-            <p class="settings-desc">Turn off the sections you don't use — they disappear from the menu. Nothing is deleted; switch a module back on and your data is exactly where you left it.</p>
-            <div class="module-toggles" id="moduleToggles"></div>
-          </section>
-
-          <section class="settings-card">
-            <h2>Categories &amp; Projects</h2>
-            <p class="settings-desc">Organize your tasks. These also appear in the sidebar on task views — this is the always-available place to add, rename or remove them.</p>
-            <div class="taxonomy-manager" id="taxonomyManager"></div>
-          </section>
-
-          </section>
-
-          <section class="settings-group">
-
-            <h3 class="settings-group-label">AI features</h3>
-          <section class="settings-card">
-            <h2>Anthropic API key</h2>
-            <p class="settings-desc">Powers photo food logging and voice commands. <strong>Stored only on this device</strong> — never committed to the repo and never synced to the cloud, so each device pays for its own usage. Leave it empty and both features stay dormant.</p>
-            <div class="ai-key-status" id="aiKeyStatus"></div>
-            <div class="ai-key-form">
-              <input type="password" id="aiKeyInput" class="ai-key-input" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
-              <button class="btn-primary" id="aiKeySaveBtn" type="button">Save key</button>
-              <button class="btn-secondary" id="aiKeyRemoveBtn" type="button" hidden>Remove</button>
-            </div>
-          </section>
-
-          <section class="settings-card">
-            <h2>AI usage &amp; cost</h2>
-            <p class="settings-desc">Every photo and voice call this app makes, with tokens and an estimated cost. Synced across your devices. This is an estimate from token usage — your billed total lives at console.anthropic.com → Usage.</p>
-            <div class="ai-usage-report" id="aiUsageReport"></div>
-          </section>
-
-          </section>
-
-                    </section>
-
-          <section class="settings-group">
-
-            <h3 class="settings-group-label">Appearance &amp; layout</h3>
-          <section class="settings-card">
-            <h2>Accent colour</h2>
-            <p class="settings-desc">Tints buttons, charts and highlights across the app. Saved on this device.</p>
-            <div class="accent-picker" id="accentPicker"></div>
-          </section>
-
-          <section class="settings-card">
-            <h2>Dashboard widgets</h2>
-            <p class="settings-desc">Uncheck anything you don't want on the Today screen. Nothing is deleted — the data stays and the card comes back the moment you re-check it.</p>
-            <div class="pref-toggles" id="widgetToggles"></div>
-          </section>
-
-          <section class="settings-card">
-            <h2>Saved layouts</h2>
-            <p class="settings-desc">Save the current arrangement and switch between setups. Reorder by tapping <strong>Edit layout</strong> on the Today screen.</p>
-            <div id="layoutManager"></div>
-          </section>
-
-          <section class="settings-card">
-            <h2>Workout defaults</h2>
-            <p class="settings-desc">Starting values for the Strength logger.</p>
-            <div class="pref-fields">
-              <div class="pref-field">
-                <label for="prefRestSeconds">Rest timer (seconds)</label>
-                <input type="number" id="prefRestSeconds" min="10" max="600" step="5" inputmode="numeric">
+            <section class="set-page" data-set-page="watch" hidden>
+              <header class="set-head">
+                <button type="button" class="set-back" data-set-back aria-label="Back to Settings"><span class="ms" aria-hidden="true">arrow_back</span></button>
+                <div><span class="dl-eyebrow">Settings</span><h2>Apple Watch</h2></div>
+              </header>
+              <div class="dl-card">
+                <p class="set-sub">Steps, active energy, exercise minutes, resting heart rate and sleep from Apple Health, once a night. iPhone and Apple Watch only.</p>
+                <div class="set-watch" id="watchConnect"></div>
               </div>
-              <div class="pref-field">
-                <label for="prefDefaultSets">Set rows to start with</label>
-                <input type="number" id="prefDefaultSets" min="1" max="10" step="1" inputmode="numeric">
+            </section>
+
+            <section class="set-page" data-set-page="modules" hidden>
+              <header class="set-head">
+                <button type="button" class="set-back" data-set-back aria-label="Back to Settings"><span class="ms" aria-hidden="true">arrow_back</span></button>
+                <div><span class="dl-eyebrow">Settings</span><h2>Modules</h2></div>
+              </header>
+              <p class="set-lede">Turn off what you don't use and it leaves the menu. Nothing is deleted: switch it back on and your data is where you left it.</p>
+              <div class="set-list" id="moduleToggles"></div>
+            </section>
+
+            <section class="set-page" data-set-page="look" hidden>
+              <header class="set-head">
+                <button type="button" class="set-back" data-set-back aria-label="Back to Settings"><span class="ms" aria-hidden="true">arrow_back</span></button>
+                <div><span class="dl-eyebrow">Settings</span><h2>Appearance</h2></div>
+              </header>
+              <div class="dl-field">
+                <span class="dl-field-label" id="themeLabel">Theme</span>
+                <div class="dl-seg full" id="themeSeg" role="group" aria-labelledby="themeLabel">
+                  <button type="button" data-theme-pref="system">System</button>
+                  <button type="button" data-theme-pref="light">Light</button>
+                  <button type="button" data-theme-pref="dark">Dark</button>
+                </div>
               </div>
-            </div>
-          </section>
+              <div class="dl-field">
+                <span class="dl-field-label" id="accentLabel">Accent</span>
+                <div class="set-swatches" id="accentPicker" role="group" aria-labelledby="accentLabel"></div>
+              </div>
+              <div class="set-list">
+                <label class="set-togrow dl-toggle"><span class="set-togrow-t"><b>Larger text</b></span><input type="checkbox" id="prefLargeText"><span class="dl-toggle-track" aria-hidden="true"></span></label>
+                <label class="set-togrow dl-toggle"><span class="set-togrow-t"><b>Reduce motion</b><small>Your device's own setting is already respected</small></span><input type="checkbox" id="prefReduceMotion"><span class="dl-toggle-track" aria-hidden="true"></span></label>
+                <label class="set-togrow dl-toggle"><span class="set-togrow-t"><b>Always show delete buttons</b></span><input type="checkbox" id="prefShowActions"><span class="dl-toggle-track" aria-hidden="true"></span></label>
+                <label class="set-togrow dl-toggle"><span class="set-togrow-t"><b>Haptics</b><small>On iPhone this may do nothing</small></span><input type="checkbox" id="prefHaptics"><span class="dl-toggle-track" aria-hidden="true"></span></label>
+              </div>
+              <p class="set-note">Saved on this device only.</p>
+            </section>
 
-          <section class="settings-card">
-            <h2>Accessibility</h2>
-            <p class="settings-desc">Your device's own Reduce Motion setting is already respected — these are extra overrides.</p>
-            <div class="pref-toggles">
-              <label class="pref-toggle"><input type="checkbox" id="prefReduceMotion"><span>Reduce motion</span></label>
-              <label class="pref-toggle"><input type="checkbox" id="prefLargeText"><span>Larger text</span></label>
-              <label class="pref-toggle"><input type="checkbox" id="prefShowActions"><span>Always show delete buttons</span></label>
-              <label class="pref-toggle"><input type="checkbox" id="prefHaptics"><span>Haptic feedback</span></label>
-            </div>
-            <p class="settings-desc">Haptics work on Android. On iPhone the web has no vibration API, so Daylign borrows the tick from Apple's own switch control — it may do nothing on your device, in which case everything still behaves exactly as before.</p>
-          </section>
+            <section class="set-page" data-set-page="cats" hidden>
+              <header class="set-head">
+                <button type="button" class="set-back" data-set-back aria-label="Back to Settings"><span class="ms" aria-hidden="true">arrow_back</span></button>
+                <div><span class="dl-eyebrow">Settings</span><h2>Categories and projects</h2></div>
+              </header>
+              <p class="set-lede">Tap a name to rename it. The colour follows a task onto the line, the board and the calendar.</p>
+              <div class="set-tax-host" id="taxonomyManager"></div>
+            </section>
 
-<section class="settings-group">
+            <section class="set-page" data-set-page="workouts" hidden>
+              <header class="set-head">
+                <button type="button" class="set-back" data-set-back aria-label="Back to Settings"><span class="ms" aria-hidden="true">arrow_back</span></button>
+                <div><span class="dl-eyebrow">Settings</span><h2>Workout defaults</h2></div>
+              </header>
+              <div class="dl-card set-fields">
+                <div class="dl-field">
+                  <label for="prefWorkoutTime">Usual workout time</label>
+                  <input type="time" id="prefWorkoutTime">
+                </div>
+                <div class="dl-field">
+                  <label for="prefRestSeconds">Rest timer, seconds</label>
+                  <input type="number" id="prefRestSeconds" min="10" max="600" step="5" inputmode="numeric">
+                </div>
+                <div class="dl-field">
+                  <label for="prefDefaultSets">Set rows to start with</label>
+                  <input type="number" id="prefDefaultSets" min="1" max="10" step="1" inputmode="numeric">
+                </div>
+              </div>
+              <p class="set-note">The workout time is where a planned session sits on the line. Saved on this device only.</p>
+            </section>
 
-            <h3 class="settings-group-label">Your data</h3>
-          <section class="settings-card">
-            <h2>Backup your data</h2>
-            <p class="settings-desc">Your data syncs to the cloud automatically, but the cloud keeps no history. Download a backup regularly so you always have a copy you control. Save it somewhere safe (Files, iCloud, email).</p>
-            <button class="btn-primary" id="exportBtn">Download backup</button>
-          </section>
+            <section class="set-page" data-set-page="ai" hidden>
+              <header class="set-head">
+                <button type="button" class="set-back" data-set-back aria-label="Back to Settings"><span class="ms" aria-hidden="true">arrow_back</span></button>
+                <div><span class="dl-eyebrow">Settings</span><h2>AI</h2></div>
+              </header>
+              <div class="dl-card">
+                <div class="dl-card-h"><span>Anthropic key</span><em>photo and voice</em></div>
+                <div class="set-keyrow">
+                  <p class="set-sub" id="aiKeyStatus"></p>
+                  <button type="button" class="dl-btn danger" id="aiKeyRemoveBtn" hidden>Remove</button>
+                </div>
+                <div class="set-keyform" id="aiKeyForm">
+                  <div class="dl-field">
+                    <label for="aiKeyInput">Paste a key</label>
+                    <input type="password" id="aiKeyInput" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
+                  </div>
+                  <button type="button" class="dl-btn primary" id="aiKeySaveBtn">Save key</button>
+                </div>
+                <p class="set-note">Kept on this device only. It is never synced and never shown again, so each device pays for its own calls.</p>
+              </div>
+              <div class="set-ai" id="aiUsageReport"></div>
+            </section>
 
-          <section class="settings-card">
-            <h2>Import from a spreadsheet</h2>
-            <p class="settings-desc">UAT findings and bug lists usually start life in a sheet, where nothing moves through anything. Paste the rows and they become tasks on the board. Columns are matched by their headings &mdash; Title, Status, Due, Reported by &mdash; and you see exactly what will be created before anything is written.</p>
-            <button class="btn-secondary" id="csvImportBtn">Paste a spreadsheet</button>
-          </section>
+            <section class="set-page" data-set-page="data" hidden>
+              <header class="set-head">
+                <button type="button" class="set-back" data-set-back aria-label="Back to Settings"><span class="ms" aria-hidden="true">arrow_back</span></button>
+                <div><span class="dl-eyebrow">Settings</span><h2>Data and sync</h2></div>
+              </header>
+              <div class="dl-card set-sync" id="settingsSync"></div>
+              <div class="set-conflicts" id="syncConflicts"></div>
+              <div class="set-group" id="setBackup">
+                <h3 class="set-group-h">Backup</h3>
+                <div class="set-list">
+                  <button type="button" class="set-row" id="exportBtn"><span class="ms" aria-hidden="true">download</span><span class="set-row-t">Download a backup</span></button>
+                  <button type="button" class="set-row" id="importBtn"><span class="ms" aria-hidden="true">restore</span><span class="set-row-t">Restore from a backup</span><span class="set-row-v">type RESTORE</span></button>
+                </div>
+                <input type="file" id="importFile" accept="application/json,.json" hidden>
+                <p class="set-note">The cloud keeps no history, so a backup is the only copy you control. Restoring replaces everything, and saves a safety copy first.</p>
+              </div>
+            </section>
 
-          <!-- recordError() has been collecting the last 10 failures since it was
-               written, for a diagnostics panel that never got built — so the app
-               would say "Something went wrong" and then hide the one thing that
-               explained it. On an installed PWA there is no console to fall back
-               on. This is that panel. -->
-          <section class="settings-card">
-            <h2>Recent errors</h2>
-            <p class="settings-desc">When something says &ldquo;that action may not have saved&rdquo;, the reason lands here. There is no console on an installed app, so this is the only place to see it.</p>
-            <div class="diag-list" id="diagList"></div>
-            <div class="settings-btn-row">
-              <button class="btn-secondary" id="diagCopyBtn">Copy</button>
-              <button class="btn-secondary" id="diagClearBtn">Clear</button>
-            </div>
-          </section>
+            <section class="set-page" data-set-page="import" hidden>
+              <header class="set-head">
+                <button type="button" class="set-back" data-set-back aria-label="Back to Settings"><span class="ms" aria-hidden="true">arrow_back</span></button>
+                <div><span class="dl-eyebrow">Settings</span><h2>Import a spreadsheet</h2></div>
+              </header>
+              <div class="dl-card set-csv">
+                <div class="dl-field">
+                  <label for="csvText">Paste the sheet, header row included</label>
+                  <textarea id="csvText" class="set-csv-text" rows="7" spellcheck="false" placeholder="Title,Status,Due,Reported by&#10;Login fails on Safari,Open,2026-09-01,Rishi&#10;Sleep shows 15 hours,In Progress,,Ana"></textarea>
+                </div>
+                <div class="dl-field">
+                  <label for="csvProject">Into project</label>
+                  <select id="csvProject"></select>
+                </div>
+                <div class="set-csv-preview" id="csvPreviewBox" hidden></div>
+                <button type="button" class="dl-btn primary full" id="csvGo" disabled>Import</button>
+              </div>
+              <p class="set-note">Columns are matched by their headings: Title, Status, Due, Reported by. Nothing is added until you press Import.</p>
+            </section>
 
-          <section class="settings-card">
-            <h2>How the app is being used</h2>
-            <p class="settings-desc">A read-only look at what each profile is actually logging — useful for working out which parts of Daylign are worth improving. This never loads anyone else's data into the app, so it cannot change their numbers.</p>
-            <button class="btn-secondary" id="usageLoadBtn">Load usage</button>
-            <div class="usage-report" id="usageReport"></div>
-          </section>
+            <section class="set-page" data-set-page="errors" hidden>
+              <header class="set-head">
+                <button type="button" class="set-back" data-set-back aria-label="Back to Settings"><span class="ms" aria-hidden="true">arrow_back</span></button>
+                <div><span class="dl-eyebrow">Settings</span><h2>Recent errors</h2></div>
+              </header>
+              <p class="set-lede">When something says it may not have saved, the reason lands here. An installed app has no console, so this is the only place to see it.</p>
+              <div class="dl-card">
+                <div id="diagList"></div>
+                <div class="set-btnrow">
+                  <button type="button" class="dl-btn" id="diagCopyBtn">Copy</button>
+                  <button type="button" class="dl-btn" id="diagClearBtn">Clear</button>
+                </div>
+              </div>
+            </section>
 
-          <section class="settings-card settings-danger">
-            <h2>Restore from a backup</h2>
-            <p class="settings-desc"><strong>This replaces everything</strong> — on this device and in the cloud (all your devices) — with the contents of a backup file. Only use it to recover lost data. Restoring an older file will delete anything newer. A safety copy of your current data is downloaded first, and you'll be asked to type <code>RESTORE</code> to confirm.</p>
-            <button class="btn-danger" id="importBtn">Restore from file…</button>
-            <input type="file" id="importFile" accept="application/json,.json" style="display:none">
-          </section>
-        </section>
+            <section class="set-page" data-set-page="usage" hidden>
+              <header class="set-head">
+                <button type="button" class="set-back" data-set-back aria-label="Back to Settings"><span class="ms" aria-hidden="true">arrow_back</span></button>
+                <div><span class="dl-eyebrow">Settings</span><h2>How the app is used</h2></div>
+              </header>
+              <p class="set-lede">A read-only look at what each profile is logging, to see which parts of Daylign are worth improving. It never loads anyone else's data into the app.</p>
+              <div class="set-btnrow"><button type="button" class="dl-btn" id="usageLoadBtn">Load usage</button></div>
+              <div class="set-usage" id="usageReport"></div>
+            </section>
+
+          </div>
         </div>
       </div>
     </main>
   </div>
 
   <!-- Mobile Bottom Navigation -->
+  <!-- Five slots, the centre one the primary action. Board left the bar: it is
+       a view inside Tasks now. More left too - the avatar sheet replaced it. -->
   <nav class="bottom-nav">
-    <button class="nav-btn bottom-nav-btn active" data-view="dashboard">
-      <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    <button class="nav-btn bottom-nav-btn active" data-view="today">
+      <span class="ms" aria-hidden="true" style="font-size:20px">today</span>
       <span>Today</span>
     </button>
     <button class="nav-btn bottom-nav-btn" data-view="tasks">
-      <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      <span class="ms" aria-hidden="true" style="font-size:20px">check_circle</span>
       <span>Tasks</span>
     </button>
-    <button class="nav-btn bottom-nav-btn" data-view="board">
-      <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
-      <span>Board</span>
+    <button class="bottom-nav-add" id="bottomNavAdd" type="button" aria-label="Add">
+      <span class="ms" aria-hidden="true" style="font-size:24px">add</span>
     </button>
     <button class="nav-btn bottom-nav-btn" data-view="training">
-      <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7v10"/><path d="M18 7v10"/><path d="M3 9v6"/><path d="M21 9v6"/><path d="M6 12h12"/><rect x="5" y="7" width="2" height="10" rx="1"/><rect x="17" y="7" width="2" height="10" rx="1"/><rect x="2" y="9" width="2" height="6" rx="0.5"/><rect x="20" y="9" width="2" height="6" rx="0.5"/></svg>
+      <span class="ms" aria-hidden="true" style="font-size:20px">fitness_center</span>
       <span>Training</span>
     </button>
     <button class="nav-btn bottom-nav-btn" data-view="diet">
-      <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+      <span class="ms" aria-hidden="true" style="font-size:20px">restaurant</span>
       <span>Diet</span>
-    </button>
-    <button class="bottom-nav-btn more-nav-btn" id="moreNavBtn" type="button">
-      <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
-      <span>More</span>
     </button>
   </nav>
 
-  <!-- Weight-trend sheet (ref 5b): opened from the Training shell's weight
-       readout. 30-day mini bars + delta + goal + inline Log. See js/weight-sheet.js -->
-  <div class="weight-sheet-overlay" id="weightSheet" role="dialog" aria-modal="true" hidden>
-    <div class="weight-sheet">
-      <div class="weight-sheet-head">
-        <span class="weight-sheet-title">Body progress</span>
-        <button type="button" class="weight-sheet-close" id="weightSheetClose" aria-label="Close">&times;</button>
+  <!-- + sheet (spec 10.3). Tiles are built on open by js/global.js. -->
+  <div class="dl-sheet-wrap" id="addSheet">
+    <div class="dl-sheet" role="dialog" aria-modal="true" aria-labelledby="addTitle" tabindex="-1">
+      <div class="dl-grab"></div>
+      <h4 id="addTitle">Add</h4>
+      <div class="add-grid" id="addGrid"></div>
+    </div>
+  </div>
+
+  <!-- Weigh in (spec 10.4): the only weigh-in UI. js/weight-sheet.js -->
+  <div class="dl-sheet-wrap" id="weighSheet" data-guard>
+    <div class="dl-sheet" role="dialog" aria-modal="true" aria-labelledby="weighTitle" tabindex="-1">
+      <div class="dl-grab"></div>
+      <h4><span id="weighTitle">Weigh in</span> <em class="wg-when" id="weighWhen"></em></h4>
+      <div class="wg-fields">
+        <div class="dl-field">
+          <label for="weighWeight">Weight, lb</label>
+          <input type="number" id="weighWeight" class="big" inputmode="decimal" step="0.1" min="50" max="500" autocomplete="off">
+        </div>
+        <div class="dl-field">
+          <label for="weighWaist">Waist, in (optional)</label>
+          <input type="number" id="weighWaist" inputmode="decimal" step="0.1" min="15" max="80" autocomplete="off">
+        </div>
       </div>
-      <div class="weight-sheet-body" id="weightSheetBody"></div>
-      <!-- Log weight and/or waist. Weekly is plenty — the trend matters, not the
-           single day. Either field alone is a valid entry. -->
-      <div class="weight-sheet-log">
-        <input type="number" id="weightInput" placeholder="lbs" step="0.1" min="50" max="500" inputmode="decimal">
-        <input type="number" id="waistInput" placeholder="waist in" step="0.1" min="15" max="80" inputmode="decimal">
-        <button class="btn-primary" id="weightLogBtn">Log</button>
+      <p class="wg-err" id="weighErr" role="alert" hidden></p>
+      <div class="dl-card" id="weighTrend"></div>
+      <div class="wg-actions">
+        <button type="button" class="dl-btn" data-weigh-cancel>Cancel</button>
+        <button type="button" class="dl-btn primary" id="weighSave">Save</button>
       </div>
     </div>
   </div>
 
+  <!-- Arrange Today (spec 4.7). Filled by js/layout.js on open; the now block
+       and the line appear as locked rows, and saved layouts live here rather
+       than in Settings, two screens from what they rearrange. -->
+  <div class="dl-sheet-wrap" id="arrangeSheet">
+    <div class="dl-sheet" role="dialog" aria-modal="true" aria-label="Arrange Today" tabindex="-1">
+      <div class="dl-grab"></div>
+      <h4>Arrange Today</h4>
+      <div id="arrangeBody"></div>
+    </div>
+  </div>
+
+  <!-- The one "are you sure" sheet, with an optional word to type. Filled by
+       askConfirm() in js/settings.js; it replaced confirm() and prompt(). -->
+  <div class="dl-sheet-wrap" id="confirmSheet">
+    <div class="dl-sheet" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" tabindex="-1">
+      <div class="dl-grab"></div>
+      <h4 id="confirmTitle"></h4>
+      <div id="confirmBody"></div>
+    </div>
+  </div>
+
+  <!-- Triage nudge sheet (spec 4.4), opened from the tray. -->
+  <div class="dl-sheet-wrap" id="triageSheet">
+    <div class="dl-sheet" role="dialog" aria-modal="true" aria-label="Tasks with no date" tabindex="-1">
+      <div class="dl-grab"></div>
+      <h4>No date yet</h4>
+      <div id="triageBody"></div>
+    </div>
+  </div>
+
   <!-- Mobile "More" sheet: the views the bottom bar can't fit + appearance -->
-  <div class="more-sheet-overlay" id="moreSheet" role="dialog" aria-modal="true">
-    <div class="more-sheet">
-      <div class="more-sheet-handle"></div>
-      <div class="more-sheet-label">More</div>
-      <button class="more-item" data-view="calendar" type="button">
-        <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        Calendar
-      </button>
-      <button class="more-item" id="moreSearchBtn" type="button">
-        <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <span>Search</span>
-      </button>
-      <button class="more-item" data-view="insights" type="button">
-        <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>
-        <span>Insights</span>
-      </button>
-      <button class="more-item" data-view="settings" type="button">
-        <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-        Settings
-      </button>
-      <div class="more-sheet-label">Appearance</div>
-      <button class="more-item more-item-toggle" id="moreThemeToggle" type="button">
-        <span class="more-item-toggle-left">
-          <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-          Light mode
+  <!-- Avatar sheet. Was #moreSheet; its theme toggle is gone - theme lives in
+       Settings now, and a one-tap Light/Dark flip sitting beside navigation
+       was the only control here that changed how the app looks rather than
+       where you are. -->
+  <div class="dl-sheet-wrap avatar-sheet-wrap" id="avatarSheet">
+    <div class="dl-sheet avatar-sheet" role="dialog" aria-modal="true" aria-label="Menu and profile" tabindex="-1">
+      <div class="dl-grab"></div>
+      <div class="avatar-sheet-id">
+        <span class="avatar-sheet-avatar" id="avatarSheetAvatar">D</span>
+        <span class="avatar-sheet-meta">
+          <span class="avatar-sheet-name" id="avatarSheetName">-</span>
+          <span class="avatar-sheet-sync" id="avatarSheetSync">Signed in</span>
         </span>
-        <span class="more-toggle-state" id="moreThemeState">Off</span>
-      </button>
+      </div>
+      <button class="avatar-item" data-view="calendar" type="button"><span class="ms" aria-hidden="true" style="font-size:20px">calendar_month</span><span>Calendar</span></button>
+      <button class="avatar-item" data-view="insights" type="button"><span class="ms" aria-hidden="true" style="font-size:20px">bar_chart</span><span>Insights</span></button>
+      <button class="avatar-item" id="avatarSearchBtn" type="button"><span class="ms" aria-hidden="true" style="font-size:20px">search</span><span>Search</span></button>
+      <button class="avatar-item" data-view="board" type="button"><span class="ms" aria-hidden="true" style="font-size:20px">inbox</span><span>Tester reports</span><span class="avatar-item-count" id="avatarReportCount" hidden>0</span></button>
+      <button class="avatar-item" data-view="settings" type="button"><span class="ms" aria-hidden="true" style="font-size:20px">settings</span><span>Settings</span></button>
     </div>
   </div>
 
@@ -980,280 +966,170 @@
        they used to live inside the Log Food card, so removing that card would
        have silently killed photo logging everywhere. -->
   <input type="file" id="photoFileInput" accept="image/*" capture="environment" hidden>
-  <div class="photo-result" id="photoResult" hidden></div>
 
-  <!-- Primary action, thumb-reachable. Mobile only; the header button in
-       .header-right is the same action and stays for desktop. -->
-  <button class="primary-fab" id="primaryFab" type="button">
-    <svg aria-hidden="true" focusable="false" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    <span id="primaryFabLabel">New Task</span>
-  </button>
-
-  <!-- Voice command FAB + panel -->
-  <button class="voice-fab" id="voiceFab" title="Voice command" aria-label="Voice command">
-    <svg aria-hidden="true" focusable="false" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-  </button>
-  <div class="modal-overlay voice-overlay" id="voicePanel" role="dialog" aria-modal="true">
-    <div class="modal voice-modal">
-      <div class="modal-header">
-        <div class="modal-header-left">
-          <div class="modal-icon">
-            <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-          </div>
-          <div>
-            <h2>Voice command</h2>
-            <p class="modal-subtitle">Speak or type — e.g. "log 40 oz water", "add a task to pay rent tomorrow", "I weighed 163", "go to gym"</p>
-          </div>
-        </div>
-        <button class="modal-close" id="voicePanelClose" aria-label="Close">
-          <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
+  <!-- Voice (spec 10.6). Opened from the + sheet, Diet's add bar, Today's
+       "Say it" and the palette. The floating mic is gone. js/voice.js -->
+  <div class="dl-sheet-wrap" id="voiceSheet">
+    <div class="dl-sheet vc-sheet" role="dialog" aria-modal="true" aria-labelledby="voiceTitle" tabindex="-1">
+      <div class="dl-grab"></div>
+      <h4 id="voiceTitle">Say it</h4>
+      <button type="button" class="vc-mic" id="voiceMicBtn" aria-pressed="false" aria-label="Start listening"><span class="ms fill" aria-hidden="true">mic</span></button>
+      <p class="vc-hint" id="voiceHint" aria-live="polite"></p>
+      <p class="vc-transcript" id="voiceTranscript"></p>
+      <div class="vc-results" id="voiceResult" aria-live="polite"></div>
+      <div class="vc-type">
+        <span class="ms" aria-hidden="true">keyboard</span>
+        <input type="text" id="voiceInput" placeholder="Or type a command" autocomplete="off" aria-label="Type a command">
+        <button type="button" class="dl-btn primary" id="voiceRunBtn">Run</button>
       </div>
-      <div class="voice-body">
-        <div class="voice-input-row">
-          <button type="button" class="voice-mic-btn" id="voiceMicBtn" title="Tap to talk">
-            <svg aria-hidden="true" focusable="false" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-          </button>
-          <input type="text" id="voiceInput" placeholder="Say or type a command…" autocomplete="off">
-          <button type="button" class="btn-primary" id="voiceRunBtn">Run</button>
+      <p class="set-note">Tasks, water, weight, food and “go to”, several at once. Undo stays for six seconds.</p>
+    </div>
+  </div>
+
+  <!-- Goals (spec 10.5): the only goals editor. Opened from Settings, Diet
+       and the Training burn chip; setup saves through the same function. -->
+  <div class="dl-sheet-wrap" id="goalsSheet" data-guard>
+    <div class="dl-sheet" role="dialog" aria-modal="true" aria-labelledby="goalsTitle" tabindex="-1">
+      <div class="dl-grab"></div>
+      <h4 id="goalsTitle">Goals</h4>
+      <div class="gl-grid">
+        <div class="dl-field"><label for="goalWeight">Goal weight, lb</label><input type="number" id="goalWeight" inputmode="decimal" min="50" max="500" step="1"></div>
+        <div class="dl-field"><label for="goalCalories">Calories</label><input type="number" id="goalCalories" inputmode="numeric" min="800" max="10000" step="50"></div>
+        <div class="dl-field"><label for="goalProtein">Protein, g</label><input type="number" id="goalProtein" inputmode="numeric" min="20" max="400" step="5"></div>
+        <div class="dl-field"><label for="goalWater">Water, oz</label><input type="number" id="goalWater" inputmode="numeric" min="8" max="300" step="2"></div>
+        <div class="dl-field"><label for="goalBurn">Burn, kcal</label><input type="number" id="goalBurn" inputmode="numeric" min="50" max="3000" step="25"></div>
+        <div class="dl-field gl-pair">
+          <span class="dl-field-label" id="goalCfLabel">Carbs / fat, g</span>
+          <div class="gl-pair-in" role="group" aria-labelledby="goalCfLabel">
+            <input type="number" id="goalCarbs" inputmode="numeric" min="20" max="800" step="5" aria-label="Carbs, g">
+            <input type="number" id="goalFat" inputmode="numeric" min="10" max="300" step="5" aria-label="Fat, g">
+          </div>
         </div>
-        <div class="voice-hint" id="voiceHint"></div>
-        <div class="voice-result" id="voiceResult"></div>
+      </div>
+      <div class="wg-actions">
+        <button type="button" class="dl-btn" id="goalsCancelBtn">Cancel</button>
+        <button type="button" class="dl-btn primary" id="goalsSaveBtn">Save</button>
       </div>
     </div>
   </div>
 
-  <!-- Goals Modal -->
-  <!-- Categories & Projects manager, reachable from the sidebar on task views -->
-  <div class="modal-overlay" id="taxonomyModal" role="dialog" aria-modal="true">
-    <div class="modal">
-      <div class="modal-header">
-        <div class="modal-header-left">
-          <div class="modal-icon">
-            <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-          </div>
-          <div>
-            <h2>Categories &amp; Projects</h2>
-            <p class="modal-subtitle">Add, rename or delete — synced to all your devices</p>
-          </div>
-        </div>
-        <button class="modal-close" id="taxonomyModalClose" aria-label="Close">
-          <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
+  <!-- Diet sheets (spec 8): a meal, a photo, and saving a meal. -->
+  <div class="dl-sheet-wrap" id="mealSheet" role="dialog" aria-modal="true" aria-labelledby="mealSheetTitle">
+    <div class="dl-sheet task-sheet" tabindex="-1">
+      <div class="dl-grab"></div>
+      <div class="ts-head">
+        <h4 id="mealSheetTitle">Meal</h4>
+        <button type="button" class="ts-x" id="mealSheetClose" aria-label="Close"><span class="ms" aria-hidden="true">close</span></button>
       </div>
-      <div class="taxonomy-manager" id="taxonomyManagerModal"></div>
+      <div class="ts-body" id="mealSheetBody"></div>
+    </div>
+  </div>
+  <div class="dl-sheet-wrap" id="photoSheet" role="dialog" aria-modal="true" aria-labelledby="photoSheetTitle">
+    <div class="dl-sheet task-sheet" tabindex="-1">
+      <div class="dl-grab"></div>
+      <div class="ts-head">
+        <h4 id="photoSheetTitle">From a photo</h4>
+        <button type="button" class="ts-x" id="photoSheetClose" aria-label="Close"><span class="ms" aria-hidden="true">close</span></button>
+      </div>
+      <div class="ts-body"></div>
+    </div>
+  </div>
+  <div class="dl-sheet-wrap" id="comboSheet" data-guard role="dialog" aria-modal="true" aria-labelledby="comboSheetTitle">
+    <div class="dl-sheet task-sheet" tabindex="-1">
+      <div class="dl-grab"></div>
+      <div class="ts-head">
+        <h4 id="comboSheetTitle">Save as a meal</h4>
+        <button type="button" class="ts-x" id="comboSheetClose" aria-label="Close"><span class="ms" aria-hidden="true">close</span></button>
+      </div>
+      <div class="ts-body"></div>
     </div>
   </div>
 
-  <div class="modal-overlay" id="goalsModal" role="dialog" aria-modal="true">
-    <div class="modal goals-modal">
-      <div class="modal-header">
-        <div class="modal-header-left">
-          <div class="modal-icon">
-            <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
-          </div>
-          <div>
-            <h2>Your Goals</h2>
-            <p class="modal-subtitle">Daily targets — synced to all your devices</p>
-          </div>
-        </div>
-        <button class="modal-close" id="goalsModalClose" aria-label="Close">
-          <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
+  <!-- Log exercise sheet (spec 7). Lives out here, not inside the Strength
+       pane: a fixed sheet inside a hidden pane never shows, and the coach's
+       "Start it" opens this from the Coach tab. -->
+  <div class="dl-sheet-wrap" id="gymLogSheet" data-guard role="dialog" aria-modal="true" aria-labelledby="gymLogSheetTitle">
+    <div class="dl-sheet task-sheet gym-log" tabindex="-1">
+      <div class="dl-grab"></div>
+      <div class="ts-head">
+        <h4 id="gymLogSheetTitle">Log exercise</h4>
+        <button type="button" class="ts-x" id="gymLogClose" aria-label="Close"><span class="ms" aria-hidden="true">close</span></button>
       </div>
-      <div class="goals-form">
-        <div class="form-row">
-          <div class="form-group">
-            <label>Daily Calories</label>
-            <input type="number" id="goalCalories" min="800" max="10000" step="50">
-          </div>
-          <div class="form-group">
-            <label>Protein (g)</label>
-            <input type="number" id="goalProtein" min="20" max="400" step="5">
-          </div>
+      <div class="ts-body">
+        <div class="dl-field">
+          <label for="gymExerciseName">Exercise</label>
+          <!-- No list= on the input: the ranked chips below are the suggestions.
+               The native dropdown was a second, alphabetical copy of them. The
+               datalist element stays because renderGym() still fills it. -->
+          <input type="text" id="gymExerciseName" placeholder="Bench press, squat, pull ups..." autocomplete="off">
+          <datalist id="exerciseSuggestions"></datalist>
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Carbs (g)</label>
-            <input type="number" id="goalCarbs" min="20" max="800" step="5">
-          </div>
-          <div class="form-group">
-            <label>Fat (g)</label>
-            <input type="number" id="goalFat" min="10" max="300" step="5">
-          </div>
+        <div class="gl-suggest" id="gymSuggest"></div>
+        <div id="gymLastTime"></div>
+        <div class="ts-group">
+          <span class="ts-label">Sets</span>
+          <div class="gl-sets" id="gymSetsList"></div>
+          <button type="button" class="gl-addset" id="gymAddSetBtn">+ Add set</button>
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Water (oz/day)</label>
-            <input type="number" id="goalWater" min="8" max="300" step="2">
-          </div>
-          <div class="form-group">
-            <label>Goal Weight (lbs)</label>
-            <input type="number" id="goalWeight" min="50" max="500" step="1">
-          </div>
+        <div class="gl-foot">
+          <span class="gl-rest-lbl">Rest timer</span>
+          <button type="button" class="dl-btn gym-rest-btn" data-rest="60">60s</button>
+          <button type="button" class="dl-btn gym-rest-btn" data-rest="90">90s</button>
+          <span class="ts-spacer"></span>
+          <button type="button" class="dl-btn primary gym-save-btn" id="gymSaveExerciseBtn">Save</button>
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Exercise Burn (cal/day)</label>
-            <input type="number" id="goalBurn" min="50" max="3000" step="25">
-          </div>
-          <div class="form-group"></div>
-        </div>
-        <div class="form-actions">
-          <div class="form-actions-right">
-            <button type="button" class="btn-secondary" id="goalsCancelBtn">Cancel</button>
-            <button type="button" class="btn-primary" id="goalsSaveBtn">Save Goals</button>
-          </div>
-        </div>
+        <p class="ts-hint">Bodyweight moves (dips, pull ups) are spotted automatically and skip the weight field.</p>
       </div>
     </div>
   </div>
 
-  <!-- Task Modal -->
-  <div class="modal-overlay" id="taskModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-    <div class="modal">
-      <div class="modal-header">
-        <div class="modal-header-left">
-          <div class="modal-icon" id="modalIcon">
-            <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          </div>
-          <div>
-            <h2 id="modalTitle">New Task</h2>
-            <p class="modal-subtitle" id="modalSubtitle">Fill in the details below</p>
-          </div>
-        </div>
-        <button class="modal-close" id="modalClose" aria-label="Close">
-          <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
+  <!-- Task sheet (spec 5). Replaces #taskModal: one sheet for every entry
+       point, with a time-on-your-day + length pair that schedules the task onto
+       the line, and a priority picker the old modal never had. Its body is
+       built by js/task-sheet.js on every open. -->
+  <div class="dl-sheet-wrap task-sheet-wrap" id="taskSheet" data-guard role="dialog" aria-modal="true" aria-labelledby="taskSheetTitle">
+    <div class="dl-sheet task-sheet" tabindex="-1">
+      <div class="dl-grab"></div>
+      <div class="ts-head">
+        <h4 id="taskSheetTitle">New task</h4>
+        <button type="button" class="ts-x" id="taskSheetClose" aria-label="Close"><span class="ms" aria-hidden="true">close</span></button>
       </div>
-      <!-- Read-first pane. Clicking a task lands here; Edit swaps in the form
-           below. Built because the description was only ever readable through a
-           three-line textarea with its own scrollbar. -->
-      <div class="task-view" id="taskView" hidden></div>
+      <div class="ts-body"></div>
+    </div>
+  </div>
 
-      <form id="taskForm">
-        <input type="hidden" id="taskId">
 
-        <!-- Task Name - full width prominent field -->
-        <div class="form-group form-group-name">
-          <input type="text" id="taskName" required placeholder="What needs to be done?">
-          <!-- Offers a title built from the description. See suggestTitleFromDescription. -->
-          <div class="task-title-suggest" id="taskTitleSuggest" hidden></div>
-        </div>
-
-        <!-- Details sits directly under the header: it is the part you set on
-             every task, and it was pushing the description down the page. Status
-             and Project each had a whole row to themselves; paired up now. -->
-        <div class="form-section form-section-details">
-          <div class="form-row">
-            <div class="form-group">
-              <label>Status</label>
-              <select id="taskStatus">
-                <option value="todo">To Do</option>
-                <option value="in-progress">In Progress</option>
-                <option value="done">Done</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Category</label>
-              <select id="taskCategory"></select>
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Due Date</label>
-              <input type="date" id="taskDueDate">
-            </div>
-            <div class="form-group form-row-project" id="projectRow" style="display:none">
-              <label>Project</label>
-              <select id="taskProject"><option value="">No Project</option></select>
-            </div>
-          </div>
-        </div>
-        <!-- Description -->
-        <div class="form-group">
-          <label>
-            <svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg>
-            Description
-          </label>
-          <textarea id="taskDesc" rows="7" placeholder="Add more details about this task..."></textarea>
-        </div>
-
-        <!-- Section: Schedule -->
-        <div class="form-section">
-          <div class="form-section-title">
-            <svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
-            Schedule
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Scheduled Time</label>
-              <select id="taskScheduledHour">
-                <option value="">Not scheduled</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Duration</label>
-              <select id="taskDuration">
-                <option value="0.5">30 min</option>
-                <option value="1" selected>1 hour</option>
-                <option value="1.5">1.5 hours</option>
-                <option value="2">2 hours</option>
-                <option value="3">3 hours</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- Section: Subtasks -->
-        <div class="form-section">
-          <div class="form-section-title">
-            <svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-            Subtasks
-          </div>
-          <div id="subtasksList"></div>
-          <div class="subtask-add">
-            <input type="text" id="subtaskInput" placeholder="Add a subtask...">
-            <button type="button" id="addSubtaskBtn" aria-label="Add subtask">
-              <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            </button>
-          </div>
-        </div>
-
-        <!-- Actions -->
-        <div class="form-actions">
-          <button type="button" class="btn-danger" id="deleteBtn" aria-label="Delete task" style="display:none">
-            <svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-            Delete
-          </button>
-          <div class="form-actions-right">
-            <button type="button" class="btn-secondary" id="cancelBtn">Cancel</button>
-            <button type="submit" class="btn-primary">
-              <svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
-              Save Task
-            </button>
-          </div>
-        </div>
-      </form>
+  <!-- Event sheet (spec 6). Colour comes from the six category tokens, not the
+       ten arbitrary hexes the old modal offered. -->
+  <div class="dl-sheet-wrap event-sheet-wrap" id="eventSheet" data-guard role="dialog" aria-modal="true" aria-labelledby="eventSheetTitle">
+    <div class="dl-sheet event-sheet" tabindex="-1">
+      <div class="dl-grab"></div>
+      <div class="ts-head">
+        <h4 id="eventSheetTitle">New event</h4>
+        <button type="button" class="ts-x" id="eventSheetClose" aria-label="Close"><span class="ms" aria-hidden="true">close</span></button>
+      </div>
+      <div class="ev-body"></div>
     </div>
   </div>
 
   <!-- Profile gate: blocks the app until we know whose data to load -->
   <div class="profile-gate" id="profileGate" hidden>
-    <div class="profile-gate-card">
-      <div class="profile-gate-mark">D</div>
-      <h1>Who's using Daylign?</h1>
+    <div class="profile-gate-card" role="dialog" aria-modal="true" aria-labelledby="profileGateTitle">
+      <div class="profile-gate-mark" aria-hidden="true">D</div>
+      <h1 id="profileGateTitle">Who's using Daylign?</h1>
       <p class="profile-gate-desc">Your tasks, workouts, meals and weight are kept separate from everyone else's. You only pick once on this device.</p>
       <div class="profile-gate-list" id="profileList"></div>
       <div class="profile-gate-divider"><span>or start fresh</span></div>
-      <label class="profile-gate-label" for="profileNewName">Your first name</label>
-      <input type="text" id="profileNewName" class="profile-gate-input" placeholder="e.g. Arjun" autocomplete="given-name" maxlength="24">
-      <p class="profile-gate-error" id="profileGateError" hidden></p>
-      <button class="btn-secondary" id="profileCreateBtn">Create my profile</button>
+      <div class="dl-field">
+        <label for="profileNewName">Your first name</label>
+        <input type="text" id="profileNewName" placeholder="e.g. Arjun" autocomplete="given-name" maxlength="24">
+      </div>
+      <p class="profile-gate-error" id="profileGateError" role="alert" hidden></p>
+      <button type="button" class="dl-btn primary full" id="profileCreateBtn">Create my profile</button>
     </div>
   </div>
 
-  <!-- Onboarding: first-run flow for a newly created profile (rendered by js/onboarding.js) -->
+  <!-- Setup (spec 10.2): first run for a new profile, and Replay setup from Settings (js/onboarding.js) -->
   <div class="onboard" id="onboard" hidden></div>
 
   <!-- Firebase SDK -->
@@ -1266,7 +1142,10 @@
   <script src="js/utils.js"></script>
   <script src="js/state.js"></script>
   <script src="js/modal.js"></script>
+  <script src="js/task-sheet.js"></script>
   <script src="js/dashboard.js"></script>
+  <script src="js/now-block.js"></script>
+  <script src="js/line.js"></script>
   <script src="js/tasks.js"></script>
   <script src="js/board.js"></script>
   <script src="js/calendar.js"></script>
@@ -1296,6 +1175,8 @@
   <script src="js/voice.js"></script>
   <script src="js/inbox.js"></script>
   <script src="js/import-csv.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/global.js"></script>
   <script src="js/app.js"></script>
   <script src="js/onboarding.js"></script>
   <script src="js/enhancements.js"></script>

@@ -2,6 +2,27 @@
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
+// ========== Category colours (v3) ==========
+// Categories and projects carry `color`: one of these six keys, each a
+// --c-* token in style.css, so it follows Day / Night. The order is the auto
+// palette order: new items take the next key, and migrateTaxonomyColors()
+// (js/app.js) maps the v2 hex palette onto it index for index.
+const CATEGORY_COLOR_KEYS = ['meet', 'move', 'food', 'habit', 'water', 'sleep'];
+
+function nextCategoryColor(list) {
+  return CATEGORY_COLOR_KEYS[(list || []).length % CATEGORY_COLOR_KEYS.length];
+}
+
+// The CSS colour for a category or project. A v2 hex still renders as itself
+// (data synced from an older build before the migration has run); no item or
+// no colour is muted.
+function taxColor(item) {
+  const c = item && item.color;
+  if (CATEGORY_COLOR_KEYS.indexOf(c) !== -1) return 'var(--c-' + c + ')';
+  if (typeof c === 'string' && /^#[0-9a-f]{3,8}$/i.test(c)) return c;
+  return 'var(--text-muted)';
+}
+
 // ========== Utility Functions ==========
 function toLocalDateStr(d) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -14,7 +35,11 @@ function getTodayStr() {
 function esc(str) {
   const div = document.createElement('div');
   div.textContent = str;
-  return div.innerHTML;
+  // innerHTML escapes & < > and leaves quotes alone, but most esc() calls in
+  // this app sit inside an attribute: value="${esc(name)}". A task called
+  // Read "Dune" ended the attribute at its second quote, and in a database
+  // anyone can write to, a name is not something to trust with that.
+  return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function formatDate(dateStr) {
@@ -34,7 +59,12 @@ function recordError(kind, detail) {
   recentErrors.push(entry);
   if (recentErrors.length > 10) recentErrors.shift();
   console.warn('[daylign]', kind, detail);
-  if (typeof showToast === 'function') showToast('Something went wrong — that action may not have saved');
+  // Tapping it opens the place the reason was just written down.
+  if (typeof showToast === 'function') {
+    showToast("Something broke. It's in Recent errors", () => {
+      if (typeof openSettingsPage === 'function') openSettingsPage('errors');
+    }, { kind: 'warn' });
+  }
   // Keep the panel live if it happens to be open, so an error that fires while
   // you are looking at Settings appears without a reload.
   if (typeof renderDiagnostics === 'function') { try { renderDiagnostics(); } catch (e) {} }
@@ -52,12 +82,13 @@ window.addEventListener('unhandledrejection', (e) => {
 // re-doing their CSS and risking layout regressions across every view, so
 // instead this promotes them centrally after each render: they become
 // focusable, announce as buttons, and respond to Enter/Space.
+// The v3 rows that open something on a click. (The v2 list named rows that
+// no longer exist, and missed the task rows, the line, the agenda and the
+// week grid.)
 const KEYBOARD_CLICKABLE = [
-  '.task-row', '.task-check', '.board-card', '.board-folder-header',
-  '.archived-toggle', '.health-tile', '.my-task-card', '.my-task-check',
-  '.schedule-event', '.diet-food-entry-main', '.recent-meal-header',
-  '.diet-custom-item', '.diet-history-day', '.str-mv', '.today-sched-row',
-  '.today-sched-check', '.project-item', '.category-item', '.cal-day',
+  '.tk-row', '.board-card', '.project-item',
+  '.dl-line-item[data-line-tap]', '.ag-row[data-id]', '.ag-row[data-event-id]',
+  '.calw-ev', '.lib-row[data-lib-food]', '.lib-row[data-lib-recent]',
 ].join(', ');
 
 function enhanceKeyboardAccess() {
@@ -67,6 +98,19 @@ function enhanceKeyboardAccess() {
     if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
     if (!el.hasAttribute('role')) el.setAttribute('role', 'button');
   });
+}
+
+// render() calls the above, but most views also redraw on their own (a filter
+// chip, a day step, the library tabs), and rows drawn that way came up with
+// no tabindex until the next full render. Promote whatever is added, once
+// per frame.
+let kbPromoteQueued = false;
+if (typeof MutationObserver === 'function') {
+  new MutationObserver(() => {
+    if (kbPromoteQueued) return;
+    kbPromoteQueued = true;
+    requestAnimationFrame(() => { kbPromoteQueued = false; enhanceKeyboardAccess(); });
+  }).observe(document.documentElement, { childList: true, subtree: true });
 }
 
 // Enter/Space activate them, matching native button behaviour.
@@ -168,7 +212,10 @@ function animateNumber(el, target) {
 // onTap makes the toast the undo affordance. Added for combos, where one tap
 // writes five rows and "that wasn't what I meant" needs to be cheap — but any
 // caller can use it. Without a handler the toast behaves exactly as before.
-function showToast(message, onTap) {
+// opts.kind: 'offline' (a cloud icon) or 'warn' (on the warning colour).
+// A toast with onTap is an action: it stays six seconds instead of 2.6.
+function showToast(message, onTap, opts) {
+  const o = opts || {};
   let host = document.getElementById('toastHost');
   if (!host) {
     host = document.createElement('div');
@@ -179,8 +226,17 @@ function showToast(message, onTap) {
     document.body.appendChild(host);
   }
   const toast = document.createElement('div');
-  toast.className = 'toast' + (typeof onTap === 'function' ? ' toast-action' : '');
-  toast.textContent = message;
+  toast.className = 'toast' + (typeof onTap === 'function' ? ' toast-action' : '') + (o.kind ? ' is-' + o.kind : '');
+  const icon = o.kind === 'offline' ? 'cloud_off' : o.kind === 'warn' ? 'error' : null;
+  // "Deleted Lunch · Undo": the action word is drawn as a link, the rest as
+  // the message, so it is obvious which part is the button.
+  const m = /^(.*?)\s*·\s*(Undo|View|Tap to review)$/.exec(String(message));
+  if (icon) { const i = document.createElement('span'); i.className = 'ms'; i.setAttribute('aria-hidden', 'true'); i.textContent = icon; toast.appendChild(i); }
+  const t = document.createElement('span');
+  t.className = 'toast-t';
+  t.textContent = m && typeof onTap === 'function' ? m[1] : message;
+  toast.appendChild(t);
+  if (m && typeof onTap === 'function') { const u = document.createElement('u'); u.textContent = m[2]; toast.appendChild(u); }
   let done = false;
   const dismiss = () => {
     if (done) return;
@@ -319,16 +375,16 @@ function renderDiagnostics() {
   const host = document.getElementById('diagList');
   if (!host) return;
   if (!recentErrors.length) {
-    host.innerHTML = '<p class="diag-empty">No errors recorded this session.</p>';
+    host.innerHTML = '<p class="set-sub">No errors recorded this session.</p>';
     return;
   }
   // Newest first — the one you just hit is the one you came here to read.
   host.innerHTML = recentErrors.slice().reverse().map(e => {
     const t = new Date(e.at);
     const when = isNaN(t) ? e.at : t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
-    return `<div class="diag-row">
-      <div class="diag-row-head"><span class="diag-kind">${esc(e.kind)}</span><span class="diag-when">${esc(when)}</span></div>
-      <div class="diag-detail">${esc(e.detail)}</div>
+    return `<div class="set-diag">
+      <div class="set-diag-h"><span>${esc(e.kind)}</span><span>${esc(when)}</span></div>
+      <p>${esc(e.detail)}</p>
     </div>`;
   }).join('');
 }
@@ -343,11 +399,15 @@ function bindDiagnostics() {
   const clear = document.getElementById('diagClearBtn');
   if (copy) copy.addEventListener('click', () => {
     const txt = diagnosticsText();
-    if (navigator.clipboard) navigator.clipboard.writeText(txt).catch(() => {});
+    // Copy used to say nothing either way, so there was no telling whether
+    // the clipboard now held the errors or whatever was there before.
+    if (!navigator.clipboard) { showToast('Could not copy on this device'); return; }
+    navigator.clipboard.writeText(txt).then(() => showToast('Copied')).catch(() => showToast('Could not copy on this device'));
   });
   if (clear) clear.addEventListener('click', () => {
     recentErrors.length = 0;
     renderDiagnostics();
+    if (typeof renderSettingsIndex === 'function') renderSettingsIndex();
   });
 }
 
@@ -382,4 +442,154 @@ function safeFoodName(name) {
 function hasIllegalKeyChars(name) {
   FIREBASE_ILLEGAL_KEY_CHARS.lastIndex = 0;
   return FIREBASE_ILLEGAL_KEY_CHARS.test(String(name == null ? '' : name));
+}
+
+// ========== v3 sheet (.dl-sheet) ==========
+// One behaviour for every v3 bottom sheet: closes on a backdrop tap, Esc and a
+// downward swipe from the top of the sheet. The document listeners are bound
+// once, on first open, and delegate — sheets rendered later need no binding.
+let dlSheetBound = false;
+
+// Every sheet is a .dl-sheet-wrap. (The avatar sheet was a .dl-sheet-overlay,
+// whose panel never slid in; it is a .dl-sheet-wrap now too.)
+const DL_SHEET_WRAP = '.dl-sheet-wrap';
+const DL_SHEET_OPEN = '.dl-sheet-wrap.open';
+
+// While a sheet is open, everything behind it is inert: Tab, a screen reader
+// and a click cannot reach the page underneath. Toasts and banners stay live
+// (a toast's Undo must still work). Only the attribute this code set is ever
+// removed, so something else that is inert for its own reasons stays so.
+const DL_SHEET_KEEP_LIVE = '#toastHost, .update-banner';
+function dlSheetSyncInert() {
+  const open = Array.from(document.querySelectorAll(DL_SHEET_OPEN));
+  const top = open[open.length - 1] || null;
+  Array.from(document.body.children).forEach(el => {
+    const mine = el.hasAttribute('data-dl-inert');
+    const keep = !top || el === top || el.matches(DL_SHEET_KEEP_LIVE) || el.tagName === 'SCRIPT';
+    if (!keep && !el.inert) { el.inert = true; el.setAttribute('data-dl-inert', ''); }
+    else if (keep && mine) { el.inert = false; el.removeAttribute('data-dl-inert'); }
+  });
+}
+
+// The focusable things in a sheet, in Tab order.
+function dlSheetFocusables(wrap) {
+  return Array.from(wrap.querySelectorAll('a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])'))
+    .filter(el => !el.disabled && !el.closest('[hidden]') && el.getClientRects().length > 0 &&
+      !(el.closest('details:not([open])') && !el.matches('summary')));
+}
+
+function openDlSheet(wrap) {
+  if (!wrap) return;
+  bindDlSheets();
+  // Remember where focus was, to put it back on close. A row is remembered by
+  // its data-id too, because saving re-renders the list and replaces it.
+  const from = document.activeElement;
+  if (!wrap.classList.contains('open')) {
+    const f = (from && from !== document.body && !wrap.contains(from)) ? from : null;
+    wrap._returnFocus = f;
+    wrap._returnKey = f && f.dataset && f.dataset.id && f.classList[0] ? '.' + f.classList[0] + '[data-id="' + CSS.escape(f.dataset.id) + '"]' : null;
+  }
+  // A sheet opened over another goes to the end of body, so it paints on top
+  // and is the one Esc, Tab and inert treat as the top. (In markup order the
+  // task sheet sits after the weigh-in sheet, and covered it.)
+  if (wrap.parentElement !== document.body || (document.querySelector(DL_SHEET_OPEN) && wrap !== document.body.lastElementChild)) {
+    document.body.appendChild(wrap);
+    void wrap.offsetWidth;   // let the slide-in run from its closed position
+  }
+  wrap.classList.add('open');
+  dlSheetSyncInert();
+  const sheet = wrap.querySelector('.dl-sheet');
+  if (sheet) { sheet.style.removeProperty('--drag'); sheet.focus({ preventScroll: true }); }
+  // A sheet marked data-guard is a form. Remember what it held when it opened,
+  // so a stray tap on the backdrop cannot throw away what was typed since.
+  wrap._snap = wrap.hasAttribute('data-guard') ? dlSheetSnapshot(wrap) : null;
+}
+
+// Everything a person can change in a form sheet, as one comparable string.
+function dlSheetSnapshot(wrap) {
+  const fields = Array.from(wrap.querySelectorAll('input, select, textarea'))
+    .map(el => (el.type === 'checkbox' ? String(el.checked) : el.value));
+  const pressed = Array.from(wrap.querySelectorAll('[aria-pressed="true"]'))
+    .map(el => el.dataset.v || el.dataset.color || '');
+  return JSON.stringify([fields, pressed]);
+}
+
+// The three ways of closing a sheet WITHOUT choosing to: backdrop tap, Esc and
+// a downward swipe. The task modal this replaced asked before discarding a
+// half-written task, because on a phone the backdrop is very easy to hit by
+// accident. Same protection, no dialog: an edited form stays open and says why.
+// Cancel, Save and Delete call closeDlSheet() directly and always close.
+function dismissDlSheet(wrap) {
+  if (!wrap) return;
+  if (wrap._snap && dlSheetSnapshot(wrap) !== wrap._snap) {
+    if (typeof showToast === 'function') showToast('Not saved yet — Save it, or Cancel to discard');
+    return;
+  }
+  closeDlSheet(wrap);
+}
+
+function closeDlSheet(wrap) {
+  if (!wrap) return;
+  const wasOpen = wrap.classList.contains('open');
+  wrap.classList.remove('open');
+  dlSheetSyncInert();
+  wrap.dispatchEvent(new CustomEvent('dl-sheet-close'));
+  // Back to what opened it, if that is still on the page and reachable, unless
+  // the close handler has already moved focus somewhere on purpose.
+  let back = wrap._returnFocus;
+  if (back && !back.isConnected && wrap._returnKey) back = document.querySelector(wrap._returnKey);
+  wrap._returnFocus = null; wrap._returnKey = null;
+  if (wasOpen && back && back.isConnected && !back.closest('[inert]') &&
+      (!document.activeElement || document.activeElement === document.body || wrap.contains(document.activeElement))) {
+    try { back.focus({ preventScroll: true }); } catch (e) { /* gone */ }
+  }
+}
+
+function bindDlSheets() {
+  if (dlSheetBound) return;
+  dlSheetBound = true;
+
+  document.addEventListener('click', (e) => {
+    const wrap = e.target.closest && e.target.closest(DL_SHEET_OPEN);
+    if (wrap && e.target === wrap) dismissDlSheet(wrap);
+  });
+  document.addEventListener('keydown', (e) => {
+    const open = document.querySelectorAll(DL_SHEET_OPEN);
+    if (!open.length) return;
+    const top = open[open.length - 1];
+    if (e.key === 'Escape') { dismissDlSheet(top); return; }
+    // Tab stays inside the open sheet, wrapping at either end.
+    if (e.key !== 'Tab') return;
+    const items = dlSheetFocusables(top);
+    const sheet = top.querySelector('.dl-sheet');
+    if (!items.length) { e.preventDefault(); if (sheet) sheet.focus(); return; }
+    const first = items[0], last = items[items.length - 1];
+    const at = document.activeElement;
+    if (!top.contains(at)) { e.preventDefault(); (e.shiftKey ? last : first).focus(); return; }
+    if (e.shiftKey && (at === first || at === sheet)) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && at === last) { e.preventDefault(); first.focus(); }
+  });
+
+  // Swipe down: only when the sheet is scrolled to the top, so a drag inside a
+  // long sheet still scrolls it.
+  let drag = null;
+  document.addEventListener('touchstart', (e) => {
+    const sheet = e.target.closest && e.target.closest('.dl-sheet-wrap.open .dl-sheet');
+    if (!sheet || sheet.scrollTop > 0) return;
+    drag = { sheet, y0: e.touches[0].clientY, dy: 0 };
+  }, { passive: true });
+  document.addEventListener('touchmove', (e) => {
+    if (!drag) return;
+    drag.dy = Math.max(0, e.touches[0].clientY - drag.y0);
+    drag.sheet.classList.add('dragging');
+    drag.sheet.style.setProperty('--drag', drag.dy + 'px');
+  }, { passive: true });
+  document.addEventListener('touchend', () => {
+    if (!drag) return;
+    const { sheet, dy } = drag;
+    drag = null;
+    sheet.classList.remove('dragging');
+    sheet.style.removeProperty('--drag');
+    if (dy > 90) dismissDlSheet(sheet.closest(DL_SHEET_WRAP));
+  });
 }

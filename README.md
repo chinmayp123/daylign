@@ -16,23 +16,25 @@ Everything visual lives in **one file: `style.css`** (~6,300 lines). There is no
 
 **The entire theme is driven by CSS variables** defined at `:root` in `style.css`. Change these and the whole app reskins:
 
-| Token | Value | Role |
+| Token | Night (dark) / Day (light) | Role |
 |---|---|---|
-| `--bg-primary` / `--bg-secondary` | `#0b0b10` / `#0f0f16` | Page + panel backgrounds (dark) |
-| `--bg-card` / `--bg-hover` | `#14141d` / `#1e1e2a` | Card surface / hover |
-| `--border` | `#232330` | Hairline borders |
-| `--text-primary` / `--secondary` / `--muted` | `#f2f2f7` / `#a5a5bd` / `#73738c` | Text hierarchy |
-| `--accent` / `--accent-hover` / `--accent-glow` | `#6d6af8` (indigo) | Primary brand color, buttons, active states |
-| `--green` / `--yellow` / `--red` / `--blue` / `--purple` | status colors | Progress dots, deltas, alerts |
-| `--radius` / `--radius-sm` | `16px` / `10px` | Corner rounding |
-| `--font-display` / `--font-body` | Space Grotesk / Inter | Headings vs body |
+| `--bg-primary` | `#0e0f0e` / `#eceee9` | Page background (flat, no gradients) |
+| `--bg-card` / `--bg-secondary` / `--bg-input` | `#171917` / `#f7f8f5` | Surfaces |
+| `--bg-hover` | `#1f221f` / `#e3e6e0` | Hover |
+| `--border` / `--track` | `#262925` / `#d5d8d1` | Hairlines, unfilled progress |
+| `--text-primary` / `--secondary` / `--muted` | `#eeefeb` `#aeb2ab` `#8a8f88` / `#121412` `#4f544e` `#686d66` | Text hierarchy (muted clears 4.5:1 on cards) |
+| `--accent` / `--accent-ink` | cobalt `#6c86ff` on `#0e0f0e` / `#2446f0` on `#fff` | The one accent: now line, primary button, focus, selected. Picked in Settings; `--accent-hover` / `--accent-glow` derive from it |
+| `--c-sleep` `--c-food` `--c-water` `--c-move` `--c-meet` `--c-habit` | see `:root` | Category colours; `--green/--yellow/--blue/--purple` alias move/habit/water/sleep; macros are `--macro-protein/carbs/fat` |
+| `--red` | `#fb923c` / `#c2410c` | Warn: overdue, danger |
+| `--radius` / `--radius-sm` / `--radius-chip` / `--radius-now` / `--radius-sheet` | `16` / `10` / `6` / `18` / `24px` | Corner rounding |
+| `--font-display` / `--font-body` / `--font-mono` | Bricolage Grotesque / Geist / JetBrains Mono | Display, UI, every number |
 | `--shadow`, `--sidebar-width` | — | Elevation + layout |
 
 **Structure:** `index.html` holds all markup. Each screen is a `<div class="view" id="...View">` (dashboard, tasks, board, calendar, gym, cardio, diet, settings) toggled by `switchView()` in `js/app.js`. Content is grouped into `.card` blocks. The layout is a fixed left `.sidebar` + main content on desktop, collapsing to a top bar + bottom `.bottom-nav` on mobile (`@media (max-width: 900px)`).
 
 **It's fully responsive and theme-token-driven, so most redesigns are CSS-only** — recolor by editing the `:root` tokens, restyle components by editing their classes, no JS required. To preview changes, see *Running locally* below and open the app in a browser (or resize to phone width / use device-emulation).
 
-**Current aesthetic:** dark, indigo-accented, rounded cards, Space Grotesk display type, generous spacing, subtle glows and micro-animations. A light theme also exists (`:root[data-theme="light"]`) — style both when touching colors.
+**Current aesthetic:** v3 "Day Line" (`design/v3/BUILD_SPEC_v3.md`): flat warm-grey surfaces, one cobalt accent, six category colours, Bricolage Grotesque display type and mono numbers. Day (`html[data-theme="light"]`) and Night (`:root`) — style both when touching colors. Base components are the `.dl-*` classes at the end of `style.css`; preview them in `design/v3/components.html`.
 
 ### Redesigning the Gym, Cardio & Diet pages
 
@@ -156,11 +158,11 @@ To test on a phone, open `http://<your-computer-lan-ip>:8080` on the same Wi-Fi.
 ## Data & privacy
 
 - App data (tasks, workouts, meals, weigh-ins, water, goals) syncs to **Firebase Realtime Database** and is cached in `localStorage` for offline use.
-- **Profiles:** each person's data lives at `users/<profile-id>`, picked once per device on first launch and stored in `localStorage['daylign_profile']`. Nothing is read from or written to the cloud until a profile is chosen. This gives people **separation, not security** — the database has no auth rules, so it stops accidental clobbering between people who trust each other, and is not a permission system. Switch or reset from Settings → *Who's using this device*.
+- **Profiles:** each person's data lives at `users/<profile-id>`, picked once per device on first launch and stored in `localStorage['daylign_profile']`. Nothing is read from or written to the cloud until a profile is chosen. This gives people **separation, not security** — the database has no auth rules, so it stops accidental clobbering between people who trust each other, and is not a permission system. Switch or start fresh from Settings, Profile.
 - The original pre-profiles node `lifestack` is **never written again** and is kept as a frozen backup.
-- **Onboarding:** a newly created profile runs a short first-run flow (welcome → pick modules → set core goals) before landing on the dashboard. It's triggered by the sync layer once cloud state settles and gated on a synced `goals._onboarded` marker, so a returning person on a new device is never walked through it again. Skippable; everything it sets lives in Settings (`js/onboarding.js`).
+- **Setup:** a newly created profile runs a short first-run flow (Welcome, Modules, Goals, Apple Watch, Done) before landing on Today. It's triggered by the sync layer once cloud state settles and gated on a synced `goals._onboarded` marker, so a returning person on a new device is never walked through it again. Skippable, and Settings, Help, *Replay setup* runs it again without touching logged data (`js/onboarding.js`).
 - **Modules:** Gym, Cardio and Diet are optional and toggle on/off per-profile in Settings (`state.modules`, synced). Off hides them from every nav surface and drops their dashboard cards; the data is never deleted and returns when re-enabled. Tasks, Board, Calendar and Dashboard are core. The Categories/Projects sidebar sections only appear on those task-oriented views (`TASKMETA_VIEWS`).
-- Settings → *How the app is being used* is a **read-only** engagement report (last sync, active days, what each person logs). It reads the `users` tree directly and never loads another profile into the running app — doing that would be a write hazard, since `renderDiet()` calls `saveData()` during an ordinary render.
+- Settings → *How the app is being used* is a **read-only** engagement report (last sync, active days, what each person logs). It reads the `users` tree directly and never loads another profile into the running app: renderers no longer save (the `renderDiet()` save-on-render was removed in v3), but loading someone else's data into `state` would still let the next save of yours write it to your own node.
 - **Community food bank:** custom foods anyone saves publish to a shared `foodBank` root node (like `external`, a separate shared root), and every profile reads it — so one person's dishes become searchable for everyone, tagged "Community" in search. Publishing is additive; deleting a food from your own bank never removes it from the shared pool. `js/firebase-sync.js` (`loadSharedFoods` / `publishFoodToBank`).
 - Apple Health/Watch data lives in a **separate `external` Firebase node** the app only reads — app writes can never overwrite it. Per person: `external/*` for the original profile, `external/u/<profile-id>/*` for everyone else.
 - **AI features** send the photo or spoken text to the Anthropic API. The **API key is stored only in that browser's `localStorage`** (`tf_anthropic_key`) — never committed to the repo or synced to Firebase — so a public repo never exposes a billable key. AI features are entirely optional and dormant until a key is added.
@@ -169,38 +171,46 @@ To test on a phone, open `http://<your-computer-lan-ip>:8080` on the same Wi-Fi.
 
 ```
 index.html            — All markup (one .view per screen)
-style.css             — All styles + :root design tokens (~8.9k lines)
+style.css             — All styles + :root design tokens (~6.4k lines after the v3 cleanup)
 sw.js                 — Service worker (offline / PWA). Revalidates with the
                         server on every request so a deploy is never masked by
                         the HTTP cache. Bump CACHE on every ship.
 manifest.json         — PWA manifest
 HEALTH-SYNC.md        — Apple Health / Watch shortcut setup
 firebase-rules*.json  — Drafted DB security rules (NOT yet applied — see below)
+design/v3/            — The v3 "Day Line" spec, mockups, coverage map and
+                        the coverage check (V3_COVERAGE_CHECK.md)
 
 js/
   Core
-    state.js          — Data model, the 15 synced keys, localStorage persistence
+    state.js          — Data model, the 18 synced keys, localStorage persistence
     utils.js          — $ / $$, dates, toasts, sumMacros, empty states,
                         keyboard-access promotion, global error handlers
     app.js            — Entry point, switchView, render(), event binding
-    firebase-sync.js  — Cloud sync + external (Apple Health) reads
+    firebase-sync.js  — Cloud sync, the sync pill, the sync conflict notice,
+                        external (Apple Health) reads
     profile.js        — Per-person profiles: first-launch gate, node paths
-    onboarding.js     — First-run flow for new profiles
+    onboarding.js     — Setup: first run for new profiles, and Replay setup
 
   Tasks & planning
-    tasks.js          — List view + auto-archive rule (isArchived, 1 week)
-    board.js          — Kanban board
-    calendar.js       — Month/week calendar + events
-    modal.js          — Task create/edit modal
-    today.js          — Today plan lanes (Scheduled / Anytime)
-    dashboard.js      — Health strip, weekly report, weight trend, reminders
+    line.js           — The day line: one timeline of the day, used by Today,
+                        Calendar's day view and Diet
+    now-block.js      — Today's pinned block of the day's numbers
+    today.js          — The no-time tray, triage sheet, due soon, this week
+    dashboard.js      — renderDashboard (Today's render order), morning routine
+    tasks.js          — Tasks list view + auto-archive rule (isArchived, 1 week)
+    board.js          — Board, the second face of Tasks
+    task-sheet.js     — The one task editor (sheet), with priority
+    modal.js          — Task done toggle; drag-to-dismiss for sheets
+    calendar.js       — Month/week/agenda calendar + the event sheet
+    inbox.js          — Tester reports from report.html (/inbox), on the Board
 
   Training
     gym.js            — Strength logging, body weight, burn, streaks,
                         MUSCLE_GROUPS map, rest timer
     cardio.js         — Sessions, pace, weekly volume, race prediction,
                         one-tap "same as usual" logging + streak
-    training.js       — Training shell: Strength/Cardio mode toggle, rail
+    training.js       — Training shell: Strength / Cardio / Coach / Sleep tabs
     strength.js       — Progression analytics: est. 1RM (Epley), plateau
                         detection, PRs, muscle balance
     sleep.js          — Sleep logging + the readiness score it feeds
@@ -213,22 +223,27 @@ js/
   Diet (split from one 2k-line file; load order matters)
     diet-data.js      — FOOD_DATABASE + diet state vars
     diet-core.js      — Quick-add, "Your Usuals", Food Library toggle
-    diet-view.js      — renderDiet: meal log, tiles, servings steppers, the row editor (Edit → name + macros, fixes the bank + saved meals)
+    diet-view.js      — renderDiet (reads only): the day, meal sheet, Food library
     diet-food.js      — Search, food bank, manual entry form
     diet-goals.js     — Goals, recommendations, advice, review, water
 
   Cross-cutting
     insights.js       — Analytics view: 8 charts, Week/Month/Year/All, CSV export
-    layout.js         — Dashboard layout editor (pointer-event drag, saved layouts)
+    layout.js         — Arrange Today sheet (order, hide, saved layouts)
+    settings.js       — Settings index and pages, categories manager, the
+                        confirm sheet, restore
     settings-prefs.js — Device prefs: accent, widget visibility, workout
-                        defaults, accessibility
-    preferences.js    — Settings: theme segmented control, sync status, AI key
-    enhancements.js   — Today hero, command palette (Cmd/Ctrl-K), theme boot
+                        defaults and workout time, accessibility
+    preferences.js    — Settings: theme switch, AI key
+    enhancements.js   — Theme (System / Light / Dark), avatar sheet, Ctrl K
+    global.js         — The + sheet, install banner, offline notice
     collapsible.js    — Reusable collapse-on-mobile card behaviour
-    weight-sheet.js   — Weight-trend bottom sheet
+    weight-sheet.js   — The one weigh-in sheet (weight, waist, 30-day line)
+    import-csv.js     — Spreadsheet import (Settings, Import a spreadsheet)
+    pull-refresh.js   — Pull to refresh
     ai-usage.js       — Anthropic token/cost tracker
     food-photo.js     — Photo food logging (Claude vision)
-    voice.js          — Voice / natural-language commands
+    voice.js          — Voice sheet: natural-language commands
 ```
 
 ## Architecture notes
@@ -257,14 +272,16 @@ rebuild their section with `innerHTML` and re-attach listeners, so:
   CSS `order` instead of moving nodes, because a re-render would undo the move.
 
 **Persistence.** `writeStateToLocal()` in `state.js` is the single writer for
-all 15 localStorage keys; `saveData()` and `applyFirebaseData()` both go
+all 18 synced localStorage keys; `saveData()` and `applyFirebaseData()` both go
 through it so the two can't drift. Both callers guard it — a full or disabled
 localStorage must never abort the cloud write.
 
 **Preferences vs state.** Device-local settings (theme, accent, widget
 visibility, layouts) live in `localStorage` under `daylign_prefs` and are
-deliberately NOT synced — they describe one device. Everything in the 15-key
-state object syncs.
+deliberately NOT synced — they describe one device. Everything in the 18-key
+state object syncs. A new synced key must be added in four places:
+`loadData()`, `writeStateToLocal()`, `CLOUD_KEYS` (state.js) and `SYNC_KEYS`
+(firebase-sync.js).
 
 ## Known gaps
 
@@ -276,7 +293,9 @@ state object syncs.
 - Drag-and-drop on the Board and Schedule uses HTML5 DnD, which fires no
   events from touch on iOS — those are mouse-only. `layout.js` uses pointer
   events and does work on touch.
-- No automated tests.
+- No automated tests in the repo. The v3 build was verified with scripted
+  checks run against a Firebase-stripped local copy; that harness is not
+  committed.
 - Notifications are not implemented (iOS web push needs a server).
 
 ## License

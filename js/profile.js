@@ -167,12 +167,15 @@ function showProfileGate(onReady) {
 // Reflect the active profile in Settings and the sidebar indicator.
 function updateProfileSettingsCard() {
   const name = activeProfile ? activeProfile.name : '—';
+  const letter = (activeProfile && activeProfile.name ? activeProfile.name : '?').charAt(0).toUpperCase();
   const el = document.getElementById('profileCurrentName');
   if (el) el.textContent = name;
+  const mark = document.getElementById('profileCurrentAvatar');
+  if (mark) mark.textContent = letter;
   const sideName = document.getElementById('sidebarProfileName');
   if (sideName) sideName.textContent = name;
   const avatar = document.getElementById('sidebarProfileAvatar');
-  if (avatar) avatar.textContent = (activeProfile && activeProfile.name ? activeProfile.name : '?').charAt(0).toUpperCase();
+  if (avatar) avatar.textContent = letter;
 }
 
 // ---------- Usage report ----------
@@ -235,7 +238,10 @@ function summarizeUsage(id, data) {
 function loadUsageReport() {
   const out = document.getElementById('usageReport');
   if (!out) return;
-  out.innerHTML = '<p class="settings-desc">Loading…</p>';
+  // No SDK this session (offline first load, blocked CDN): there is nothing
+  // to read from, and db.ref would throw.
+  if (!db) { out.innerHTML = '<p class="set-sub">Not connected to the cloud this session, so there is nothing to read.</p>'; return; }
+  out.innerHTML = '<div class="dl-skel" style="height:96px"></div>';
   db.ref('users').once('value')
     .then(snap => {
       const all = snap.val() || {};
@@ -246,30 +252,29 @@ function loadUsageReport() {
         .then(() => renderUsageReport(all, names, out));
     })
     .catch(err => {
-      out.innerHTML = '<p class="settings-desc">Could not load usage: ' + esc(err && err.message ? err.message : 'unknown error') + '</p>';
+      out.innerHTML = '<p class="set-sub">Could not load usage: ' + esc(err && err.message ? err.message : 'unknown error') + '</p>';
     });
 }
 
 function renderUsageReport(all, names, out) {
   const ids = Object.keys(all);
-  if (!ids.length) { out.innerHTML = '<p class="settings-desc">No profiles have synced yet.</p>'; return; }
+  if (!ids.length) { out.innerHTML = '<p class="set-sub">No profiles have synced yet.</p>'; return; }
   out.innerHTML = ids.map(id => {
     const u = summarizeUsage(id, all[id] || {});
     const name = names[id] || id;
     const isMe = activeProfile && activeProfile.id === id;
     return `
-      <div class="usage-card">
-        <div class="usage-head">
-          <strong>${esc(name)}${isMe ? ' <span class="usage-you">you</span>' : ''}</strong>
-          <span class="usage-last">Last synced ${esc(relativeTime(u.lastUpdated))}</span>
+      <div class="dl-card">
+        <div class="dl-card-h">
+          <span>${esc(name)}${isMe ? ' <span class="dl-chip c-move">you</span>' : ''}</span>
+          <em>synced ${esc(relativeTime(u.lastUpdated))}</em>
         </div>
-        <div class="usage-active">${u.activeDays}<span>/14 days active</span></div>
-        <div class="usage-grid">
+        <p class="set-usage-active"><b>${u.activeDays}</b> of the last 14 days active</p>
+        <div class="dl-tiles">
           ${u.features.map(f => `
-            <div class="usage-stat${f.count === 0 ? ' usage-stat-zero' : ''}">
-              <span class="usage-stat-num">${f.count}</span>
-              <span class="usage-stat-label">${f.label}</span>
-              ${f.detail ? `<span class="usage-stat-detail">${esc(f.detail)}</span>` : ''}
+            <div class="dl-tile${f.count === 0 ? ' is-zero' : ''}">
+              <b>${f.count}</b>
+              <span>${f.label}${f.detail ? ' · ' + esc(f.detail) : ''}</span>
             </div>`).join('')}
         </div>
       </div>`;
@@ -282,16 +287,20 @@ function renderUsageReport(all, names, out) {
 // touches the active profile's own node, and only on a typed confirmation.
 function resetCurrentProfileData() {
   const who = activeProfile ? activeProfile.name : 'this profile';
-  const typed = prompt(
-    `Erase ALL of ${who}'s data — tasks, workouts, cardio, meals, weigh-ins — ` +
-    `on every device, and start from an empty app?\n\n` +
-    `This does not touch anyone else's profile. It cannot be undone.\n\n` +
-    `Type ERASE to confirm.`
-  );
-  if (typed !== 'ERASE') { showToast('Cancelled — nothing was erased'); return; }
-  resetLocalStateToStarter();
-  saveData(state); // pushes the clean slate to this profile's cloud node
-  showToast(`${who} reset to a clean slate`);
+  askConfirm({
+    title: 'Start fresh?',
+    body: `<p>This erases <b>all of ${esc(who)}’s data</b>: tasks, workouts, cardio, meals, weigh-ins and sleep, on every device.</p>
+      <p>Nobody else’s profile is touched. It cannot be undone, so download a backup first if you are unsure.</p>`,
+    word: 'ERASE',
+    confirmLabel: 'Erase everything',
+    danger: true,
+    onConfirm: () => {
+      resetLocalStateToStarter();
+      saveData(state); // pushes the clean slate to this profile's cloud node
+      if (typeof render === 'function') render();
+      showToast(`${who} reset to a clean slate`);
+    },
+  });
 }
 
 // Switching wipes this device's cached tf_* data first. Without that, the
@@ -300,19 +309,25 @@ function resetCurrentProfileData() {
 // person's data into the other's node.
 function switchProfile() {
   const who = activeProfile ? activeProfile.name : 'this profile';
-  const ok = confirm(
-    `Switch away from ${who}?\n\n` +
-    `This device's local copy will be cleared and reloaded from the cloud for whoever you pick next. ` +
-    `${who}'s data stays safe in the cloud.\n\n` +
-    `Download a backup first if you are unsure.`
-  );
-  if (!ok) return;
-  Object.keys(localStorage)
-    // The Anthropic API key belongs to the device, not the person — each
-    // device pays for its own photo/voice calls. Keep it so it does not have
-    // to be pasted in again.
-    .filter(k => k.indexOf('tf_') === 0 && k !== 'tf_anthropic_key')
-    .forEach(k => localStorage.removeItem(k));
-  localStorage.removeItem(PROFILE_KEY);
-  location.reload();
+  // Anything not yet in the cloud is only in the local copy this is about to
+  // clear, so say so rather than promise it is safe.
+  const sync = (typeof syncStatusInfo === 'function') ? syncStatusInfo().state : 'synced';
+  askConfirm({
+    title: 'Switch profile?',
+    body: `<p>This device’s copy of ${esc(who)}’s data is cleared, then reloaded from the cloud for whoever you pick next.</p>
+      ${sync === 'synced'
+        ? `<p>${esc(who)}’s data stays in the cloud.</p>`
+        : '<p class="cf-warn">This device is not synced right now. Changes that have not reached the cloud will be lost, so download a backup first.</p>'}`,
+    confirmLabel: 'Switch',
+    onConfirm: () => {
+      Object.keys(localStorage)
+        // The Anthropic API key belongs to the device, not the person — each
+        // device pays for its own photo/voice calls. Keep it so it does not have
+        // to be pasted in again.
+        .filter(k => k.indexOf('tf_') === 0 && k !== 'tf_anthropic_key')
+        .forEach(k => localStorage.removeItem(k));
+      localStorage.removeItem(PROFILE_KEY);
+      location.reload();
+    },
+  });
 }

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<!-- Dev-only preview of the v3 design system (BUILD_SPEC_v3.md §2). Not linked
+     from the app and not in sw.js ASSETS. Serve the repo root and open
+     /design/v3/components.html — add ?theme=light for Day, ?theme=dark (the
+     default) for Night, or use the switch in the top bar. -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daylign v3 components</title>
+  <script>
+    (function () {
+      var t = new URLSearchParams(location.search).get('theme');
+      document.documentElement.setAttribute('data-theme', t === 'light' ? 'light' : 'dark');
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Material+Symbols+Rounded:opsz,wght,FILL@20..24,400,0..1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../style.css">
+  <style>
+    /* Page chrome only — every component below is the real style.css class. */
+    body { padding: 0 0 80px; }
+    .cp-bar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 12px; padding: 14px 24px; background: var(--bg-primary); border-bottom: 1px solid var(--border); }
+    .cp-bar .dl-title { font-size: 24px; }
+    .cp-bar .sp { flex: 1; }
+    .cp-wrap { max-width: 1100px; margin: 0 auto; padding: 8px 24px; }
+    .cp-sec { padding: 22px 0; border-bottom: 1px solid var(--border); }
+    .cp-sec > h2 { font: 600 11px var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 14px; }
+    .cp-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .cp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; align-items: start; }
+    .cp-sw { display: grid; gap: 6px; font: 500 11px var(--font-mono); color: var(--text-secondary); }
+    .cp-sw i { display: block; width: 100%; height: 44px; border-radius: 10px; background: var(--c); border: 1px solid var(--border); }
+    .cp-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; }
+    .cp-note { font-size: 13px; color: var(--text-secondary); margin-top: 10px; }
+    .cp-sheet-demo { position: relative; height: 330px; border-radius: 18px; overflow: hidden; border: 1px solid var(--border); background: var(--bg-card); }
+    .cp-sheet-demo .dl-sheet-wrap { position: absolute; align-items: flex-end; padding: 0; }
+    .cp-sheet-demo .dl-sheet { max-width: none; border-radius: var(--radius-sheet) var(--radius-sheet) 0 0; border: none; box-shadow: none; padding: 8px 16px 18px; }
+    .cp-sheet-demo .dl-grab { display: block; }
+    .cp-under { padding: 16px; display: grid; gap: 8px; }
+    .cp-type > * + * { margin-top: 10px; }
+    .cp-tasks { display: grid; gap: 8px; font-size: 14px; }
+    .cp-tasks > div { display: flex; gap: 8px; align-items: center; }
+    .cp-tasks .due { margin-left: auto; font: 500 11px var(--font-mono); color: var(--text-muted); }
+    .cp-tasks .due.od { color: var(--red); }
+  </style>
+</head>
+<body>
+  <div class="cp-bar">
+    <span class="dl-title">Day Line components</span>
+    <span class="dl-eyebrow" id="cpThemeName"></span>
+    <span class="sp"></span>
+    <div class="dl-seg" id="cpTheme" role="group" aria-label="Theme">
+      <button type="button" data-theme="light">Day</button>
+      <button type="button" data-theme="dark">Night</button>
+    </div>
+  </div>
+
+  <main class="cp-wrap">
+
+    <section class="cp-sec cp-type">
+      <h2>Type</h2>
+      <div class="dl-eyebrow">Tuesday, September</div>
+      <div class="dl-date-num">29</div>
+      <div class="dl-title">Training</div>
+      <p class="dl-brief">You're 640 kcal and 38g of protein short. <span style="color:var(--text-muted)">A shake and dinner covers it.</span></p>
+      <p style="font-size:15px">Geist body copy. The quick brown fox logs a 5K at <span class="dl-num">8:42 /mi</span> and drinks <span class="dl-num">64 oz</span> of water.</p>
+      <p class="dl-num" style="font-size:13px;color:var(--text-secondary)">0123456789 · 1,840 kcal · 7h 12m · 18:30</p>
+      <p><span class="ms">home</span> <span class="ms fill">home</span> <span class="ms">fitness_center</span> <span class="ms">restaurant</span> <span class="ms">water_drop</span> <span class="ms">bedtime</span> <span class="ms">event</span> <span class="ms fill">check_circle</span></p>
+    </section>
+
+    <section class="cp-sec">
+      <h2>Colour tokens</h2>
+      <div class="cp-swatches">
+        <div class="cp-sw" style="--c:var(--bg-primary)"><i></i>--bg-primary</div>
+        <div class="cp-sw" style="--c:var(--bg-card)"><i></i>--bg-card</div>
+        <div class="cp-sw" style="--c:var(--bg-hover)"><i></i>--bg-hover</div>
+        <div class="cp-sw" style="--c:var(--border)"><i></i>--border</div>
+        <div class="cp-sw" style="--c:var(--text-primary)"><i></i>--text-primary</div>
+        <div class="cp-sw" style="--c:var(--text-secondary)"><i></i>--text-secondary</div>
+        <div class="cp-sw" style="--c:var(--text-muted)"><i></i>--text-muted</div>
+        <div class="cp-sw" style="--c:var(--accent)"><i></i>--accent</div>
+        <div class="cp-sw" style="--c:var(--red)"><i></i>--red (warn)</div>
+        <div class="cp-sw c-sleep"><i></i>--c-sleep</div>
+        <div class="cp-sw c-food"><i></i>--c-food</div>
+        <div class="cp-sw c-water"><i></i>--c-water</div>
+        <div class="cp-sw c-move"><i></i>--c-move</div>
+        <div class="cp-sw c-meet"><i></i>--c-meet</div>
+        <div class="cp-sw c-habit"><i></i>--c-habit</div>
+      </div>
+    </section>
+
+    <section class="cp-sec">
+      <h2>Chips and dots</h2>
+      <div class="cp-row">
+        <span class="dl-chip c-sleep"><span class="ms">bedtime</span>Sleep</span>
+        <span class="dl-chip c-food"><span class="ms">restaurant</span>Food</span>
+        <span class="dl-chip c-water"><span class="ms">water_drop</span>Water</span>
+        <span class="dl-chip c-move"><span class="ms">directions_run</span>Move</span>
+        <span class="dl-chip c-meet"><span class="ms">groups</span>Work</span>
+        <span class="dl-chip c-habit"><span class="ms">home</span>Home</span>
+        <span class="dl-chip">No category</span>
+      </div>
+      <div class="cp-tasks" style="margin-top:14px;max-width:420px">
+        <div><span class="dl-dot c-meet"></span>Send the Q3 deck<span class="due od">Sep 27</span></div>
+        <div><span class="dl-dot c-habit"></span>Fix the kitchen tap<span class="due">Oct 2</span></div>
+        <div><span class="dl-dot"></span>Uncategorised task<span class="due">Oct 9</span></div>
+      </div>
+    </section>
+
+    <section class="cp-sec">
+      <h2>Segmented control</h2>
+      <div class="cp-row">
+        <div class="dl-seg"><button type="button" class="on">Strength</button><button type="button">Cardio</button><button type="button">Coach</button><button type="button">Sleep</button></div>
+      </div>
+      <div style="max-width:420px;margin-top:12px">
+        <div class="dl-seg full"><button type="button">Day</button><button type="button" class="on">Week</button><button type="button">Month</button></div>
+      </div>
+    </section>
+
+    <section class="cp-sec">
+      <h2>Buttons</h2>
+      <div class="cp-row">
+        <button type="button" class="dl-btn primary"><span class="ms">add</span>Log workout</button>
+        <button type="button" class="dl-btn">Cancel</button>
+        <button type="button" class="dl-btn danger">Delete</button>
+        <button type="button" class="dl-btn" disabled>Disabled</button>
+      </div>
+      <div style="max-width:420px;margin-top:12px;display:grid;gap:8px">
+        <button type="button" class="dl-btn primary full">Save</button>
+        <button type="button" class="dl-btn full">Full-width default</button>
+      </div>
+      <p class="cp-note">Tab to any button to see the accent focus ring; press for scale(.98).</p>
+    </section>
+
+    <section class="cp-sec">
+      <h2>Cards</h2>
+      <div class="cp-grid">
+        <div class="dl-card"><div class="dl-card-h">This week <em>4 of 5</em></div>A plain card on --bg-card with a 16px radius.</div>
+        <div class="dl-card tint c-move"><div class="dl-card-h">Leg day <em>18:30</em></div>Tinted with --c-move at 9%, border at 40%.</div>
+        <div class="dl-card tint c-food"><div class="dl-card-h">Dinner <em>640 kcal</em></div>Tinted with --c-food.</div>
+        <div class="dl-card tint c-sleep"><div class="dl-card-h">Last night <em>7h 12m</em></div>Tinted with --c-sleep.</div>
+      </div>
+    </section>
+
+    <section class="cp-sec">
+      <h2>Toggle and fields</h2>
+      <div class="cp-grid">
+        <div style="display:grid;gap:12px">
+          <label class="dl-toggle"><input type="checkbox" checked><span class="dl-toggle-track"></span>Reduce motion</label>
+          <label class="dl-toggle"><input type="checkbox"><span class="dl-toggle-track"></span>Haptics</label>
+        </div>
+        <div class="dl-field"><label for="cpF1">Task name</label><input id="cpF1" type="text" placeholder="What needs doing?"></div>
+        <div class="dl-field"><label for="cpF2">Weight (lbs)</label><input id="cpF2" class="big" type="text" value="172.4"></div>
+        <div class="dl-field"><label for="cpF3">Category</label><select id="cpF3"><option>Work</option><option>Home</option></select></div>
+      </div>
+    </section>
+
+    <section class="cp-sec">
+      <h2>Tiles and rings</h2>
+      <div class="dl-tiles" style="max-width:640px">
+        <div class="dl-tile c-food"><b>1,360<small>kcal</small></b><span>eaten</span></div>
+        <div class="dl-tile c-water"><b>48<small>oz</small></b><span>water</span></div>
+        <div class="dl-tile c-move"><b>8,214</b><span>steps</span></div>
+        <div class="dl-tile"><b>172.4</b><span>lbs, 7-day avg</span></div>
+      </div>
+      <div class="cp-row" style="margin-top:16px">
+        <span class="dl-ring-wrap"><svg class="dl-ring c-food" viewBox="0 0 64 64"><circle class="dl-ring-track" cx="32" cy="32" r="28"/><circle class="dl-ring-fill" cx="32" cy="32" r="28" pathLength="100" style="--pct:68"/></svg><span class="dl-ring-label">68%</span></span>
+        <span class="dl-ring-wrap"><svg class="dl-ring c-move" viewBox="0 0 64 64"><circle class="dl-ring-track" cx="32" cy="32" r="28"/><circle class="dl-ring-fill" cx="32" cy="32" r="28" pathLength="100" style="--pct:92"/></svg><span class="dl-ring-label">92</span></span>
+        <span class="dl-ring-wrap"><svg class="dl-ring" viewBox="0 0 64 64"><circle class="dl-ring-track" cx="32" cy="32" r="28"/><circle class="dl-ring-fill" cx="32" cy="32" r="28" pathLength="100" style="--pct:35"/></svg><span class="dl-ring-label">35</span></span>
+      </div>
+    </section>
+
+    <section class="cp-sec">
+      <h2>Charts</h2>
+      <div class="cp-grid">
+        <div class="dl-card">
+          <div class="dl-card-h">Protein <em>102 / 150 g</em></div>
+          <div class="dl-meter c-food"><i style="--pct:68%"></i></div>
+          <div class="dl-card-h" style="margin-top:12px">Water <em>6 / 10</em></div>
+          <div class="dl-ticks c-water"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i></div>
+        </div>
+        <div class="dl-card">
+          <div class="dl-card-h">Miles this week <em>18.4</em></div>
+          <div class="dl-bars c-move"><i style="--h:40%"></i><i style="--h:0%" class="empty"></i><i style="--h:65%"></i><i style="--h:30%"></i><i style="--h:100%"></i><i style="--h:55%" class="now"></i><i class="empty"></i></div>
+        </div>
+        <div class="dl-card">
+          <div class="dl-card-h">Weight <em>30 days</em></div>
+          <svg class="dl-spark c-sleep" viewBox="0 0 100 40" preserveAspectRatio="none">
+            <path class="area" d="M0 12 L15 14 L30 11 L45 18 L60 20 L75 24 L90 26 L100 29 L100 40 L0 40 Z"/>
+            <line class="goal" x1="0" y1="32" x2="100" y2="32"/>
+            <polyline points="0,12 15,14 30,11 45,18 60,20 75,24 90,26 100,29"/>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <section class="cp-sec">
+      <h2>Skeleton</h2>
+      <div class="cp-grid">
+        <div class="dl-card"><span class="dl-skel line" style="width:40%"></span><span class="dl-skel line" style="width:90%"></span><span class="dl-skel line" style="width:70%"></span></div>
+        <span class="dl-skel block"></span>
+      </div>
+    </section>
+
+    <section class="cp-sec">
+      <h2>The line</h2>
+      <div class="dl-card" style="max-width:460px;padding:6px 14px">
+        <div class="dl-line" style="--cut:62%">
+          <div class="dl-line-item past c-sleep"><span class="t">last night</span><span class="n"></span><span class="ico"><span class="ms">bedtime</span></span><span class="body">Sleep<em>11:40 to 6:52</em></span><span class="val">7h 12m</span></div>
+          <div class="dl-line-item past c-habit"><span class="t">7:02</span><span class="n"></span><span class="ico"><span class="ms">wb_sunny</span></span><span class="body">Morning routine<em>push ups, sit ups</em></span><span class="val">done</span></div>
+          <div class="dl-line-item past c-food"><span class="t">8:10</span><span class="n"></span><span class="ico"><span class="ms">restaurant</span></span><span class="body">Breakfast<em>oats, coffee</em></span><span class="val">420</span></div>
+          <div class="dl-line-item past c-meet"><span class="t">11:00</span><span class="n"></span><span class="ico"><span class="ms">groups</span></span><span class="body">Standup<em>Google Calendar</em></span><span class="val">30m</span></div>
+          <div class="dl-line-item past c-water"><span class="t">14:20</span><span class="n"></span><span class="ico"><span class="ms">water_drop</span></span><span class="body">Water<em>5 adds</em></span><span class="val">48 oz</span></div>
+          <div class="dl-now"><span>now 15:40</span></div>
+          <div class="dl-line-item card c-move"><span class="t">18:30</span><span class="n"></span><span class="ico"><span class="ms">fitness_center</span></span><span class="body">Leg day<em>planned by the coach</em></span><span class="val">55m</span></div>
+          <div class="dl-line-item c-food"><span class="t">19:30</span><span class="n"></span><span class="ico"><span class="ms">restaurant</span></span><span class="body">Dinner<em>nothing logged yet</em></span><span class="val"></span></div>
+          <div class="dl-line-item c-habit"><span class="t">21:30</span><span class="n"></span><span class="ico"><span class="ms">dentistry</span></span><span class="body">Brush PM</span><span class="val"></span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="cp-sec">
+      <h2>Sheet</h2>
+      <div class="cp-grid">
+        <div class="cp-sheet-demo">
+          <div class="cp-under"><span class="dl-skel line" style="width:50%"></span><span class="dl-skel line"></span><span class="dl-skel line" style="width:80%"></span></div>
+          <div class="dl-sheet-wrap open">
+            <div class="dl-sheet" role="dialog" aria-label="Log water (preview)">
+              <div class="dl-grab"></div>
+              <h4>Log water</h4>
+              <div class="dl-seg full"><button type="button">8 oz</button><button type="button" class="on">16 oz</button><button type="button">24 oz</button></div>
+              <button type="button" class="dl-btn primary full">Add 16 oz</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <p class="cp-note" style="margin-top:0">Left: the phone bottom sheet, drawn in place. The live one below is the real fixed sheet — a bottom sheet under 768px, a centred panel (max 520px) above. It closes on a backdrop tap, Esc, or a swipe down.</p>
+          <button type="button" class="dl-btn primary" id="cpOpenSheet" style="margin-top:12px">Open the live sheet</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="dl-sheet-wrap" id="cpSheet">
+    <div class="dl-sheet" role="dialog" aria-modal="true" aria-label="Weigh in" tabindex="-1">
+      <div class="dl-grab"></div>
+      <h4>Weigh in</h4>
+      <div class="dl-field"><label for="cpW">Weight (lbs)</label><input id="cpW" class="big" type="text" value="172.4"></div>
+      <div class="dl-tiles"><div class="dl-tile"><b>172.9</b><span>7-day avg</span></div><div class="dl-tile c-move"><b>-0.5</b><span>vs last week</span></div></div>
+      <button type="button" class="dl-btn primary full">Save</button>
+      <button type="button" class="dl-btn danger" id="cpCloseSheet">Cancel</button>
+    </div>
+  </div>
+
+  <script src="../../js/utils.js"></script>
+  <script>
+    (function () {
+      function syncTheme() {
+        var t = document.documentElement.getAttribute('data-theme');
+        document.querySelectorAll('#cpTheme button').forEach(function (b) {
+          b.setAttribute('aria-pressed', b.dataset.theme === t ? 'true' : 'false');
+        });
+        document.getElementById('cpThemeName').textContent = t === 'light' ? 'Day (light)' : 'Night (dark)';
+      }
+      document.getElementById('cpTheme').addEventListener('click', function (e) {
+        var b = e.target.closest('button[data-theme]');
+        if (!b) return;
+        document.documentElement.setAttribute('data-theme', b.dataset.theme);
+        history.replaceState(null, '', '?theme=' + b.dataset.theme);
+        syncTheme();
+      });
+      syncTheme();
+      var sheet = document.getElementById('cpSheet');
+      document.getElementById('cpOpenSheet').addEventListener('click', function () { openDlSheet(sheet); });
+      document.getElementById('cpCloseSheet').addEventListener('click', function () { closeDlSheet(sheet); });
+    })();
+  </script>
+</body>
+</html>

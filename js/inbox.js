@@ -17,8 +17,15 @@ let inboxReports = [];
 let inboxBound = false;
 
 function inboxRef() {
-  if (typeof db === 'undefined' || !db || !db.ref) return null;
-  try { return db.ref('inbox'); } catch (e) { return null; }
+  // `db` is a top-level const in firebase-sync.js. If that script throws before
+  // reaching it - no CDN on a first offline load, or the SDK blocked - the
+  // binding stays in the temporal dead zone, where even `typeof db` THROWS.
+  // The guard below used to be that typeof check, so it took the inbox watch
+  // (and app.js's init line) down with it. The whole lookup is in the try.
+  try {
+    if (typeof db === 'undefined' || !db || !db.ref) return null;
+    return db.ref('inbox');
+  } catch (e) { return null; }
 }
 
 // Live, because the whole point is noticing a report without going to look.
@@ -49,6 +56,8 @@ function newInboxReports() {
 // A count on the Board nav item, so a report is visible from anywhere.
 function renderInboxBadge() {
   const n = newInboxReports().length;
+  // v3: the same count also rides the avatar and the Tasks nav item.
+  if (typeof refreshReportBadges === 'function') refreshReportBadges();
   document.querySelectorAll('[data-view="board"]').forEach(el => {
     let dot = el.querySelector('.nav-inbox-badge');
     if (!n) { if (dot) dot.remove(); return; }
@@ -96,8 +105,8 @@ function renderInbox() {
             ${r.shots.map((s, i) => `<img class="inbox-shot" src="${esc(s)}" alt="screenshot ${i + 1}" data-shot="${esc(r.id)}:${i}">`).join('')}
           </div>` : ''}
         <div class="inbox-actions">
-          <button type="button" class="btn-secondary inbox-dismiss" data-dismiss="${esc(r.id)}">Dismiss</button>
-          <button type="button" class="btn-primary inbox-accept" data-accept="${esc(r.id)}">Add to board</button>
+          <button type="button" class="dl-btn inbox-dismiss" data-dismiss="${esc(r.id)}">Dismiss</button>
+          <button type="button" class="dl-btn primary inbox-accept" data-accept="${esc(r.id)}">Make it a task</button>
         </div>
       </div>`).join('')}
     ${inboxReports.some(r => r.status === 'accepted')

@@ -1,10 +1,6 @@
 // ========== Daylign UI enhancements (additive) ==========
-// Self-contained layer added during the design pass. Everything here is
-// additive — it wraps existing global render fns and reads already-rendered
-// DOM rather than modifying js/ modules, so it merges with zero conflicts.
-// Covers: mobile "More" sheet, board single-column switch, light/dark theme,
-// dashboard "Today" hero, reminders focus rail, Cmd/Ctrl-K command palette,
-// and a mobile calendar agenda.
+// Covers: the theme (System / Light / Dark), the avatar sheet, the board's
+// single-column switch on a phone, and the Ctrl K palette.
 (function () {
   'use strict';
   const THEME_KEY = 'daylign_theme';
@@ -12,36 +8,96 @@
   const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
 
   // ---------- Theme ----------
-  function applyTheme(theme) {
-    const light = theme === 'light';
+  // daylign_theme holds 'light' or 'dark'; anything else (including nothing)
+  // means System, which follows the device and keeps following it. The one
+  // control is Settings, Appearance. The same three lines run inline in
+  // index.html's head so the first paint is already the right theme.
+  const sysDark = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function themePref() {
+    let v = null;
+    try { v = localStorage.getItem(THEME_KEY); } catch (e) {}
+    return v === 'light' || v === 'dark' ? v : 'system';
+  }
+  function applyTheme() {
+    const pref = themePref();
+    const light = pref === 'light' || (pref === 'system' && !(sysDark && sysDark.matches));
     document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
-    $$('.theme-nav-label').forEach(el => { el.textContent = light ? 'Dark mode' : 'Light mode'; });
-    const st = $('#moreThemeState'); if (st) st.textContent = light ? 'On' : 'Off';
-    // Keep Settings' Appearance control honest when the sidebar toggle is used.
+    // The browser chrome (status bar, task switcher) takes the page colour.
+    const meta = document.querySelector('meta[name="theme-color"]');
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg-primary').trim();
+    if (meta && bg) meta.setAttribute('content', bg);
     if (typeof window.renderThemeSegmented === 'function') window.renderThemeSegmented();
   }
-  function toggleTheme() {
-    const cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
-    const next = cur === 'light' ? 'dark' : 'light';
-    try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
-    applyTheme(next);
-  }
   function initTheme() {
-    let saved = 'dark';
-    try { saved = localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark'; } catch (e) {}
-    applyTheme(saved);
+    applyTheme();
+    if (!sysDark) return;
+    const follow = () => { if (themePref() === 'system') applyTheme(); };
+    if (sysDark.addEventListener) sysDark.addEventListener('change', follow);
+    else if (sysDark.addListener) sysDark.addListener(follow);
   }
-  // Settings' Appearance control needs to set an explicit theme rather than
-  // flip the current one. Exported so there is still exactly one theme path.
-  window.daylignSetTheme = function (theme) {
-    const next = theme === 'light' ? 'light' : 'dark';
-    try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
-    applyTheme(next);
+  window.daylignThemePref = themePref;
+  window.daylignSetTheme = function (pref) {
+    try {
+      if (pref === 'light' || pref === 'dark') localStorage.setItem(THEME_KEY, pref);
+      else localStorage.setItem(THEME_KEY, 'system');
+    } catch (e) {}
+    applyTheme();
   };
 
-  // ---------- More sheet ----------
-  function openMore() { const m = $('#moreSheet'); if (m) m.classList.add('open'); }
-  function closeMore() { const m = $('#moreSheet'); if (m) m.classList.remove('open'); }
+  // ---------- Avatar sheet (was the More sheet) ----------
+  // A standard .dl-sheet-wrap, opened and closed through the shared helpers,
+  // so it slides up, and gets Esc, backdrop tap, swipe and focus handling
+  // like every other sheet. It was a .dl-sheet-overlay: the backdrop was
+  // aliased, but the panel's reveal rule is .dl-sheet-wrap.open .dl-sheet,
+  // so the panel stayed off screen and the sheet never opened.
+  function openMore() { const m = $('#avatarSheet'); if (m) { fillAvatarSheet(); openDlSheet(m); } }
+  function closeMore() { const m = $('#avatarSheet'); if (m && m.classList.contains('open')) closeDlSheet(m); }
+
+  // Name, initial and sync state are read straight off the surfaces that
+  // already own them, so this sheet never becomes a second source of truth.
+  function fillAvatarSheet() {
+    const raw = ((document.getElementById('sidebarProfileName') || {}).textContent || '').trim();
+    // Before a profile is chosen the source reads an em-dash placeholder, and
+    // taking [0] of that put a dash in the avatar circle.
+    const name = /^[A-Za-z0-9]/.test(raw) ? raw : '';
+    const letter = (name[0] || 'D').toUpperCase();
+    const set = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.textContent = v; };
+    set('avatarSheetName', name || 'Daylign');
+    set('avatarSheetAvatar', letter);
+    set('headerAvatarLetter', letter);
+    const sync = document.querySelector('#syncStatus .sync-text');
+    set('avatarSheetSync', sync ? sync.textContent.trim() : 'Signed in');
+  }
+
+  // One unread count, shown in three places: the avatar, the Tasks nav item
+  // and the sheet row itself.
+  function refreshReportBadges() {
+    const n = (typeof newInboxReports === 'function') ? newInboxReports().length : 0;
+    const dot = document.getElementById('headerAvatarDot');
+    if (dot) dot.hidden = !n;
+    const count = document.getElementById('avatarReportCount');
+    if (count) { count.hidden = !n; count.textContent = n > 9 ? '9+' : String(n); }
+    document.querySelectorAll('.bottom-nav-btn[data-view="tasks"]').forEach(el => {
+      let d = el.querySelector('.nav-report-dot');
+      if (!n) { if (d) d.remove(); return; }
+      if (!d) { d = document.createElement('span'); d.className = 'nav-report-dot'; el.appendChild(d); }
+    });
+  }
+  window.refreshReportBadges = refreshReportBadges;
+  window.fillSidebarDate = function () { fillSidebarDate(); };
+
+  // The sidebar's own date block: small weekday and month, big day number.
+  function fillSidebarDate() {
+    const d = new Date();
+    const sub = document.getElementById('sidebarDateSub');
+    const day = document.getElementById('sidebarDateDay');
+    // Built from two parts rather than one toLocaleDateString: asking for
+    // weekday+month together returns them month-first ("Sep Tue").
+    const wd = d.toLocaleDateString('en-US', { weekday: 'short' });
+    const mo = d.toLocaleDateString('en-US', { month: 'short' });
+    if (sub) sub.textContent = wd + ' · ' + mo;
+    if (day) day.textContent = String(d.getDate());
+  }
 
   // ---------- Board mobile column switch ----------
   const COUNT_SRC = { todo: 'boardTodoCount', 'in-progress': 'boardProgressCount', done: 'boardDoneCount' };
@@ -66,109 +122,25 @@
   // it), so the two sat on screen contradicting each other - 73g against
   // 85g for the same week - and its chips repeated the health strip.
 
-  // ---------- Mobile calendar agenda ----------
-  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const PRIO_COLOR = { high: 'var(--red)', medium: 'var(--yellow)', low: 'var(--blue)' };
-  function buildAgenda() {
-    const host = $('#calAgenda');
-    if (!host || typeof calendarDate === 'undefined' || typeof state === 'undefined') return;
-    const year = calendarDate.getFullYear(), month = calendarDate.getMonth();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const today = (typeof getTodayStr === 'function') ? getTodayStr() : '';
-    const holidays = (typeof getUSHolidays === 'function') ? getUSHolidays(year) : [];
-    const esc2 = (typeof esc === 'function') ? esc : (x => x);
+  // The phone calendar agenda moved to js/calendar.js (renderCalAgenda): it
+  // belongs to the week view now, not the whole month, and it is the calendar's
+  // own renderer rather than something bolted onto renderCalendar from here.
 
-    const groups = [];
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const tasks = (state.tasks || []).filter(t => t.dueDate === dateStr && t.status !== 'done');
-      const events = (state.events || []).filter(e => e.date === dateStr);
-      const holiday = holidays.find(h => h.date === dateStr);
-      if (!tasks.length && !events.length && !holiday) continue;
-      groups.push({ dateStr, d, tasks, events, holiday });
-    }
-
-    if (!groups.length) {
-      host.innerHTML = `<div class="agenda-empty">Nothing scheduled in ${MONTHS[month]} — double-tap a day in month view to add an event.</div>`;
-      return;
-    }
-
-    host.innerHTML = groups.map(g => {
-      const dObj = new Date(g.dateStr + 'T00:00:00');
-      const isToday = g.dateStr === today;
-      const isPast = g.dateStr < today;
-      const dow = isToday ? 'Today' : dObj.toLocaleDateString('en-US', { weekday: 'short' });
-      const dateLbl = dObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      const evRows = g.events
-        .slice().sort((a, b) => (a.time || '').localeCompare(b.time || ''))
-        .map(e => `<div class="agenda-row" data-event-id="${e.id}" style="border-left-color:${e.color || 'var(--accent)'}">
-            <span class="agenda-row-name">${esc2(e.name)}</span>
-            ${e.time ? `<span class="agenda-row-sub">${e.time}</span>` : ''}
-          </div>`).join('');
-      const taskRows = g.tasks.map(t => `<div class="agenda-row" data-id="${t.id}" style="border-left-color:${PRIO_COLOR[t.priority] || 'var(--accent)'}">
-            <span class="agenda-row-name">${esc2(t.name)}</span>
-            <span class="agenda-row-sub agenda-due">due</span>
-          </div>`).join('');
-      const holRow = g.holiday ? `<div class="agenda-row agenda-holiday" style="border-left-color:var(--purple)">
-            <span class="agenda-row-name">${esc2(g.holiday.name)}</span></div>` : '';
-      return `<div class="agenda-day${isToday ? ' today' : ''}${isPast ? ' past' : ''}">
-          <div class="agenda-day-head"><span class="agenda-dow">${dow}</span><span class="agenda-date">${dateLbl}</span></div>
-          <div class="agenda-rows">${holRow}${evRows}${taskRows}</div>
-        </div>`;
-    }).join('');
-
-    $$('.agenda-row[data-id]', host).forEach(el => {
-      el.addEventListener('click', () => { if (typeof openModal === 'function') openModal(el.dataset.id); });
-    });
-    $$('.agenda-row[data-event-id]', host).forEach(el => {
-      el.addEventListener('click', () => {
-        const ev = (state.events || []).find(e => e.id === el.dataset.eventId);
-        if (ev && typeof openEventModal === 'function') openEventModal(ev.date, ev);
-      });
-    });
-  }
-
-  // ---------- Serving stepper (Diet log) ----------
-  function updateAddLabel() {
-    const btn = $('#dietSaveBtn'); if (!btn) return;
-    const cal = Number(($('#dietCalories') || {}).value) || 0;
-    btn.textContent = cal > 0 ? `+ Add Food \u00b7 ${cal} cal` : '+ Add Food';
-  }
-  function setupServingStepper() {
-    const inp = $('#dietServings');
-    if (!inp || $('.serv-step')) return;
-    const grp = inp.closest('.form-group'); if (grp) grp.classList.add('serv-stepper-group');
-    const mk = (txt, delta) => {
-      const b = document.createElement('button');
-      b.type = 'button'; b.className = 'serv-step'; b.textContent = txt;
-      b.addEventListener('click', () => {
-        let v = Number(inp.value) || 1;
-        v = Math.max(0.5, Math.round((v + delta) * 2) / 2);
-        inp.value = v;
-        inp.dispatchEvent(new Event('input', { bubbles: true })); // diet.js recalcs macros
-        updateAddLabel();
-      });
-      return b;
-    };
-    inp.parentNode.insertBefore(mk('\u2212', -0.5), inp);
-    inp.parentNode.insertBefore(mk('+', 0.5), inp.nextSibling);
-    const cal = $('#dietCalories'); if (cal) cal.addEventListener('input', updateAddLabel);
-    updateAddLabel();
-  }
-
-  // ---------- Command palette (\u2318K) ----------
-  const VIEWS = [['dashboard','Today'],['tasks','All Tasks'],['board','Board'],['calendar','Calendar'],['training','Training'],['diet','Diet'],['settings','Settings']];
+  // ---------- Command palette (\u2318K), spec 10.6 ----------
+  // Groups: Exercises, Tasks, Foods, Cardio, Views, then "Run as a command",
+  // which hands the text to the voice sheet so its results and undo show.
+  const VIEWS = [['today','Today','today'],['tasks','Tasks','check_circle'],['board','Board','view_kanban'],['calendar','Calendar','calendar_month'],['training','Training','fitness_center'],['diet','Diet','restaurant'],['insights','Insights','insights'],['settings','Settings','settings']];
   let cmdRows = [], cmdSel = 0;
   function ensurePalette() {
     if ($('#cmdPalette')) return;
     const wrap = document.createElement('div');
     wrap.id = 'cmdPalette'; wrap.className = 'cmd-overlay';
-    wrap.innerHTML = `<div class="cmd-box">
-        <div class="cmd-input-row"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input id="cmdInput" type="text" placeholder="Search tasks, foods, exercises \u2014 or type a command\u2026" autocomplete="off">
-          <kbd class="cmd-esc">esc</kbd></div>
-        <div id="cmdResults" class="cmd-results"></div>
-        <div class="cmd-foot"><span><b>\u2191\u2193</b> navigate</span><span><b>\u21b5</b> open</span><span><b>\u2318K</b> anytime</span></div>
+    wrap.innerHTML = `<div class="cmd-box" role="dialog" aria-modal="true" aria-label="Search and commands">
+        <div class="cmd-input-row"><span class="ms" aria-hidden="true">search</span>
+          <input id="cmdInput" type="text" placeholder="Search, or type a command" autocomplete="off" role="combobox" aria-expanded="true" aria-controls="cmdResults" aria-autocomplete="list">
+          <kbd class="cmd-esc">Esc</kbd></div>
+        <div id="cmdResults" class="cmd-results" role="listbox"></div>
+        <div class="cmd-foot"><span><b>\u2191\u2193</b> move</span><span><b>\u21b5</b> open</span><span><b>Ctrl K</b> anytime</span></div>
       </div>`;
     document.body.appendChild(wrap);
     wrap.addEventListener('click', e => { if (e.target === wrap) closePalette(); });
@@ -190,36 +162,60 @@
   // invisible on the device this app is mainly used on.
   window.openPalette = openPalette;
   window.closePalette = closePalette;
+  const go = (view) => { if (typeof switchView === 'function') switchView(view); };
+  function logFood(name) {
+    const meal = (typeof defaultMealForNow === 'function') ? defaultMealForNow() : 'snack';
+    go('diet');
+    if (typeof dietViewDate !== 'undefined') dietViewDate = getTodayStr();
+    const before = state.diet.length;
+    quickAddToMeal(meal, { name: name, data: state.customFoods[name] }, false);
+    const entry = state.diet.length > before ? state.diet[state.diet.length - 1] : null;
+    if (!entry) return;
+    showToast(`${name} added to ${meal} \u00b7 Undo`, () => {
+      state.diet = state.diet.filter(e => e !== entry);
+      saveData(state); render();
+    });
+  }
   function renderPaletteResults(q) {
     const query = (q || '').trim().toLowerCase();
     const rows = [];
-    VIEWS.filter(v => !query || v[1].toLowerCase().includes(query))
-      .forEach(v => rows.push({ group: 'Go to', label: v[1], run: () => { closePalette(); if (typeof switchView === 'function') switchView(v[0]); } }));
     if (query && typeof state !== 'undefined') {
-      (state.tasks || []).filter(t => t.name && t.name.toLowerCase().includes(query)).slice(0, 6)
-        .forEach(t => rows.push({ group: 'Tasks', label: t.name, sub: (t.status || '').replace('-', ' '), run: () => { closePalette(); if (typeof openModal === 'function') openModal(t.id); } }));
-      Object.keys(state.customFoods || {}).filter(f => f.toLowerCase().includes(query)).slice(0, 5)
-        .forEach(f => rows.push({ group: 'Foods', label: f, sub: 'log in Diet', run: () => { closePalette(); if (typeof switchView === 'function') switchView('diet'); const inp = $('#dietFoodName'); if (inp) { inp.value = f; inp.dispatchEvent(new Event('input', { bubbles: true })); inp.focus(); } } }));
       [...new Set((state.gym || []).map(e => e.exercise))].filter(x => x && x.toLowerCase().includes(query)).slice(0, 5)
-        .forEach(x => rows.push({ group: 'Exercises', label: x, sub: 'open Training', run: () => { closePalette(); if (typeof switchView === 'function') switchView('gym'); const inp = $('#gymExerciseName'); if (inp) { inp.value = x; inp.focus(); } } }));
-      // Cardio was searchable nowhere \u2014 "ride" or "run" now finds the log.
+        .forEach(x => rows.push({ group: 'Exercises', icon: 'fitness_center', label: x, sub: 'log a set', run: () => {
+          closePalette(); go('training');
+          if (typeof setTrainingTab === 'function') setTrainingTab('strength');
+          if (typeof openGymLogSheet === 'function') openGymLogSheet(x);
+        } }));
+      (state.tasks || []).filter(t => t.name && t.name.toLowerCase().includes(query)).slice(0, 6)
+        .forEach(t => {
+          const cat = (state.categories || []).find(c => c.id === t.category);
+          rows.push({ group: 'Tasks', icon: t.status === 'done' ? 'task_alt' : 'check_circle', label: t.name, sub: cat ? cat.name : (t.status || '').replace('-', ' '), run: () => { closePalette(); if (typeof openTaskSheet === 'function') openTaskSheet(t.id); } });
+        });
+      const meal = (typeof defaultMealForNow === 'function') ? defaultMealForNow() : 'snack';
+      Object.keys(state.customFoods || {}).filter(f => f.toLowerCase().includes(query)).slice(0, 5)
+        .forEach(f => rows.push({ group: 'Foods', icon: 'restaurant', label: f, sub: 'add to ' + meal, run: () => { closePalette(); logFood(f); } }));
+      // Cardio was searchable nowhere — "ride" or "run" now finds the log.
       [...new Set((state.cardio || []).map(c => c && c.type).filter(Boolean))]
         .filter(t => t.toLowerCase().includes(query)).slice(0, 3)
         .forEach(t => rows.push({
-          group: 'Cardio', label: t.charAt(0).toUpperCase() + t.slice(1), sub: 'open Training',
-          run: () => { closePalette(); if (typeof switchView === 'function') switchView('cardio'); },
+          group: 'Cardio', icon: 'directions_run', label: t.charAt(0).toUpperCase() + t.slice(1), sub: 'open Cardio',
+          run: () => { closePalette(); go('cardio'); },
         }));
-      rows.push({ group: 'Command', label: `Run \u201c${q.trim()}\u201d as a command`, sub: 'e.g. log 40 oz water, add task pay rent tomorrow', cmd: true, run: () => { closePalette(); if (typeof runVoiceCommand === 'function') runVoiceCommand(q.trim()); } });
+    }
+    VIEWS.filter(v => !query || v[1].toLowerCase().includes(query))
+      .forEach(v => rows.push({ group: 'Views', icon: v[2], label: v[1], run: () => { closePalette(); go(v[0]); } }));
+    if (query) {
+      rows.push({ group: 'Run as a command', icon: 'mic', label: `\u201c${q.trim()}\u201d`, sub: 'Enter', cmd: true, run: () => { closePalette(); if (typeof openVoicePanel === 'function') openVoicePanel(q.trim()); } });
     }
     cmdRows = rows; cmdSel = 0;
     const host = $('#cmdResults');
     if (!rows.length) { host.innerHTML = '<div class="cmd-empty">No matches</div>'; return; }
     let lastGroup = '';
     host.innerHTML = rows.map((r, i) => {
-      const head = r.group !== lastGroup ? `<div class="cmd-group">${r.group}</div>` : '';
+      const head = r.group !== lastGroup ? `<div class="cmd-group" role="presentation">${r.group}</div>` : '';
       lastGroup = r.group;
-      return head + `<div class="cmd-row${i === 0 ? ' sel' : ''}${r.cmd ? ' cmd-run' : ''}" data-idx="${i}">
-          <span class="cmd-row-label">${escLabel(r.label)}</span>${r.sub ? `<span class="cmd-row-sub">${escLabel(r.sub)}</span>` : ''}</div>`;
+      return head + `<div class="cmd-row${i === 0 ? ' sel' : ''}${r.cmd ? ' cmd-run' : ''}" data-idx="${i}" role="option" aria-selected="${i === 0}">
+          <span class="ms" aria-hidden="true">${r.icon}</span><span class="cmd-row-label">${escLabel(r.label)}</span>${r.sub ? `<span class="cmd-row-sub">${escLabel(r.sub)}</span>` : ''}</div>`;
     }).join('');
     $$('.cmd-row', host).forEach(el => {
       el.addEventListener('mouseenter', () => setPaletteSel(Number(el.dataset.idx)));
@@ -228,7 +224,11 @@
   }
   function setPaletteSel(i) {
     cmdSel = Math.max(0, Math.min(cmdRows.length - 1, i));
-    $$('.cmd-row').forEach(el => el.classList.toggle('sel', Number(el.dataset.idx) === cmdSel));
+    $$('.cmd-row').forEach(el => {
+      const on = Number(el.dataset.idx) === cmdSel;
+      el.classList.toggle('sel', on);
+      el.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
     const sel = $('.cmd-row.sel'); if (sel) sel.scrollIntoView({ block: 'nearest' });
   }
   function paletteKeydown(e) {
@@ -238,36 +238,31 @@
     else if (e.key === 'Escape') { e.preventDefault(); closePalette(); }
   }
 
-  // ---------- Wrap globals so our extras rebuild on every render ----------
-  function wrap(name, extra) {
-    const fn = window[name];
-    if (typeof fn !== 'function' || fn.__daylignWrapped) return;
-    const wrapped = function () {
-      const r = fn.apply(this, arguments);
-      try { extra(); } catch (e) { /* never let an extra break the app */ }
-      return r;
-    };
-    wrapped.__daylignWrapped = true;
-    window[name] = wrapped;
-  }
-
   function bind() {
     initTheme();
 
-    const moreBtn = $('#moreNavBtn'); if (moreBtn) moreBtn.addEventListener('click', openMore);
-    const sheet = $('#moreSheet'); if (sheet) sheet.addEventListener('click', e => { if (e.target === sheet) closeMore(); });
-    $$('.more-item[data-view]').forEach(b => b.addEventListener('click', () => {
+    const avatarBtn = $('#headerAvatar'); if (avatarBtn) avatarBtn.addEventListener('click', openMore);
+    $$('.avatar-item[data-view]').forEach(b => b.addEventListener('click', () => {
       if (typeof switchView === 'function') switchView(b.dataset.view);
       closeMore();
     }));
 
-    const themeBtn = $('#themeToggleBtn'); if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
-    const moreTheme = $('#moreThemeToggle'); if (moreTheme) moreTheme.addEventListener('click', toggleTheme);
+    fillSidebarDate();
+    fillAvatarSheet();
+    refreshReportBadges();
+
+
+    // Sidebar search and its Ctrl K hint both open the command palette.
+    const sideSearch = $('#sidebarSearch');
+    if (sideSearch) sideSearch.addEventListener('click', () => {
+      if (typeof window.openPalette === 'function') window.openPalette();
+      else { const i = document.getElementById('searchInput'); if (i) i.focus(); }
+    });
 
     $$('.bms-btn').forEach(b => b.addEventListener('click', () => setBoardCol(b.dataset.col)));
     setBoardCol('todo');
     updateBoardCounts();
-    $$('.nav-btn, .more-item, .bottom-nav-btn').forEach(b => b.addEventListener('click', () => setTimeout(updateBoardCounts, 80)));
+    $$('.nav-btn, .bottom-nav-btn').forEach(b => b.addEventListener('click', () => setTimeout(updateBoardCounts, 80)));
 
     // Cmd/Ctrl-K → the command palette (fuzzy search across the app + run NL commands)
     document.addEventListener('keydown', e => {
@@ -275,15 +270,7 @@
         e.preventDefault();
         openPalette();
       }
-      if (e.key === 'Escape') closeMore();
     });
-
-    setupServingStepper();
-
-    // Hook renders and paint our extras once for the initial view.
-    wrap('renderCalendar', buildAgenda);
-    wrap('renderDiet', function () { setupServingStepper(); updateAddLabel(); });
-    buildAgenda();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);

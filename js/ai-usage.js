@@ -49,17 +49,20 @@ function logAiCall(feature, model, usage) {
   if (typeof renderAiUsageReport === 'function') renderAiUsageReport();
 }
 
-// Roll the whole log into totals + per-feature + per-day views.
-function aiUsageSummary() {
+// Roll the log into totals + per-feature + per-day views. `days` limits it to
+// the last N days (today included); leave it out for everything.
+function aiUsageSummary(days) {
   const log = state.aiUsage || {};
+  const since = days ? offsetDateStr(getTodayStr(), -(days - 1)) : '';
   const totals = { calls: 0, inTok: 0, outTok: 0, cost: 0 };
   const byFeature = {};
   const byDay = [];
-  Object.keys(log).sort().reverse().forEach(date => {
-    const day = log[date];
+  Object.keys(log).filter(d => d >= since).sort().reverse().forEach(date => {
+    const day = log[date] || {};
     let dayCost = 0, dayCalls = 0;
     Object.keys(day).forEach(feature => {
       const s = day[feature];
+      if (!s) return;
       const cost = estimateAiCost(s.inTok, s.outTok, s.model);
       totals.calls += s.calls; totals.inTok += s.inTok; totals.outTok += s.outTok; totals.cost += cost;
       dayCost += cost; dayCalls += s.calls;
@@ -84,53 +87,61 @@ function fmtTok(n) {
   return String(n);
 }
 
-const AI_FEATURE_LABELS = { photo: '📷 Photo logging', voice: '🎙️ Voice commands' };
+const AI_FEATURE_LABELS = { photo: 'Photo food logging', voice: 'Voice commands' };
+// The colour each feature is drawn in: photos log food, voice is the other one.
+const AI_FEATURE_COLOR = { photo: 'food', voice: 'water' };
 
+// Settings, AI (spec 10.1): totals, by feature, by day. Reads only.
 function renderAiUsageReport() {
   const host = document.getElementById('aiUsageReport');
   if (!host) return;
-  const { totals, byFeature, byDay } = aiUsageSummary();
+  const month = aiUsageSummary(30);
+  let html;
 
-  if (!totals.calls) {
-    host.innerHTML = '<p class="ai-usage-empty">No AI calls yet. Photo logging and voice commands will show up here once you use them.</p>';
-    return;
+  if (!aiUsageSummary().totals.calls) {
+    html = '<div class="dl-card"><div class="dl-card-h"><span>Usage</span></div>' +
+      '<p class="set-sub">No AI calls yet. Photo logging and voice show up here once you use them.</p></div>';
+  } else {
+    const top = Math.max.apply(null, Object.keys(month.byFeature).map(f => month.byFeature[f].cost).concat([0]));
+    const features = Object.keys(month.byFeature).sort((a, b) => month.byFeature[b].cost - month.byFeature[a].cost).map(f => {
+      const s = month.byFeature[f];
+      return `<div class="set-ai-feat">
+        <div><span>${esc(AI_FEATURE_LABELS[f] || f)}</span><b>${fmtUsd(s.cost)} · ${s.calls} call${s.calls === 1 ? '' : 's'}</b></div>
+        <span class="dl-meter c-${AI_FEATURE_COLOR[f] || 'water'}"><i style="width:${top ? Math.round((s.cost / top) * 100) : 0}%"></i></span>
+      </div>`;
+    }).join('');
+
+    // Fourteen calendar days, oldest first, so a quiet day is a visible stub
+    // and not a missing column.
+    const today = getTodayStr();
+    const days = [];
+    for (let i = 13; i >= 0; i--) {
+      const date = offsetDateStr(today, -i);
+      const hit = month.byDay.find(d => d.date === date);
+      days.push({ date: date, cost: hit ? hit.cost : 0, calls: hit ? hit.calls : 0 });
+    }
+    const max = Math.max.apply(null, days.map(d => d.cost));
+    const spent = days.reduce((a, d) => a + d.cost, 0);
+    const best = days.reduce((a, d) => (d.cost > a.cost ? d : a), days[0]);
+    const cols = days.map(d => `<div class="ins-col" title="${esc(formatDate(d.date))}: ${fmtUsd(d.cost)}, ${d.calls} call${d.calls === 1 ? '' : 's'}">` +
+      `<span class="ins-bar${d.cost > 0 ? '' : ' is-zero'}" style="height:${max ? Math.max(4, Math.round((d.cost / max) * 100)) : 0}%"></span></div>`).join('');
+
+    html = `
+      <div class="dl-tiles set-ai-tiles">
+        <div class="dl-tile"><b>${fmtUsd(month.totals.cost)}</b><span>last 30 days</span></div>
+        <div class="dl-tile"><b>${month.totals.calls}</b><span>requests</span></div>
+      </div>
+      <div class="dl-card">
+        <div class="dl-card-h"><span>By feature</span><em>30 days</em></div>
+        ${features || '<p class="set-sub">Nothing in the last 30 days.</p>'}
+      </div>
+      <div class="dl-card">
+        <div class="dl-card-h"><span>By day</span><em>14 days</em></div>
+        <div class="ins-barwrap c-water" role="img" aria-label="Estimated cost per day, last 14 days: ${fmtUsd(spent)} in total${max ? ', most on ' + esc(formatDate(best.date)) + ' at ' + fmtUsd(best.cost) : ''}"><div class="ins-bars">${cols}</div></div>
+        <div class="ins-axis"><span>${esc(formatDate(days[0].date))}</span><span>today</span></div>
+        <div class="ins-stats"><span>total <b>${fmtUsd(spent)}</b></span>${max ? `<span>most <b>${fmtUsd(best.cost)}</b> on ${esc(formatDate(best.date))}</span>` : ''}</div>
+      </div>
+      <p class="set-note">An estimate from token counts, not your bill. The billed total is at console.anthropic.com, under Usage.</p>`;
   }
-
-  const featureRows = Object.keys(byFeature).map(f => {
-    const s = byFeature[f];
-    return `<div class="ai-usage-frow">
-      <span class="ai-usage-fname">${AI_FEATURE_LABELS[f] || f}</span>
-      <span class="ai-usage-fcalls">${s.calls} call${s.calls === 1 ? '' : 's'}</span>
-      <span class="ai-usage-ftok">${fmtTok(s.inTok)} in · ${fmtTok(s.outTok)} out</span>
-      <span class="ai-usage-fcost">${fmtUsd(s.cost)}</span>
-    </div>`;
-  }).join('');
-
-  const dayRows = byDay.slice(0, 14).map(d => `
-    <div class="ai-usage-drow">
-      <span>${formatDate(d.date)}</span>
-      <span>${d.calls} call${d.calls === 1 ? '' : 's'}</span>
-      <span>${fmtUsd(d.cost)}</span>
-    </div>`).join('');
-
-  host.innerHTML = `
-    <div class="ai-usage-totals">
-      <div class="ai-usage-total">
-        <span class="ai-usage-total-val">${totals.calls}</span>
-        <span class="ai-usage-total-lbl">calls</span>
-      </div>
-      <div class="ai-usage-total">
-        <span class="ai-usage-total-val">${fmtTok(totals.inTok + totals.outTok)}</span>
-        <span class="ai-usage-total-lbl">tokens</span>
-      </div>
-      <div class="ai-usage-total">
-        <span class="ai-usage-total-val">${fmtUsd(totals.cost)}</span>
-        <span class="ai-usage-total-lbl">est. cost</span>
-      </div>
-    </div>
-    <div class="ai-usage-section-label">By feature</div>
-    <div class="ai-usage-features">${featureRows}</div>
-    <div class="ai-usage-section-label">By day</div>
-    <div class="ai-usage-days">${dayRows}</div>
-    <p class="ai-usage-note">Estimated from token usage × each model's public rate. For your actual billed total, see console.anthropic.com → Usage.</p>`;
+  if (host._html !== html) { host.innerHTML = html; host._html = html; }
 }

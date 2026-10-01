@@ -119,57 +119,24 @@ function csvRowsToTasks(rows, map, projectId) {
 }
 
 // ---- UI ----
+// The import is a page in Settings (Data, Import a spreadsheet). It was a modal
+// built on the fly; the fields are static markup now and keep what was pasted
+// while you go and check something else.
 let csvPreview = [];
 
 function openCsvImport() {
-  const old = document.getElementById('csvImport');
-  if (old) old.remove();
-
-  const projects = state.projects || [];
-  const wrap = document.createElement('div');
-  wrap.className = 'modal-overlay active';
-  wrap.id = 'csvImport';
-  wrap.innerHTML = `
-    <div class="modal csv-modal">
-      <div class="modal-header">
-        <div class="modal-header-left">
-          <div>
-            <h2>Import from a spreadsheet</h2>
-            <p class="modal-subtitle">Paste the sheet, including its header row</p>
-          </div>
-        </div>
-        <button class="modal-close" id="csvClose" aria-label="Close">&times;</button>
-      </div>
-      <div class="csv-body">
-        <textarea id="csvText" class="csv-text" placeholder="Title,Status,Due,Reported by
-Login fails on Safari,Open,2026-09-01,Rishi
-Sleep shows 15 hours,In Progress,,Ana"></textarea>
-        <div class="csv-row">
-          <label for="csvProject">Add to project</label>
-          <select id="csvProject">
-            <option value="">No project</option>
-            ${projects.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}
-          </select>
-        </div>
-        <div class="csv-preview" id="csvPreviewBox" hidden></div>
-      </div>
-      <div class="csv-actions">
-        <button type="button" class="btn-secondary" id="csvCancel">Cancel</button>
-        <button type="button" class="btn-primary" id="csvGo" disabled>Import</button>
-      </div>
-    </div>`;
-  document.body.appendChild(wrap);
-
-  const close = () => wrap.remove();
-  document.getElementById('csvClose').addEventListener('click', close);
-  document.getElementById('csvCancel').addEventListener('click', close);
-  wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
-
+  if (typeof openSettingsPage === 'function') openSettingsPage('import');
   const ta = document.getElementById('csvText');
+  if (ta) setTimeout(() => ta.focus(), 80);
+}
+
+function bindCsvImport() {
+  const ta = document.getElementById('csvText');
+  if (!ta || ta._bound) return;
+  ta._bound = true;
   ta.addEventListener('input', refreshCsvPreview);
   document.getElementById('csvProject').addEventListener('change', refreshCsvPreview);
   document.getElementById('csvGo').addEventListener('click', runCsvImport);
-  setTimeout(() => ta.focus(), 80);
 }
 
 // Preview before writing anything. An import that silently creates 60 wrong
@@ -179,50 +146,64 @@ function refreshCsvPreview() {
   const go = document.getElementById('csvGo');
   const text = document.getElementById('csvText').value;
   const projectId = document.getElementById('csvProject').value || null;
+  const refuse = (html) => { box.hidden = false; box.innerHTML = html; go.disabled = true; go.textContent = 'Import'; csvPreview = []; };
 
-  if (!text.trim()) { box.hidden = true; go.disabled = true; csvPreview = []; return; }
+  if (!text.trim()) { box.hidden = true; box.innerHTML = ''; go.disabled = true; go.textContent = 'Import'; csvPreview = []; return; }
 
   const rows = parseCsv(text);
-  if (rows.length < 2) {
-    box.hidden = false;
-    box.innerHTML = '<p class="csv-warn">Needs a header row and at least one row under it.</p>';
-    go.disabled = true;
-    return;
-  }
+  if (rows.length < 2) { refuse('<ul class="set-csv-warn"><li>Needs a header row and at least one row under it.</li></ul>'); return; }
 
   const map = guessColumns(rows[0]);
-  csvPreview = csvRowsToTasks(rows, map, projectId);
 
   // NOT `if (!map.name)`: a matched column is an INDEX, and the title is
   // almost always column A, so the successful case was index 0 and read as
   // falsy. Every well-formed sheet was rejected with "no column looks like a
   // title" until this used an explicit undefined check.
   if (map.name === undefined) {
-    box.hidden = false;
-    box.innerHTML = `<p class="csv-warn">No column looks like a title. Rename one to
-      <strong>Title</strong>, <strong>Summary</strong> or <strong>Issue</strong> and paste again.</p>
-      <p class="csv-cols">Found: ${rows[0].map(h => esc(String(h).trim()) || '—').join(' · ')}</p>`;
-    go.disabled = true;
+    refuse(`<ul class="set-csv-warn"><li>No column looks like a title. Rename one to Title, Summary or Issue and paste again.</li></ul>
+      <p class="set-csv-cols">Found: ${rows[0].map(h => esc(String(h).trim()) || '—').join(' · ')}</p>`);
     return;
   }
 
+  csvPreview = csvRowsToTasks(rows, map, projectId);
+
+  // What will not come across the way the sheet has it. Said before the
+  // import, because afterwards it is sixty tasks to check by hand.
+  const pick = (r, f) => (map[f] !== undefined ? String(r[map[f]] || '').trim() : '');
+  const body = rows.slice(1);
+  const named = body.filter(r => pick(r, 'name'));
+  const untitled = body.length - named.length;
+  const warns = [];
+  if (map.dueDate === undefined) {
+    warns.push('No due-date column found, so every task imports without a date.');
+  } else {
+    const noDate = named.filter(r => !pick(r, 'dueDate')).length;
+    const badDate = named.filter(r => pick(r, 'dueDate') && !csvDate(pick(r, 'dueDate'))).length;
+    if (noDate) warns.push(`${noDate} ${noDate === 1 ? 'has' : 'have'} no date.`);
+    if (badDate) warns.push(`${badDate} ${badDate === 1 ? 'date' : 'dates'} could not be read, so ${badDate === 1 ? 'it imports' : 'they import'} without one.`);
+  }
+  if (untitled) warns.push(`${untitled} row${untitled === 1 ? ' has' : 's have'} no title and ${untitled === 1 ? 'is' : 'are'} skipped.`);
+
   const matched = Object.keys(map).map(f => `${f} &larr; ${esc(String(rows[0][map[f]]).trim())}`);
   const counts = csvPreview.reduce((a, t) => { a[t.status] = (a[t.status] || 0) + 1; return a; }, {});
+  const n = csvPreview.length;
+  const label = { todo: 'to do', 'in-progress': 'in progress', done: 'done' };
 
   box.hidden = false;
   box.innerHTML = `
-    <p class="csv-ok"><strong>${csvPreview.length}</strong> task${csvPreview.length === 1 ? '' : 's'} ready
-      &middot; ${Object.keys(counts).map(k => `${counts[k]} ${k}`).join(', ')}</p>
-    <p class="csv-cols">${matched.join('<br>')}</p>
-    <div class="csv-rows">
+    <p class="set-csv-ok"><b>${n}</b> row${n === 1 ? '' : 's'} ready${n ? ' · ' + Object.keys(counts).map(k => `${counts[k]} ${label[k] || k}`).join(', ') : ''}</p>
+    ${warns.length ? `<ul class="set-csv-warn">${warns.map(w => `<li>${w}</li>`).join('')}</ul>` : ''}
+    <p class="set-csv-cols">${matched.join(' · ')}</p>
+    <div class="set-csv-rows">
       ${csvPreview.slice(0, 5).map(t => `
-        <div class="csv-rowitem">
-          <span class="csv-rowname">${esc(t.name)}</span>
-          <span class="csv-rowmeta">${t.status}${t.dueDate ? ' &middot; due ' + esc(t.dueDate) : ''}</span>
+        <div class="set-csv-rowitem">
+          <span>${esc(t.name)}</span>
+          <span>${label[t.status] || t.status}${t.dueDate ? ' · due ' + esc(t.dueDate) : ''}</span>
         </div>`).join('')}
-      ${csvPreview.length > 5 ? `<p class="csv-more">and ${csvPreview.length - 5} more</p>` : ''}
+      ${n > 5 ? `<p class="set-csv-more">and ${n - 5} more</p>` : ''}
     </div>`;
-  go.disabled = csvPreview.length === 0;
+  go.disabled = n === 0;
+  go.textContent = n ? `Import ${n} task${n === 1 ? '' : 's'}` : 'Import';
 }
 
 function runCsvImport() {
@@ -241,8 +222,9 @@ function runCsvImport() {
   if (typeof haptic === 'function') haptic('success');
   const n = csvPreview.length;
   csvPreview = [];
-  const el = document.getElementById('csvImport');
-  if (el) el.remove();
+  const ta = document.getElementById('csvText');
+  if (ta) ta.value = '';
+  refreshCsvPreview();
   render();
-  if (typeof showToast === 'function') showToast(`Imported ${n} task${n === 1 ? '' : 's'}`);
+  if (typeof showToast === 'function') showToast(`Imported ${n} task${n === 1 ? '' : 's'} · View`, () => switchView('tasks'));
 }

@@ -92,7 +92,8 @@ function coachWorkoutPick(s) {
     detail = `Try ${rec.suggestion}`;
   }
 
-  return { group: rec.day, label: rec.label, focus: rec.focus, detail, reason: rec.reason };
+  // `move` rides along so "Start it" can open the log sheet on that lift.
+  return { group: rec.day, label: rec.label, focus: rec.focus, detail, reason: rec.reason, move };
 }
 
 // Should volume go up, hold, or come down.
@@ -191,7 +192,14 @@ function coachRecovery(s) {
 function renderCoach() {
   const host = document.getElementById('coachPanel');
   if (!host) return;
-  if (!(state.gym || []).length) { host.innerHTML = ''; host.className = ''; return; }
+  // Empty until the first gym entry: with nothing logged every line below would
+  // be advice about data that does not exist.
+  const empty = !(state.gym || []).length;
+  const emptyEl = document.getElementById('coachEmpty');
+  const body = document.getElementById('coachBody');
+  if (emptyEl) emptyEl.hidden = !empty;
+  if (body) body.hidden = empty;
+  if (empty) { host.innerHTML = ''; return; }
 
   const s = coachSnapshot();
   const d = coachDecision(s);
@@ -201,41 +209,57 @@ function renderCoach() {
 
   // Evidence chips — every verdict shows the numbers behind it.
   const chips = [];
-  if (s.readiness) chips.push(`Readiness ${s.readiness.score}`);
-  if (s.daysSinceLast !== null) chips.push(s.daysSinceLast === 0 ? 'Trained today' : `${s.daysSinceLast}d since last`);
-  chips.push(`${s.last7} sessions / 7d`);
-  if (s.stalled.length) chips.push(`${s.stalled.length} stalled`);
+  if (s.readiness) chips.push(['sleep', `Readiness ${s.readiness.score}`]);
+  if (s.daysSinceLast !== null) chips.push(['move', s.daysSinceLast === 0 ? 'Trained today' : `Last session ${s.daysSinceLast}d ago`]);
+  chips.push(['move', `${s.last7} session${s.last7 === 1 ? '' : 's'} in 7 days`]);
+  if (s.stalled.length) chips.push(['food', `${s.stalled.length} stalled`]);
 
-  // #coachPanel is itself the panel now — it lives inside the merged coach card,
-  // so it no longer wraps its own .card (that would double-frame it).
-  host.className = `coach-panel coach-${d.tone}`;
+  // The cardio coach's first line is its most important one; the run/ride
+  // detail behind it lives on the Cardio tab.
+  const cardioOn = typeof moduleEnabled !== 'function' || moduleEnabled('cardio');
+  const cardioRec = (cardioOn && typeof cardioCoach === 'function') ? cardioCoach()[0] : null;
+
+  const stop = (t) => /[.!?]$/.test(t) ? t : t + '.';
+  const row = (k, title, html) => `
+    <div class="co-row c-${k}"><span class="co-sw"></span><div class="co-row-b"><b>${title}</b><div class="co-row-t">${html}</div></div></div>`;
+
   host.innerHTML = `
-      <div class="coach-verdict">
-        <span class="coach-icon">${d.icon}</span>
-        <div class="coach-verdict-body">
-          <div class="coach-verdict-title">${esc(d.verdict)}</div>
-          <div class="coach-verdict-line">${esc(d.line)}</div>
-        </div>
-      </div>
+    <p class="co-say"><b>${esc(stop(d.verdict))}</b> <span>${esc(d.line)}</span></p>
+    <div class="co-chips">${chips.map(x => `<span class="dl-chip c-${x[0]}">${esc(x[1])}</span>`).join('')}</div>
+    <div class="dl-card co-card">
+      ${pick && !s.trainedToday && !pick.recovery ? row('move', 'Do this',
+        `${esc(pick.label)}${pick.focus && pick.focus.length ? ': ' + esc(pick.focus.join(', ').toLowerCase()) : ''}. ${esc(stop(pick.detail))}
+         <button type="button" class="cd-link co-start" data-coach-start>Start it</button>`) : ''}
+      ${row('food', 'Volume', esc(vol.text))}
+      ${row('sleep', 'Recovery', esc(rec))}
+      ${cardioRec ? row('water', 'Cardio', esc(cardioRec.text)) : ''}
+    </div>`;
+  bindCoach();
+}
 
-      <div class="coach-chips">${chips.map(c => `<span class="coach-chip">${esc(c)}</span>`).join('')}</div>
+// "Start it" (spec 7, new): the advice arrives as a log sheet for today with
+// the lift and last session's numbers already in it.
+function coachStart() {
+  if (typeof openGymLogSheet !== 'function') return;
+  const pick = coachWorkoutPick(coachSnapshot());
+  if (typeof gymViewDate !== 'undefined') gymViewDate = getTodayStr();
+  const m = pick && pick.move;
+  if (!m) { openGymLogSheet(); return; }
+  const last = (m.sessions && m.sessions[m.sessions.length - 1]) || {};
+  const reps = m.bodyweight ? m.typical : (last.bestReps || 8);
+  openGymLogSheet(m.name, [0, 1, 2].map(() => ({
+    reps: String(reps),
+    weight: m.bodyweight ? '' : String(last.topWeight || ''),
+  })));
+}
 
-      ${pick && !s.trainedToday && !pick.recovery ? `
-        <div class="coach-row">
-          <span class="coach-row-label">Do this</span>
-          <div class="coach-row-body">
-            <strong>${esc(pick.label)}</strong>${pick.focus ? `<div class="coach-focus">${pick.focus.map(f => `<span>${esc(f)}</span>`).join('')}</div>` : ''}
-            <div class="coach-row-detail">${esc(pick.detail)}</div>
-          </div>
-        </div>` : ''}
-
-      <div class="coach-row">
-        <span class="coach-row-label">Volume</span>
-        <div class="coach-row-body coach-${vol.tone}-text">${esc(vol.text)}</div>
-      </div>
-
-      <div class="coach-row">
-        <span class="coach-row-label">Recovery</span>
-        <div class="coach-row-body">${esc(rec)}</div>
-      </div>`;
+// #coachPanel survives every render; what is inside it does not.
+let coachBound = false;
+function bindCoach() {
+  const host = document.getElementById('coachPanel');
+  if (!host || coachBound) return;
+  coachBound = true;
+  host.addEventListener('click', (e) => {
+    if (e.target.closest('[data-coach-start]')) coachStart();
+  });
 }

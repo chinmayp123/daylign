@@ -2,7 +2,7 @@
 
 Generated via office-hours, 2026-07-27
 Branch: main
-Repo: chinmayp123/todo-dashboard
+Repo: chinmayp123/daylign
 Status: DRAFT
 Mode: Builder
 

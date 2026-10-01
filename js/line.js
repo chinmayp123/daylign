@@ -1,0 +1,381 @@
+// ========== The line (v3, spec 4.3) ==========
+// One vertical time spine for the day: sleep, habits, meals, water, cardio,
+// events, workouts and timed tasks, in clock order, with a "now" marker.
+// Replaces Today's Scheduled lane, the schedule card, the reminders list and
+// the daily-ride pill.
+//
+// Reads state and writes nothing. The Done / Log it buttons call the same
+// handlers the old surfaces used, so logging still happens on a real click.
+// Reused later by Calendar and Diet, so it takes a date and returns markup.
+
+// Default clock positions for things that have no timestamp of their own.
+const LINE_SLOT = {
+  breakfast: 8 * 60, lunch: 12 * 60 + 30, snack: 16 * 60, dinner: 19 * 60 + 30,
+  brush_am: 7 * 60, morning: 7 * 60 + 5, brush_pm: 21 * 60 + 30,
+  cardio: 7 * 60 + 30,
+  // Settings, Workouts: the usual workout time, per device. Read each time,
+  // so changing it moves the planned session without a reload.
+  get workout() { return (typeof workoutSlotMin === 'function') ? workoutSlotMin() : 18 * 60 + 30; },
+};
+
+function lineMinutesNow() {
+  const d = new Date();
+  return d.getHours() * 60 + d.getMinutes();
+}
+
+function lineClock(min) {
+  if (min == null) return '';
+  const h = Math.floor(min / 60), m = Math.round(min % 60);
+  return h + ':' + String(m).padStart(2, '0');
+}
+
+// Entries gained an `at` (epoch ms) in v3; everything logged before that has
+// only a date. Falling back to the slot time keeps old days readable instead
+// of stacking them all at midnight.
+function lineMinutesFrom(at, fallbackMin) {
+  if (at) {
+    const d = new Date(Number(at));
+    if (!isNaN(d.getTime())) return d.getHours() * 60 + d.getMinutes();
+  }
+  return fallbackMin;
+}
+
+// Habit keys used to hold '1'. They hold a timestamp now, and both are read:
+// a '1' means done but at an unknown time, so it takes its default slot.
+function habitState(key, dateStr) {
+  let raw = null;
+  try { raw = localStorage.getItem('tf_' + key + '_' + dateStr); } catch (e) { raw = null; }
+  if (!raw) return { done: false, min: LINE_SLOT[key] };
+  const n = Number(raw);
+  if (raw === '1' || !isFinite(n) || n <= 1) return { done: true, min: LINE_SLOT[key] };
+  return { done: true, min: lineMinutesFrom(n, LINE_SLOT[key]) };
+}
+
+// ---------- which day the line is showing (spec 4.1) ----------
+// null means today, so an app left open across midnight rolls over on its own.
+// Session-only on purpose: it is where you are looking, not a setting. This is
+// what the v2 schedule card's < Today > buttons became.
+let lineViewDate = null;
+
+function lineShiftDay(n) {
+  const today = getTodayStr();
+  const next = n === 0 ? today : offsetDateStr(lineViewDate || today, n);
+  lineViewDate = next === today ? null : next;
+  if (typeof render === 'function') render();
+  if (typeof setHeaderDate === 'function') setHeaderDate();
+}
+
+function lineResetDay() { lineViewDate = null; }
+
+function lineDayLabel(dateStr) {
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+// When the usual session usually happens: the middle of the clock times logged
+// in the last 14 days, or the 7:30 slot when none carry a time yet (spec 4.3).
+function lineUsualCardioMin() {
+  const cutoff = (typeof offsetDateStr === 'function') ? offsetDateStr(getTodayStr(), -14) : '';
+  const mins = (state.cardio || [])
+    .filter(s => s && s.at && s.date >= cutoff)
+    .map(s => lineMinutesFrom(s.at, null))
+    .filter(m => m !== null && m !== undefined)
+    .sort((a, b) => a - b);
+  return mins.length ? mins[Math.floor(mins.length / 2)] : LINE_SLOT.cardio;
+}
+
+function lineItemsFor(dateStr) {
+  const items = [];
+  const isToday = dateStr === getTodayStr();
+  const push = (o) => { if (o) items.push(o); };
+
+  // ---- last night's sleep: always first, before any clock time ----
+  const sleepH = (typeof sleepHoursFor === 'function') ? sleepHoursFor(dateStr) : null;
+  if (sleepH !== null && sleepH !== undefined) {
+    const bed = (typeof sleepBedtimeFor === 'function') ? sleepBedtimeFor(dateStr) : null;
+    push({ sort: -1, time: bed || 'last night', c: 'sleep', icon: 'bedtime',
+           title: 'Sleep', sub: bed ? 'from ' + bed : 'last night',
+           val: sleepH + 'h', past: true, tap: 'sleep' });
+  }
+
+  // ---- habits ----
+  [['brush_am', 'Brush AM', 'dentistry'], ['morning', 'Morning routine', 'wb_sunny'],
+   ['brush_pm', 'Brush PM', 'dentistry']].forEach(([key, label, icon]) => {
+    const h = habitState(key, dateStr);
+    push({ sort: h.min, time: lineClock(h.min), c: 'habit', icon,
+           title: label, sub: key === 'morning' ? 'push ups, sit ups' : '',
+           val: h.done ? 'done' : '', past: h.done,
+           action: (!h.done && isToday) ? `<button type="button" class="dl-line-btn" data-line-habit="${key}">Done</button>` : '' });
+  });
+
+  // ---- meals ----
+  const meals = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snack: 'Snack' };
+  Object.keys(meals).forEach(meal => {
+    const entries = (state.diet || []).filter(e => e.date === dateStr && e.meal === meal);
+    const kcal = Math.round(entries.reduce((s, e) => s + (e.calories || 0), 0));
+    const at = entries.reduce((a, e) => (e.at && (!a || e.at < a) ? e.at : a), null);
+    const min = lineMinutesFrom(at, LINE_SLOT[meal]);
+    push({ sort: min, time: lineClock(min), c: 'food', icon: 'restaurant',
+           title: meals[meal],
+           sub: entries.length ? entries.map(e => e.food).filter(Boolean).slice(0, 3).join(', ') : 'nothing logged yet',
+           val: entries.length ? String(kcal) : '', past: entries.length > 0,
+           tap: 'meal:' + meal });
+  });
+
+  // ---- water: one aggregated row at the last add ----
+  const w = (state.water || {})[dateStr] || [];
+  if (w.length) {
+    const atList = ((state.waterAt || {})[dateStr]) || [];
+    const lastAt = atList.length ? atList[atList.length - 1] : null;
+    const min = lineMinutesFrom(lastAt, 14 * 60);
+    const total = w.reduce((s, v) => s + v, 0);
+    push({ sort: min, time: lineClock(min), c: 'water', icon: 'water_drop',
+           title: 'Water', sub: w.length + (w.length === 1 ? ' add' : ' adds'),
+           val: total + ' oz', past: true, tap: 'water' });
+  }
+
+  // ---- cardio ----
+  // Sessions store `duration` (minutes) and a unit that depends on the sport;
+  // this read `minutes` and wrote "mi" for everything, so a real ride showed no
+  // length and a swim showed yards as miles.
+  const CT = (typeof CARDIO_TYPES !== 'undefined') ? CARDIO_TYPES : {};
+  const cardioCfg = (t) => CT[t] || { label: 'Cardio', unit: 'mi', ms: 'directions_run' };
+  const rides = (state.cardio || []).filter(e => e.date === dateStr);
+  if (rides.length) {
+    rides.forEach(rd => {
+      const cfg = cardioCfg(rd.type);
+      const mins = Number(rd.duration) || Number(rd.minutes) || 0;
+      const min = lineMinutesFrom(rd.at, lineUsualCardioMin());
+      push({ sort: min, time: lineClock(min), c: 'move', icon: cfg.ms,
+             title: cfg.label, sub: mins ? Math.round(mins) + ' min' : '',
+             val: Number(rd.distance) ? rd.distance + ' ' + cfg.unit : '', past: true, tap: 'cardio' });
+    });
+  } else if (isToday && (typeof moduleEnabled !== 'function' || moduleEnabled('cardio'))) {
+    // Only when there IS a usual session to log: with no cardio history the
+    // row was a "Log it" button that did nothing.
+    const u = (typeof cardioUsual === 'function') ? cardioUsual() : null;
+    if (u && u.duration) {
+      const cfg = cardioCfg(u.type);
+      const min = lineUsualCardioMin();
+      push({ sort: min, time: lineClock(min), c: 'move', icon: cfg.ms,
+             title: 'Usual ' + cfg.label.toLowerCase(),
+             sub: u.duration + ' min' + (u.distance ? ' · ' + u.distance + ' ' + cfg.unit : '') + ', not logged yet', val: '',
+             action: '<button type="button" class="dl-line-btn" data-line-cardio>Log it</button>' });
+    }
+  }
+
+  // ---- logged workout ----
+  const gym = (state.gym || []).filter(e => e.date === dateStr);
+  if (gym.length) {
+    const sets = gym.reduce((s, e) => s + ((e.sets && e.sets.length) || 0), 0);
+    const full = (typeof isFullSession === 'function') ? isFullSession(dateStr) : sets >= 4;
+    const at = gym.reduce((a, e) => (e.at && (!a || e.at < a) ? e.at : a), null);
+    const min = lineMinutesFrom(at, LINE_SLOT.workout);
+    push({ sort: min, time: lineClock(min), c: 'move', icon: 'fitness_center',
+           title: full ? 'Workout' : 'Check-in',
+           sub: gym.map(e => e.exercise).filter(Boolean).slice(0, 3).join(', '),
+           val: sets + (sets === 1 ? ' set' : ' sets'), past: true, tap: 'strength' });
+  } else if (isToday) {
+    push({ sort: LINE_SLOT.workout, time: lineClock(LINE_SLOT.workout), c: 'move',
+           icon: 'fitness_center', title: 'Workout', sub: 'planned by the coach', val: '',
+           card: true, tap: 'strength' });
+  }
+
+  // ---- calendar events, own and mirrored ----
+  (state.events || []).filter(e => e.date === dateStr).forEach(ev => {
+    const m = String(ev.time || '').match(/(\d{1,2}):(\d{2})/);
+    const min = m ? Number(m[1]) * 60 + Number(m[2]) : 9 * 60;
+    // Value column is the duration (spec 4.3), when the event has an end.
+    const e2 = String(ev.endTime || '').match(/(\d{1,2}):(\d{2})/);
+    const len = (m && e2) ? (Number(e2[1]) * 60 + Number(e2[2])) - min : 0;
+    const dur = len > 0 ? (len >= 60 ? Math.round(len / 6) / 10 + 'h' : len + 'm') : '';
+    const key = (typeof CATEGORY_COLOR_KEYS !== 'undefined' && CATEGORY_COLOR_KEYS.indexOf(ev.color) !== -1) ? ev.color : 'meet';
+    push({ sort: min, time: lineClock(min), c: key, icon: 'event',
+           title: ev.name || 'Event', sub: ev.location || '', val: dur, keep: true,
+           past: isToday && min <= lineMinutesNow(), tap: 'event:' + ev.id });
+  });
+  if (typeof getExternalCalendar === 'function') {
+    getExternalCalendar(dateStr).forEach((ev, gi) => {
+      const m = String(ev.start || '').match(/(\d{1,2}):(\d{2})/);
+      const min = m ? Number(m[1]) * 60 + Number(m[2]) : 9 * 60;
+      push({ sort: min, time: lineClock(min), c: 'meet', icon: 'groups',
+             title: ev.title, sub: ev.location || 'from your calendar', val: '', keep: true,
+             past: isToday && min <= lineMinutesNow(), tap: 'gcal:' + dateStr + ':' + gi });
+    });
+  }
+
+  // ---- tasks that carry a time ----
+  // taskClockTime() (js/today.js) also reads the existing `scheduledHour`, which
+  // is what the task form actually writes. Without it every task the v2 Schedule
+  // lane held would have vanished from the app: not in the tray (it has a time)
+  // and not on the line (it has no `time`).
+  const clockOf = (t) => (typeof taskClockTime === 'function' ? taskClockTime(t) : t.time);
+  (state.tasks || []).filter(t => t && t.dueDate === dateStr && clockOf(t)).forEach(t => {
+    const m = String(clockOf(t)).match(/(\d{1,2}):(\d{2})/);
+    if (!m) return;
+    const min = Number(m[1]) * 60 + Number(m[2]);
+    const cat = (state.categories || []).find(c => c.id === t.category);
+    push({ sort: min, time: lineClock(min), c: (cat && cat.color) || '', icon: 'check_circle',
+           title: t.name, sub: '', val: (typeof taskEstimateText === 'function' ? taskEstimateText(t) : ''), keep: true,
+           past: t.status === 'done', card: t.priority === 'high', tap: 'task:' + t.id });
+  });
+
+  return items.sort((a, b) => a.sort - b.sort);
+}
+
+// hostId lets Calendar render the selected day's spine into its own container
+// with the same code Today uses — the line is one component, not two.
+function renderLine(dateStr, hostId, opts) {
+  const host = document.getElementById(hostId || 'dayLine');
+  if (!host) return;
+  const date = dateStr || (typeof dietViewDate !== 'undefined' && dietViewDate) || getTodayStr();
+  const isToday = date === getTodayStr();
+  // Today's line owns the day stepper, the swipe and the tray's anchor. Any
+  // other host (Calendar's #calDayLine) is a plain read of one day.
+  const isMain = host.id === 'dayLine';
+  let items = lineItemsFor(date);
+  // `logged`: drop the unfilled placeholders (a meal with nothing in it, a
+  // habit not ticked). Today wants them — they are the prompt to log. Calendar
+  // does not: on some other day they are seven rows saying nothing happened.
+  // Events and timed tasks are never placeholders (`keep`); an event with no
+  // end time or a task with no length used to vanish from Calendar here.
+  if (opts && opts.logged) items = items.filter(it => it.keep || it.past || it.val || it.action);
+
+  // The day these rows belong to, for taps that open another screen on it.
+  host.dataset.lineDate = date;
+  if (!items.length) { host.innerHTML = ''; host.hidden = true; return; }
+  host.hidden = false;
+
+  const now = lineMinutesNow();
+  // Where the spine changes from the day's colours to plain ink. Off the end
+  // on a past day so the whole spine reads as done.
+  let cut = date > getTodayStr() ? 0 : 100;   // a day that has not happened is all ink
+  if (isToday) {
+    const first = items[0].sort < 0 ? 0 : items[0].sort;
+    const last = items[items.length - 1].sort;
+    const span = Math.max(1, last - first);
+    cut = Math.max(0, Math.min(100, ((now - first) / span) * 100));
+  }
+
+  let html = '';
+  let markerPlaced = !isToday;
+  items.forEach(it => {
+    if (!markerPlaced && it.sort > now) {
+      html += `<div class="dl-now"${isMain ? ' id="dlNowMarker"' : ''}><span>now ${lineClock(now)}</span></div>`;
+      markerPlaced = true;
+    }
+    const past = it.past || (isToday && it.sort <= now && it.val);
+    const cls = ['dl-line-item', past ? 'past' : '', it.card ? 'card' : '', it.c ? 'c-' + it.c : ''].filter(Boolean).join(' ');
+    html += `<div class="${cls}"${it.tap ? ` data-line-tap="${esc(it.tap)}"` : ''}>
+      <span class="t">${esc(it.time)}</span><span class="n"></span>
+      <span class="ico"><span class="ms">${it.icon}</span></span>
+      <span class="body">${esc(it.title)}${it.sub ? `<em>${esc(it.sub)}</em>` : ''}</span>
+      <span class="val">${it.action || esc(it.val || '')}</span>
+    </div>`;
+  });
+  if (!markerPlaced) html += `<div class="dl-now"${isMain ? ' id="dlNowMarker"' : ''}><span>now ${lineClock(now)}</span></div>`;
+
+  // Day stepper. Always there on desktop; on a phone you swipe the line, so it
+  // only appears once you are off today - as the label for which day this is
+  // and the way back. Today's line only: Calendar picks its day from the grid.
+  const dayNav = !isMain ? '' : `<div class="dl-line-day${isToday ? '' : ' is-away'}">
+    <button type="button" class="dl-line-day-btn" data-line-day="-1" aria-label="Previous day"><span class="ms">chevron_left</span></button>
+    <b>${isToday ? 'Today' : esc(lineDayLabel(date))}</b>
+    <button type="button" class="dl-line-day-btn" data-line-day="1" aria-label="Next day"><span class="ms">chevron_right</span></button>
+    ${isToday ? '' : '<button type="button" class="dl-line-btn" data-line-day="0">Back to today</button>'}
+  </div>`;
+
+  host.innerHTML = dayNav + `<div class="dl-line" style="--cut:${Math.round(cut)}%">${html}</div>`;
+  bindLine(host);
+}
+
+// Each host is a persistent container whose innerHTML is rewritten every
+// render, so the delegated handler is bound to the HOST once — a flag on the
+// element rather than one shared boolean, because there is more than one host
+// now (Today's #dayLine and Calendar's #calDayLine).
+function bindLine(hostArg) {
+  const host = hostArg || document.getElementById('dayLine');
+  if (!host || host.dataset.lineBound === '1') return;
+  host.dataset.lineBound = '1';
+
+  // Swipe the line sideways to change day. Horizontal has to clearly win over
+  // vertical, or every slightly diagonal scroll would turn the page.
+  let sx = 0, sy = 0, st = 0;
+  const swipes = host.id === 'dayLine';
+  host.addEventListener('touchstart', (e) => {
+    if (!swipes || e.touches.length !== 1) { st = 0; return; }
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY; st = Date.now();
+  }, { passive: true });
+  host.addEventListener('touchend', (e) => {
+    if (!st) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - sx, dy = t.clientY - sy;
+    const quick = Date.now() - st < 600;
+    st = 0;
+    if (!quick || Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 2) return;
+    lineShiftDay(dx < 0 ? 1 : -1);
+  }, { passive: true });
+
+  host.addEventListener('click', (e) => {
+    const day = e.target.closest('[data-line-day]');
+    if (day) { lineShiftDay(Number(day.dataset.lineDay)); return; }
+    const habit = e.target.closest('[data-line-habit]');
+    if (habit) {
+      const key = habit.dataset.lineHabit;
+      // Store the timestamp, not a flag, so the row lands at the real time.
+      try { localStorage.setItem('tf_' + key + '_' + getTodayStr(), String(Date.now())); } catch (err) {}
+      if (key === 'morning' && typeof logMorningRoutine === 'function') logMorningRoutine();
+      if (typeof render === 'function') render();
+      return;
+    }
+    if (e.target.closest('[data-line-cardio]')) {
+      // The same action as the Cardio tab's "Log it" - called directly. It used
+      // to click a button in a hidden element, which only existed some days.
+      if (typeof logUsualCardio === 'function') logUsualCardio(getTodayStr());
+      return;
+    }
+    const row = e.target.closest('[data-line-tap]');
+    if (!row) return;
+    const tap = row.dataset.lineTap;
+    if (tap === 'sleep') { switchView('training'); if (typeof setTrainingTab === 'function') setTrainingTab('sleep'); }
+    else if (tap === 'water' || tap.startsWith('meal:')) {
+      // Diet opens on the day of the row, at the thing tapped. Read the date
+      // first: leaving Today puts the Today line back on today.
+      const day = host.dataset.lineDate || getTodayStr();
+      if (typeof dietViewDate !== 'undefined') dietViewDate = day;
+      switchView('diet');
+      if (typeof render === 'function') render();
+      if (tap === 'water') {
+        const card = document.getElementById('waterTracker');
+        if (card) card.scrollIntoView({ block: 'center' });
+      } else if (typeof openMealSheet === 'function') {
+        openMealSheet(tap.slice(5));
+      }
+    }
+    else if (tap === 'training') switchView('training');
+    else if (tap === 'strength' || tap === 'cardio') { switchView('training'); if (typeof setTrainingTab === 'function') setTrainingTab(tap); }
+    else if (tap === 'calendar') switchView('calendar');
+    else if (tap.startsWith('event:') && typeof openEventModal === 'function') {
+      const ev = (state.events || []).find(x => x.id === tap.slice(6));
+      if (ev) openEventModal(ev.date, ev);
+    }
+    else if (tap.startsWith('gcal:') && typeof openEventModal === 'function' && typeof getExternalCalendar === 'function') {
+      // Mirrored from Google Calendar: opens read only.
+      const parts = tap.split(':');
+      const g = getExternalCalendar(parts[1])[Number(parts[2])];
+      if (g) openEventModal(parts[1], { name: g.title, date: parts[1], time: g.start || '', description: g.location || '', external: true });
+    }
+    else if (tap.startsWith('task:')) {
+      if (typeof openTaskView === 'function') openTaskView(tap.slice(5));
+    }
+  });
+}
+
+// Put "now" in the upper third rather than at the very top: the next thing you
+// are going to do matters more than what you already did.
+function scrollLineToNow() {
+  const marker = document.getElementById('dlNowMarker');
+  if (!marker) return;
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const y = window.scrollY + marker.getBoundingClientRect().top - (window.innerHeight / 3);
+  window.scrollTo({ top: Math.max(0, y), behavior: reduce ? 'auto' : 'smooth' });
+}

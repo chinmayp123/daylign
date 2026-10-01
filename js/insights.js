@@ -81,23 +81,22 @@ function chartStats(series, opts) {
   const min = Math.min.apply(null, vals);
   const last = vals[vals.length - 1];
   const u = o.unit || '';
-  const r = (v) => (o.decimals ? Math.round(v * 10) / 10 : Math.round(v));
+  const r = (v) => (o.decimals ? Math.round(v * 10) / 10 : Math.round(v)).toLocaleString();
 
   const cells = [
-    ['Latest', r(last) + u],
-    ['Avg', r(avg) + u],
-    ['Range', r(min) + '–' + r(max) + u],
+    ['latest', r(last) + u],
+    ['avg', r(avg) + u],
+    ['range', r(min) + ' to ' + r(max) + u],
   ];
-  if (o.showTotal) cells.push(['Total', r(sum) + u]);
+  if (o.showTotal) cells.push(['total', r(sum) + u]);
   if (o.goal) {
     const hit = vals.filter(v => v >= o.goal).length;
-    cells.push(['Hit goal', hit + '/' + vals.length + ' days']);
+    cells.push(['at goal', hit + ' of ' + vals.length]);
   }
-  cells.push(['Logged', pts.length + ' of ' + series.length + ' days']);
+  cells.push(['logged', pts.length + ' of ' + series.length]);
 
   return '<div class="ins-stats">' + cells.map(c =>
-    '<div class="ins-stat"><div class="ins-stat-v tnum">' + esc(String(c[1])) + '</div>' +
-    '<div class="ins-stat-l">' + esc(c[0]) + '</div></div>').join('') + '</div>';
+    '<span><b>' + esc(String(c[1])) + '</b> ' + esc(c[0]) + '</span>').join('') + '</div>';
 }
 
 function tipVal(v, opts) {
@@ -179,10 +178,12 @@ function attachChartHovers(host) {
   window.addEventListener('scroll', hide, { passive: true });
 }
 
+// opts.k is the category colour key (food / water / move / sleep / meet); the
+// chart takes its colour from the matching c- class, so nothing here names a hue.
 function insightLine(series, opts) {
   const o = opts || {};
   const pts = series.filter(p => p.value !== null);
-  if (pts.length < MIN_CHART_POINTS) return insightGrowing(pts.length, o.unit);
+  if (pts.length < MIN_CHART_POINTS) return insightGrowing(pts.length);
 
   const W = 640, H = 150, PX = 8, PY = 18;
   const vals = pts.map(p => p.value);
@@ -198,11 +199,17 @@ function insightLine(series, opts) {
   const n = Math.max(1, series.length - 1);
   const x = d => PX + (idxOf[d] / n) * (W - PX * 2);
   const y = v => PY + (1 - (v - lo) / range) * (H - PY * 2);
+  const xy = p => `${Math.round(x(p.date) * 10) / 10},${Math.round(y(p.value) * 10) / 10}`;
 
-  const coords = pts.map(p => `${Math.round(x(p.date) * 10) / 10},${Math.round(y(p.value) * 10) / 10}`);
-  // A polyline is a single element, so there is nothing to hover. Lay an
-  // invisible slice over each point to hit-test against — slices only, so
-  // hovering a gap correctly shows nothing rather than the nearest day.
+  // A line chart is for measurements taken now and then (body weight), so the
+  // line joins the points that exist and each one is marked. It never drops to
+  // zero for a day without a reading.
+  const lines = `<polyline class="ins-line" fill="none" points="${pts.map(xy).join(' ')}"/>` +
+    (pts.length <= 24 ? pts.map(p => `<circle class="ins-pt" cx="${Math.round(x(p.date) * 10) / 10}" cy="${Math.round(y(p.value) * 10) / 10}" r="3"/>`).join('') : '');
+  const areas = `<polygon class="ins-area" points="${pts.map(xy).join(' ')} ${Math.round(x(pts[pts.length - 1].date))},${H - PY} ${Math.round(x(pts[0].date))},${H - PY}"/>`;
+
+  // A polyline has nothing to hover. An invisible slice over each point is what
+  // gets hit-tested — slices only, so hovering a gap shows nothing.
   const half = (W - PX * 2) / n / 2;
   const hits = pts.map(p => {
     const cx = x(p.date), cy = y(p.value);
@@ -210,79 +217,61 @@ function insightLine(series, opts) {
       fill="transparent" data-tip="${esc(formatDate(p.date) + ' · ' + tipVal(p.value, o))}"
       data-cx="${Math.round(cx * 10) / 10}" data-cy="${Math.round(cy * 10) / 10}"/>`;
   }).join('');
-  const area = `${coords.join(' ')} ${Math.round(x(pts[pts.length - 1].date))},${H - PY} ${Math.round(x(pts[0].date))},${H - PY}`;
-  const color = o.color || 'var(--accent)';
-  const gid = 'ig' + (o.id || Math.round(hi * 7 + pts.length));
-
-  const goalLine = o.goal ? `
-    <line x1="${PX}" y1="${y(o.goal)}" x2="${W - PX}" y2="${y(o.goal)}" stroke="var(--purple)"
-      stroke-width="1.5" stroke-dasharray="5 5" opacity="0.6"/>
-    <text x="${W - PX}" y="${y(o.goal) - 5}" text-anchor="end" font-size="10" fill="var(--purple)">goal ${Math.round(o.goal)}</text>` : '';
+  const lastP = pts[pts.length - 1];
+  const label = `${o.label || 'Chart'}: ${pts.length} points from ${tipVal(pts[0].value, o)} to ${tipVal(lastP.value, o)}`;
 
   return `
-    <svg class="ins-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
-      <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="${o.fill || 'rgba(109,106,248,0.26)'}"/>
-        <stop offset="1" stop-color="rgba(0,0,0,0)"/>
-      </linearGradient></defs>
-      ${goalLine}
-      <polygon fill="url(#${gid})" points="${area}"/>
-      <polyline class="ins-line" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round"
-        stroke-linejoin="round" pathLength="100" points="${coords.join(' ')}"/>
-      <circle cx="${x(pts[pts.length - 1].date)}" cy="${y(pts[pts.length - 1].value)}" r="4.5"
-        fill="${color}" stroke="var(--bg-card)" stroke-width="2"/>
-      <circle class="ins-hover-dot" r="5.5" fill="${color}" stroke="var(--bg-card)" stroke-width="2" opacity="0"/>
+    <svg class="ins-chart c-${o.k || 'move'}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${esc(label)}">
+      ${o.goal ? `<line class="ins-goal-l" x1="${PX}" y1="${y(o.goal)}" x2="${W - PX}" y2="${y(o.goal)}"/>` : ''}
+      ${areas}${lines}
+      <circle class="ins-pt is-last" cx="${x(lastP.date)}" cy="${y(lastP.value)}" r="4.5"/>
+      <circle class="ins-hover-dot ins-pt is-last" r="5.5" opacity="0"/>
       ${hits}
     </svg>
     <div class="ins-axis">
       <span>${formatDate(pts[0].date)}</span>
-      <span class="ins-axis-scale">${Math.round(lo)}–${Math.round(hi)}${o.unit || ''}</span>
-      <span>${formatDate(pts[pts.length - 1].date)}</span>
+      <span>${o.goal ? 'goal ' + tipVal(o.goal, o) + ' (dashed)' : Math.round(lo) + ' to ' + Math.round(hi) + (o.unit || '')}</span>
+      <span>${formatDate(lastP.date)}</span>
     </div>`;
 }
 
-// Column chart with an optional goal line. Zero-value days stay as stubs so a
-// gap in the habit is visible rather than invisible.
+// Column chart with an optional dashed goal line. A day with NOTHING logged is
+// a gap; a day logged as zero is a stub. They are different facts.
 function insightBars(series, opts) {
   const o = opts || {};
   const withData = series.filter(p => p.value !== null && p.value > 0);
-  if (withData.length < MIN_CHART_POINTS) return insightGrowing(withData.length, o.unit);
+  if (withData.length < MIN_CHART_POINTS) return insightGrowing(withData.length);
 
   const max = Math.max.apply(null, series.map(p => p.value || 0).concat([o.goal || 0, 1]));
   const goalPct = o.goal ? (1 - o.goal / max) * 100 : null;
 
   const cols = series.map(p => {
-    const v = p.value || 0;
-    const pct = max ? (v / max) * 100 : 0;
-    const hit = o.goal && v >= o.goal;
-    // data-tip rather than title=: the native tooltip needs a second of hover
-    // and never fires on touch, which is the surface this app actually runs on.
-    const label = formatDate(p.date) + ' · ' + (p.value === null ? 'nothing logged' : tipVal(v, o));
-    return `<div class="ins-col" data-tip="${esc(label)}">
-      <div class="ins-bar${v ? '' : ' is-empty'}" style="height:${v ? Math.max(3, pct) : 3}%;background:${v ? (hit ? 'var(--green)' : (o.color || 'var(--accent)')) : 'var(--bg-hover)'}"></div>
-    </div>`;
+    const label = formatDate(p.date) + ' · ' + (p.value === null ? 'nothing logged' : tipVal(p.value, o));
+    if (p.value === null) return `<div class="ins-col is-gap" data-tip="${esc(label)}"></div>`;
+    const pct = max ? (p.value / max) * 100 : 0;
+    return `<div class="ins-col" data-tip="${esc(label)}"><i class="ins-bar${p.value ? '' : ' is-zero'}" style="height:${p.value ? Math.max(3, pct) : 0}%"></i></div>`;
   }).join('');
+  const label = `${o.label || 'Chart'}: ${withData.length} of ${series.length} logged, peak ${tipVal(max, o)}`;
 
   return `
-    <div class="ins-barwrap">
-      ${goalPct !== null && goalPct >= 0 ? `<div class="ins-goal-line" style="top:${goalPct}%"><span>goal ${Math.round(o.goal)}</span></div>` : ''}
+    <div class="ins-barwrap c-${o.k || 'move'}" role="img" aria-label="${esc(label)}">
+      ${goalPct !== null && goalPct >= 0 ? `<div class="ins-goal" style="top:${goalPct}%"></div>` : ''}
       <div class="ins-bars">${cols}</div>
     </div>
     <div class="ins-axis">
       <span>${formatDate(series[0].date)}</span>
-      <span class="ins-axis-scale">peak ${Math.round(max)}${o.unit || ''}</span>
+      <span>${o.goal ? 'goal ' + tipVal(o.goal, o) + ' (dashed)' : 'peak ' + tipVal(max, o)}</span>
       <span>${formatDate(series[series.length - 1].date)}</span>
     </div>`;
 }
 
-function insightGrowing(have, unit) {
+// Under three points there is no chart to draw, and drawing one would be a
+// line between two dots pretending to be a trend.
+function insightGrowing(have) {
   const need = MIN_CHART_POINTS - have;
-  return `
-    <div class="ins-growing">
-      <div class="ins-growing-bars">${[24, 46, 33, 62, 41].map(h => `<span style="height:${h}%"></span>`).join('')}</div>
-      <p>${have === 0 ? 'Nothing logged in this range' : `Only ${have} day${have === 1 ? '' : 's'} logged`}${unit ? '' : ''}</p>
-      <small>${need > 0 ? `${need} more day${need === 1 ? '' : 's'} and this becomes a chart` : 'Widen the range to see more'}</small>
-    </div>`;
+  return `<div class="ins-growing"><b>Still growing</b>${have === 0
+    ? 'Nothing logged in this range yet.'
+    : `${have} day${have === 1 ? '' : 's'} logged. ${need} more and this becomes a chart.`}</div>`;
 }
 
 // ---------- data series ----------
@@ -341,6 +330,69 @@ function insightsSummary() {
   return { days, avgCal, avgPro, trainDays, fullSessions: full, checkIns, totalSets, tasksDone, loggedDays: loggedDiet.length, goals };
 }
 
+// ---------- the weekly report ----------
+// One sentence and a stat line, for the last seven days whatever range the
+// charts are on. This card was rendered on Today into a host that no longer
+// existed; it lives here now (spec 9).
+function insightsWeekReport() {
+  const today = getTodayStr();
+  const week = [];
+  for (let i = 6; i >= 0; i--) week.push(offsetDateStr(today, -i));
+  const diet = dietTotalsByDate();
+  const goals = (typeof getGoals === 'function') ? getGoals() : {};
+  const bw = (typeof briefWeek === 'function') ? briefWeek() : { sessions: 0, tasks: 0 };
+
+  const logged = week.filter(d => diet[d]);
+  const proteinDays = goals.protein ? logged.filter(d => diet[d].protein >= goals.protein).length : 0;
+
+  let lead;
+  if (!logged.length && !bw.sessions && !bw.tasks) lead = 'Nothing logged this week.';
+  else if (bw.sessions >= 4 && proteinDays >= 4) lead = 'Strong week.';
+  else if (bw.sessions >= 3 || proteinDays >= 4) lead = 'Solid week.';
+  else if (bw.sessions >= 1 || logged.length >= 3) lead = 'A steady week.';
+  else lead = 'A light week.';
+
+  const bits = [];
+  bits.push(`${bw.sessions} session${bw.sessions === 1 ? '' : 's'}`);
+  if (logged.length && goals.protein) bits.push(`protein hit ${proteinDays} of ${logged.length} logged day${logged.length === 1 ? '' : 's'}`);
+  const rest = (logged.length || bw.sessions) ? bits.join(', ') + '.' : 'Log a meal or a session and this fills in.';
+
+  // The stat line: only the parts there is data for.
+  const stats = [];
+  const weights = week.filter(d => state.weight && state.weight[d]).map(d => Number(state.weight[d]));
+  if (weights.length >= 2) {
+    const delta = Math.round((weights[weights.length - 1] - weights[0]) * 10) / 10;
+    stats.push(`Weight ${delta > 0 ? '+' : ''}${delta} lb`);
+  }
+  stats.push(`${bw.tasks} task${bw.tasks === 1 ? '' : 's'} done`);
+  if (typeof sleepHoursFor === 'function') {
+    const nights = week.map(d => sleepHoursFor(d)).filter(h => typeof isPlausibleSleep === 'function' ? isPlausibleSleep(h) : h);
+    if (nights.length) {
+      const avg = nights.reduce((a, b) => a + b, 0) / nights.length;
+      stats.push(`sleep avg ${typeof sleepHM === 'function' ? sleepHM(avg) : Math.round(avg * 10) / 10 + 'h'}`);
+    }
+  }
+  if (bw.sessionsPrev != null && (bw.sessions || bw.sessionsPrev)) {
+    const d = bw.sessions - bw.sessionsPrev;
+    stats.push(d === 0 ? 'sessions level with last week' : `${Math.abs(d)} session${Math.abs(d) === 1 ? '' : 's'} ${d > 0 ? 'more' : 'fewer'} than last week`);
+  }
+  return { lead, rest, stats: stats.join(' · ') };
+}
+
+// Tasks completed per week across the range (per day on the Week range).
+function insightsTaskSeries(days) {
+  const done = {};
+  (state.tasks || []).forEach(t => { if (t.completedAt) done[t.completedAt] = (done[t.completedAt] || 0) + 1; });
+  if (days.length <= 7) return days.map(d => ({ date: d, value: done[d] || 0 }));
+  const out = [];
+  // Whole weeks ending today, oldest first, capped so a long range stays readable.
+  for (let end = days.length - 1; end >= 0 && out.length < 26; end -= 7) {
+    const chunk = days.slice(Math.max(0, end - 6), end + 1);
+    out.unshift({ date: chunk[0], value: chunk.reduce((n, d) => n + (done[d] || 0), 0) });
+  }
+  return out;
+}
+
 // ---------- render ----------
 function renderInsights() {
   const host = document.getElementById('insightsBody');
@@ -352,40 +404,30 @@ function renderInsights() {
   const sets = gymSetsByDate();
   const goals = s.goals;
 
-  const rangeChips = INSIGHT_RANGES.map(r =>
-    `<button type="button" class="ins-range${r.key === insightsRange ? ' active' : ''}" data-ins-range="${r.key}">${r.label}</button>`
-  ).join('');
-
   const tile = (v, l, sub) => `
-    <div class="ins-tile">
-      <div class="ins-tile-v tnum">${v === null || v === undefined ? '—' : v}</div>
-      <div class="ins-tile-l">${esc(l)}</div>
-      ${sub ? `<div class="ins-tile-s">${esc(sub)}</div>` : ''}
+    <div class="dl-tile">
+      <b>${v === null || v === undefined ? '—' : v}</b>
+      <span>${esc(l)}${sub ? ` · ${esc(sub)}` : ''}</span>
     </div>`;
 
   const card = (title, chip, body, note) => `
-    <div class="card ins-card">
-      <div class="coach-head">
-        <h2>${esc(title)}</h2>
-        ${chip ? `<span class="weight-goal-chip">${esc(chip)}</span>` : ''}
-      </div>
+    <div class="dl-card ins-card">
+      <h6 class="dl-card-h"><span>${esc(title)}</span>${chip ? `<em>${esc(chip)}</em>` : ''}</h6>
       ${body}
-      ${note ? `<div class="ins-note">${esc(note)}</div>` : ''}
+      ${note ? `<p class="ins-note">${esc(note)}</p>` : ''}
     </div>`;
 
   // series
   const calSeries = bucketSeries(days, d => diet[d] ? Math.round(diet[d].calories) : null);
   const proSeries = bucketSeries(days, d => diet[d] ? Math.round(diet[d].protein) : null);
+  // Water, sets and tasks are counts: a day with none is a real zero, not a gap.
   const waterSeries = bucketSeries(days, d => waterOzFor(d));
   const setsSeries = bucketSeries(days, d => sets[d] || 0);
   const weightSeries = bucketSeries(days, d => (state.weight && state.weight[d]) ? state.weight[d] : null);
   const sleepSeries = bucketSeries(days, d => (typeof sleepHoursFor === 'function') ? sleepHoursFor(d) : null);
-  // Watch metrics. These have been syncing since July but lived only in today's
-  // dashboard ring, so a flat 2,300-step average was invisible over a month.
   const stepSeries = bucketSeries(days, d => (typeof getExternalSteps === 'function') ? getExternalSteps(d) : null);
   const moveSeries = bucketSeries(days, d => (typeof getExternalExerciseMinutes === 'function') ? getExternalExerciseMinutes(d) : null);
-  const hasSteps = stepSeries.some(p => p.value !== null);
-  const hasMove = moveSeries.some(p => p.value !== null);
+  const taskSeries = insightsTaskSeries(days);
   // Most recent weigh-in of all time, not just this range — step burn scales
   // with bodyweight and a 7-day window often holds no weigh-in at all.
   const allWeighIns = Object.keys(state.weight || {}).sort();
@@ -401,54 +443,58 @@ function renderInsights() {
       if (!g) return;
       tally[g] += (typeof setsOf === 'function') ? setsOf(e).length : 0;
     });
+    const top = Math.max.apply(null, MUSCLE_ORDER.map(g => tally[g]).concat([1]));
     const total = MUSCLE_ORDER.reduce((n, g) => n + tally[g], 0);
-    muscleBody = total ? `
-      <div class="ins-split">
-        ${MUSCLE_ORDER.map(g => {
-          const pct = Math.round((tally[g] / total) * 100);
-          return `<div class="ins-split-row">
-            <span class="ins-split-name">${MUSCLE_LABEL[g]}</span>
-            <div class="ins-split-track"><div class="ins-split-fill" style="width:${pct}%;background:${MUSCLE_COLOR[g]}"></div></div>
-            <span class="ins-split-val tnum">${tally[g]}</span>
-          </div>`;
-        }).join('')}
-      </div>` : insightGrowing(0);
+    muscleBody = total
+      ? MUSCLE_ORDER.map(g => `
+          <div class="ins-split"><span>${MUSCLE_LABEL[g]}</span>
+            <span class="dl-meter c-move"><i style="width:${Math.round((tally[g] / top) * 100)}%"></i></span>
+            <b>${tally[g]}</b></div>`).join('')
+      : insightGrowing(0);
   }
 
   // task completion
   const doneInRange = (state.tasks || []).filter(t => t.completedAt && inRange(t.completedAt)).length;
   const createdInRange = (state.tasks || []).filter(t => t.created && inRange(t.created)).length;
   const openNow = (state.tasks || []).filter(t => t.status !== 'done').length;
-  const rate = (doneInRange + openNow) ? Math.round((doneInRange / (doneInRange + openNow)) * 100) : 0;
+
+  const wk = insightsWeekReport();
+  const rangeLabel = (INSIGHT_RANGES.find(r => r.key === insightsRange) || {}).label || '';
+  const fmt = (n) => (n === null || n === undefined) ? null : Number(n).toLocaleString();
 
   host.innerHTML = `
     <div class="ins-toolbar">
-      <div class="ins-ranges">${rangeChips}</div>
-      <button type="button" class="ins-export" id="insExport" title="Download this range as CSV">Export CSV</button>
+      <div class="dl-seg" role="group" aria-label="Range">
+        ${INSIGHT_RANGES.map(r => `<button type="button" data-ins-range="${r.key}"${r.key === insightsRange ? ' aria-pressed="true"' : ''}>${r.label}</button>`).join('')}
+      </div>
+      <button type="button" class="dl-btn" id="insExport"><span class="ms" aria-hidden="true">download</span>Export CSV</button>
     </div>
 
-    <div class="ins-tiles">
-      ${tile(s.avgCal, 'Avg calories', s.loggedDays ? `${s.loggedDays} days logged` : 'no food logged')}
-      ${tile(s.avgPro !== null ? s.avgPro + 'g' : null, 'Avg protein', goals.protein ? `goal ${goals.protein}g` : '')}
-      ${tile(s.fullSessions, 'Full sessions', s.checkIns ? `+${s.checkIns} check-in${s.checkIns === 1 ? '' : 's'} · ${s.totalSets} sets` : `${s.totalSets} sets`)}
-      ${tile(s.tasksDone, 'Tasks done', rate ? `${rate}% completion` : '')}
+    <div class="dl-card tint c-move ins-week">
+      <p class="ins-say"><b>${esc(wk.lead)}</b> <span>${esc(wk.rest)}</span></p>
+      <p class="ins-week-stats">${esc(wk.stats)}</p>
     </div>
 
-    ${card('Calories', goals.calories ? `goal ${goals.calories}` : '', insightLine(calSeries, { goal: goals.calories, id: 1, unit: '' }) + chartStats(calSeries, { goal: goals.calories }), 'Daily intake. Gaps are days with nothing logged, not zero-calorie days.')}
-    ${card('Protein', goals.protein ? `goal ${goals.protein}g` : '', insightBars(proSeries, { goal: goals.protein, unit: 'g', color: 'var(--green)' }) + chartStats(proSeries, { goal: goals.protein, unit: 'g' }), 'Green columns cleared the goal.')}
-    ${card('Training volume', `${s.totalSets} sets`, insightBars(setsSeries, { unit: ' sets', color: 'var(--accent)' }) + chartStats(setsSeries, { unit: ' sets', showTotal: true }), 'Sets logged per day.')}
-    ${muscleBody ? card('Sets by muscle group', 'this range', muscleBody, 'Where the work actually went.') : ''}
-    ${card('Water', goals.water ? `goal ${goals.water} oz` : '', insightBars(waterSeries, { goal: goals.water, unit: ' oz', color: 'var(--blue)' }) + chartStats(waterSeries, { goal: goals.water, unit: ' oz', showTotal: true }))}
-    ${card('Body weight', goals.weight ? `goal ${goals.weight} lbs` : '', insightLine(weightSeries, { goal: goals.weight, color: 'var(--green)', fill: 'rgba(52,211,153,0.22)', id: 2, unit: ' lbs', decimals: true }) + chartStats(weightSeries, { unit: ' lbs', decimals: true }))}
-    ${card('Sleep', 'hours', insightBars(sleepSeries, { goal: goals.sleep || 8, unit: 'h', color: 'var(--purple)' }) + chartStats(sleepSeries, { goal: goals.sleep || 8, unit: 'h', decimals: true }))}
-    ${hasSteps ? card('Steps', `goal ${(goals.steps || 8000).toLocaleString()}`, insightBars(stepSeries, { goal: goals.steps || 8000, unit: '', color: 'var(--yellow)' }) + chartStats(stepSeries, { goal: goals.steps || 8000, showTotal: true }) + stepCoachNote(stepSeries, goals.steps || 8000, latestWeight), 'From your watch. This is the number that sets your daily burn on the days you do not train.') : ''}
-    ${hasMove ? card('Movement', 'watch minutes', insightBars(moveSeries, { unit: ' min', color: 'var(--blue)' }) + chartStats(moveSeries, { unit: ' min', showTotal: true }), 'Apple Health exercise minutes — rides included, whether or not you logged them.') : ''}
-    ${card('Tasks', `${rate}% done`, `
-      <div class="ins-tiles ins-tiles-sm">
-        ${tile(doneInRange, 'Completed')}
-        ${tile(createdInRange, 'Created')}
-        ${tile(openNow, 'Still open')}
-      </div>`)}
+    <div class="dl-tiles ins-tiles">
+      ${tile(fmt(s.avgCal), 'avg kcal', s.loggedDays ? `${s.loggedDays} days` : '')}
+      ${tile(s.avgPro !== null ? s.avgPro + 'g' : null, 'avg protein', goals.protein ? `goal ${goals.protein}g` : '')}
+      ${tile(s.fullSessions, 'full sessions', s.checkIns ? `${s.checkIns} check-in${s.checkIns === 1 ? '' : 's'}` : '')}
+      ${tile(s.tasksDone, 'tasks done', '')}
+    </div>
+
+    <div class="ins-grid">
+      ${card('Calories', goals.calories ? `goal ${Number(goals.calories).toLocaleString()}` : '', insightBars(calSeries, { goal: goals.calories, k: 'food', label: 'Calories' }) + chartStats(calSeries, { goal: goals.calories }), 'A gap is a day with nothing logged, not a zero.')}
+      ${card('Protein', goals.protein ? `goal ${goals.protein}g` : '', insightBars(proSeries, { goal: goals.protein, unit: 'g', k: 'food', label: 'Protein' }) + chartStats(proSeries, { goal: goals.protein, unit: 'g' }))}
+      ${card('Training volume', `${s.totalSets} sets`, insightBars(setsSeries, { unit: ' sets', k: 'move', label: 'Sets per day' }) + chartStats(setsSeries, { unit: ' sets', showTotal: true }))}
+      ${card('Water', goals.water ? `goal ${goals.water} oz` : '', insightBars(waterSeries, { goal: goals.water, unit: ' oz', k: 'water', label: 'Water' }) + chartStats(waterSeries, { goal: goals.water, unit: ' oz' }))}
+      ${card('Body weight', goals.weight ? `goal ${goals.weight} lb` : 'lb', insightLine(weightSeries, { goal: goals.weight, k: 'sleep', unit: ' lb', decimals: true, label: 'Body weight' }) + chartStats(weightSeries, { unit: ' lb', decimals: true }))}
+      ${card('Sleep', 'hours', insightBars(sleepSeries, { goal: goals.sleep || 8, unit: 'h', k: 'sleep', decimals: true, label: 'Sleep' }) + chartStats(sleepSeries, { goal: goals.sleep || 8, unit: 'h', decimals: true }))}
+      ${card('Steps', `goal ${(goals.steps || 8000).toLocaleString()}`, insightBars(stepSeries, { goal: goals.steps || 8000, k: 'move', label: 'Steps' }) + chartStats(stepSeries, { goal: goals.steps || 8000 }) + stepCoachNote(stepSeries, goals.steps || 8000, latestWeight), 'From your Watch.')}
+      ${card('Movement', 'Watch minutes', insightBars(moveSeries, { unit: ' min', k: 'move', label: 'Exercise minutes' }) + chartStats(moveSeries, { unit: ' min', showTotal: true }))}
+      ${muscleBody ? card('Sets by muscle', rangeLabel.toLowerCase(), muscleBody) : ''}
+      ${card('Tasks', days.length <= 7 ? 'done per day' : 'done per week', insightBars(taskSeries, { k: 'meet', label: 'Tasks done' }) + `<div class="ins-stats"><span><b>${doneInRange}</b> completed</span><span><b>${createdInRange}</b> created</span><span><b>${openNow}</b> still open</span></div>`)}
+    </div>
+    <p class="ins-foot">Hover or tap any bar or point for its value. A gap means nothing was logged, not zero.</p>
   `;
 
   host.querySelectorAll('[data-ins-range]').forEach(btn => {
@@ -474,7 +520,7 @@ function stepCoachNote(series, goal, weightLbs) {
   const target = Math.max(3000, Math.round((median + 1500) / 500) * 500);
   if (target >= goal) return '';
   const kcal = Math.round((target - median) * (weightLbs || 160) * 0.00025);
-  return `<p class="ins-note ins-note-warn">
+  return `<p class="ins-note is-warn">
     Your usual day is <strong>${median.toLocaleString()}</strong> steps, and you have cleared
     ${goal.toLocaleString()} on <strong>${hit} of ${vals.length}</strong> days.
     A goal nothing ever reaches is just a red ring. Try <strong>${target.toLocaleString()}</strong> first

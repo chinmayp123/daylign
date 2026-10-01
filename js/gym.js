@@ -70,65 +70,6 @@ function weightTrendSeries() {
   });
 }
 
-function renderWeight() {
-  const currentEl = $('#weightCurrent');
-  if (!currentEl) return;
-  const WEIGHT_GOAL = (typeof getGoals === 'function' && getGoals().weight) || 150;
-  const log = state.weight || {};
-  const entries = Object.entries(log).sort((a, b) => a[0].localeCompare(b[0]));
-  const input = $('#weightInput');
-  const viewedVal = log[gymViewDate];
-  input.placeholder = viewedVal ? `${viewedVal} lbs` : 'lbs';
-
-  if (!entries.length) {
-    currentEl.innerHTML = '<span class="weight-empty">Log your first weigh-in</span>';
-    $('#weightSpark').innerHTML = '';
-    $('#weightGoalChip').textContent = `Goal: ${WEIGHT_GOAL} lbs`;
-    return;
-  }
-
-  const [latestDate, latestRaw] = entries[entries.length - 1];
-  const trend = weightTrendSeries();
-  const latest = trend[trend.length - 1][1];
-  const prev = trend.length > 1 ? trend[trend.length - 2][1] : null;
-  const delta = prev !== null ? Math.round((latest - prev) * 10) / 10 : null;
-  // Direction-aware: moving toward the goal is good (green), away is red
-  const losing = latest > WEIGHT_GOAL;
-  const deltaGood = delta !== null && (losing ? delta <= 0 : delta >= 0);
-  const toGo = Math.round(Math.abs(latest - WEIGHT_GOAL) * 10) / 10;
-
-  currentEl.innerHTML = `
-    <span class="weight-num">${latest}<small> lbs${trend.length > 1 ? ' trend' : ''}</small></span>
-    ${delta !== null ? `<span class="weight-delta ${deltaGood ? 'good' : 'bad'}">${delta > 0 ? '▲' : delta < 0 ? '▼' : '—'} ${Math.abs(delta)}</span>` : ''}
-    <span class="weight-date">${latestRaw !== latest ? `scale ${latestRaw} · ` : ''}${formatDate(latestDate)}</span>
-  `;
-  $('#weightGoalChip').textContent = toGo === 0
-    ? `At goal: ${WEIGHT_GOAL} lbs`
-    : `${toGo} lbs to ${losing ? 'lose' : 'gain'} → ${WEIGHT_GOAL}`;
-
-  // Sparkline of the last 12 trend points (smoothed, not raw)
-  const pts = trend.slice(-12).map(([, w]) => w);
-  if (pts.length < 2) {
-    $('#weightSpark').innerHTML = '';
-    return;
-  }
-  const min = Math.min(...pts), max = Math.max(...pts);
-  const range = max - min || 1;
-  const W = 140, H = 40, PAD = 4;
-  const coords = pts.map((w, i) => {
-    const x = PAD + (i / (pts.length - 1)) * (W - PAD * 2);
-    const y = H - PAD - ((w - min) / range) * (H - PAD * 2);
-    return `${Math.round(x * 10) / 10},${Math.round(y * 10) / 10}`;
-  });
-  const last = coords[coords.length - 1].split(',');
-  $('#weightSpark').innerHTML = `
-    <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-      <polyline points="${coords.join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2"
-        stroke-linecap="round" stroke-linejoin="round" pathLength="100" class="weight-spark-line"/>
-      <circle cx="${last[0]}" cy="${last[1]}" r="3" fill="var(--accent-hover)"/>
-    </svg>`;
-}
-
 // ---- Targets & Coach ----
 // Calorie burn is a MET estimate: cal = MET x bodyweight(kg) x hours.
 // Each set is counted as ~2 min of session time (work + rest).
@@ -232,6 +173,40 @@ function sessionFocusRow(entries) {
         ${unknown ? `<span class="gym-focus-chip is-unknown" title="Not matched to a muscle group">Other<b>${unknown}</b></span>` : ''}
       </div>
     </div>`;
+}
+
+// The same tally as a label plus parts, for the session card's header.
+function sessionFocusData(entries) {
+  if (!entries || !entries.length) return null;
+  const ORDER = (typeof MUSCLE_ORDER !== 'undefined') ? MUSCLE_ORDER : ['push', 'pull', 'legs', 'core'];
+  const tally = { push: 0, pull: 0, legs: 0, core: 0 };
+  let classified = 0, unknown = 0;
+  entries.forEach(ex => {
+    const grp = muscleGroupFor(ex.exercise);
+    const n = (ex.sets || []).length;
+    if (grp) { tally[grp] += n; classified += n; } else { unknown += n; }
+  });
+  if (!classified) return null;
+  const hit = ORDER.filter(k => tally[k] > 0).sort((a, b) => tally[b] - tally[a]);
+  const label = tally[hit[0]] / classified >= 0.7 ? `${groupLabel(hit[0])} day` : 'Mixed';
+  const parts = hit.map(k => `${groupLabel(k)} ${tally[k]}`);
+  if (unknown) parts.push(`Other ${unknown}`);
+  return { label, parts };
+}
+
+// "3 x 8 · 155 lb" when every set matches, otherwise the sets spelled out, so
+// a row says what was actually lifted without a table under it.
+function setsSummary(ex, isBW) {
+  const sets = (ex && ex.sets) || [];
+  if (!sets.length) return '';
+  const reps = sets.map(s => Number(s.reps) || 0);
+  const wts = sets.map(s => Number(s.weight) || 0);
+  const sameReps = reps.every(r => r === reps[0]);
+  const sameWt = wts.every(w => w === wts[0]);
+  if (isBW || sameWt) {
+    return (sameReps ? sets.length + ' x ' + reps[0] : reps.join(', ')) + ' · ' + (isBW ? 'bodyweight' : wts[0] + ' lb');
+  }
+  return sets.map((s, i) => reps[i] + ' x ' + wts[i]).join(', ') + ' lb';
 }
 
 function latestBodyWeightLbs() {
@@ -389,23 +364,23 @@ function renderLastTimeChip() {
   if (!name) { el.innerHTML = ''; return; }
   const hist = exerciseHistory(name, gymViewDate);
   if (!hist.length) {
-    el.innerHTML = `<div class="gym-lasttime">First time logging <strong>${esc(name)}</strong> — today sets the baseline.</div>`;
+    el.innerHTML = `<div class="gl-last"><span class="ms" aria-hidden="true">flag</span><span>First time logging <b>${esc(name)}</b>. Today sets the baseline.</span></div>`;
     return;
   }
   const last = hist[0];
   const bw = last.bodyweight || isBodyweightExercise(last.exercise);
-  const setsStr = last.sets.map(s => bw ? s.reps : `${s.reps}&times;${s.weight}`).join(', ');
-  const pr = hist.reduce((m, ex) => Math.max(m, bestSetScore(ex)), 0);
   const lastBestReps = last.sets.reduce((m, s) => Math.max(m, Number(s.reps) || 0), 0);
-  const target = bw
-    ? `get ${lastBestReps + 1} reps on your first set`
-    : 'add a rep to each set, or +2.5 lbs';
-  el.innerHTML = `<div class="gym-lasttime">
-    <span class="gym-lasttime-label">Last time (${formatDate(last.date)}):</span>
-    <span class="gym-lasttime-sets">${setsStr}</span>
-    <span class="gym-lasttime-pr">PR: ${bw ? pr + ' reps' : pr.toLocaleString() + ' lbs&middot;set'}</span>
-    <span class="gym-lasttime-target">Beat it &mdash; ${target}</span>
-  </div>`;
+  const reps = last.sets.map(s => Number(s.reps) || 0);
+  const wts = last.sets.map(s => Number(s.weight) || 0);
+  const uniform = reps.every(r => r === reps[0]) && wts.every(w => w === wts[0]);
+  // A concrete target, not "do better": the same session with one thing moved.
+  let target;
+  if (bw) target = `${lastBestReps + 1} reps on the first set`;
+  else if (uniform) target = `${last.sets.length} x ${reps[0]} at ${wts[0] + 5}, or a rep more per set`;
+  else target = 'a rep more per set, or 5 lb';
+  const lastStr = setsSummary(last, bw).replace(' · ', bw ? ', ' : ' at ');
+  el.innerHTML = `<div class="gl-last"><span class="ms" aria-hidden="true">trending_up</span>
+    <span>Last time (${esc(formatDate(last.date))}) <b>${esc(lastStr)}</b>. Beat it: <b>${esc(target)}</b>.</span></div>`;
 }
 
 // A day only "counts" for consistency — the streak, and a solid calendar cell —
@@ -673,19 +648,19 @@ function goalProgress() {
 
   // 3 — Core (days you hit core this week; target 3)
   const coreDays = goalGroupDaysThisWeek('core');
-  rows.push({ label: 'Core', icon: coreDays >= 3 ? '🔥' : '🎯', status: `${coreDays}/wk`,
-    detail: `${coreDays >= 3 ? 'on target' : 'aim for 3'} core days`, tone: coreDays >= 3 ? 'good' : 'warn' });
+  rows.push({ label: 'Core', icon: coreDays >= 3 ? '🔥' : '🎯', status: `${coreDays} of 3`,
+    detail: 'core days, last 7 days', tone: coreDays >= 3 ? 'good' : 'warn', pct: Math.round((coreDays / 3) * 100) });
 
   // 4 — Cardio (sessions this week; target 2)
   const cardioDays = (state.cardio || []).filter(s => s && typeof s.date === 'string' && s.date >= offsetDateStr(today, -6) && s.date <= today).length;
-  rows.push({ label: 'Cardio', icon: cardioDays >= 2 ? '🔥' : '🏃', status: `${cardioDays}/wk`,
-    detail: `${cardioDays >= 2 ? 'on target' : 'aim for 2'} sessions`, tone: cardioDays >= 2 ? 'good' : 'warn' });
+  rows.push({ label: 'Cardio', icon: cardioDays >= 2 ? '🔥' : '🏃', status: `${cardioDays} of 2`,
+    detail: 'sessions, last 7 days', tone: cardioDays >= 2 ? 'good' : 'warn', pct: Math.round((cardioDays / 2) * 100) });
 
   // 5 — Consistency (real sessions this week vs 4)
   let real = 0;
   for (let i = 0; i < 7; i++) { if (isConsistencyDay(offsetDateStr(today, -i))) real++; }
-  rows.push({ label: 'Consistency', icon: real >= 4 ? '🔥' : '📊', status: `${real}/4`,
-    detail: 'real sessions this week', tone: real >= 4 ? 'good' : 'warn' });
+  rows.push({ label: 'Consistency', icon: real >= 4 ? '🔥' : '📊', status: `${real} of 4`,
+    detail: 'real sessions, last 7 days', tone: real >= 4 ? 'good' : 'warn', pct: Math.round((real / 4) * 100) });
 
   return rows;
 }
@@ -694,13 +669,17 @@ function renderGoalProgress() {
   const host = document.getElementById('goalProgressBody');
   if (!host) return;
   const rows = goalProgress();
-  host.innerHTML = rows.map(r => `
-    <div class="goal-row">
-      <span class="goal-row-icon">${r.icon}</span>
-      <span class="goal-row-label">${esc(r.label)}</span>
-      <span class="goal-row-detail">${esc(r.detail)}</span>
-      <span class="goal-row-status goal-${r.tone}">${esc(r.status)}</span>
-    </div>`).join('');
+  // A chip for the state and, where the goal is a count toward a target, a bar.
+  host.innerHTML = rows.map(r => {
+    const k = r.tone === 'good' ? 'c-move' : r.tone === 'warn' ? 'c-food' : '';
+    return `
+    <div class="co-goal">
+      <span class="co-goal-l">${esc(r.label)}</span>
+      <span class="co-goal-d">${esc(r.detail)}</span>
+      <span class="dl-chip ${k}">${esc(r.status)}</span>
+      ${r.pct != null ? `<span class="dl-meter ${k || 'c-move'} co-goal-m"><i style="width:${Math.max(0, Math.min(100, r.pct))}%"></i></span>` : ''}
+    </div>`;
+  }).join('');
 }
 
 // ---- Activity breakdown ----
@@ -768,35 +747,16 @@ function activityBreakdown(dateStr) {
   return { items, total: watchMin != null ? watchMin : accounted, watch: watchMin, source: 'estimated' };
 }
 
+// One line under the goals (spec 7): where the day's active minutes went.
 function renderActivityBreakdown() {
   const host = document.getElementById('activityBreakdown');
   if (!host) return;
   const b = activityBreakdown(gymViewDate);
   if (!b.items.length) { host.innerHTML = ''; return; }
-
-  const colorFor = k => k === 'strength' ? 'var(--accent)' : k === 'cardio' ? 'var(--blue)' : 'var(--text-muted)';
-  const barTotal = Math.max(b.total, b.accounted, 1);
-  const bar = b.items.map(i =>
-    `<span class="act-seg" style="width:${Math.max(2, Math.round((i.min / barTotal) * 100))}%;background:${colorFor(i.kind)}"></span>`).join('');
-  const BADGE = { watch: { txt: '⌚ watch', cls: 'act-actual' }, logged: { txt: 'logged', cls: 'act-actual' }, est: { txt: 'est.', cls: 'act-est' } };
-  const rows = b.items.map(i => {
-    const bd = BADGE[i.badge] || BADGE.est;
-    return `
-    <div class="act-row">
-      <span class="act-ic">${i.icon}</span>
-      <span class="act-label">${esc(i.label)}${i.detail ? ` <small>${esc(i.detail)}</small>` : ''}<em class="${bd.cls}">${bd.txt}</em></span>
-      <span class="act-min">${i.min}<small> min</small></span>
-    </div>`;
-  }).join('');
-  host.innerHTML = `
-    <div class="card activity-card">
-      <div class="coach-head">
-        <h2>Activity</h2>
-        <span class="act-total">${b.total}<small> min${b.watch != null ? ' ⌚' : ''}</small></span>
-      </div>
-      <div class="act-bar">${bar}</div>
-      <div class="act-rows">${rows}</div>
-    </div>`;
+  const day = gymViewDate === getTodayStr() ? 'Today' : formatDate(gymViewDate);
+  const parts = b.items.map(i => `${esc(String(i.label).toLowerCase())} ${i.min} min`).join(', ');
+  const from = b.source === 'watch' || b.watch != null ? 'from your Watch' : 'estimated from what you logged';
+  host.innerHTML = `<p class="sp-note co-activity">${esc(day)}: ${parts}. ${b.total} min in all, ${from}.</p>`;
 }
 
 // ---- Consistency: streak stats + 16-week calendar ----
@@ -842,16 +802,29 @@ function renderStreak() {
   }
 
   const checkIns = activeWeek - realWeek;
-  $('#streakSummary').textContent = checkIns > 0
-    ? `${realWeek} session${realWeek === 1 ? '' : 's'} · ${checkIns} check-in${checkIns === 1 ? '' : 's'} this week`
-    : `${realWeek}/7 sessions this week`;
-  $('#streakStats').innerHTML = `
-    <div class="gym-stat"><span class="gym-stat-val">${streak}</span><span class="gym-stat-lbl">Day Streak</span></div>
-    <div class="gym-stat"><span class="gym-stat-val">${realWeek}<small class="streak-stat-target"> / 4+</small></span><span class="gym-stat-lbl">Sessions This Week</span></div>
-    <div class="gym-stat"><span class="gym-stat-val">${best}</span><span class="gym-stat-lbl">Best Streak</span></div>
-  `;
+  const sum = $('#streakSummary');
+  if (sum) sum.textContent = streak ? `${streak}-day streak` : 'no streak yet';
+  const note = $('#streakStats');
+  if (note) {
+    const bits = [`Last 16 weeks. ${realWeek} session${realWeek === 1 ? '' : 's'} in the last 7 days`
+      + (checkIns > 0 ? `, plus ${checkIns} check-in${checkIns === 1 ? '' : 's'}` : '') + '.'];
+    if (best > 1) bits.push(`Best streak ${best} days.`);
+    const next = nextTrainingNote();
+    if (next) bits.push(next);
+    note.textContent = bits.join(' ');
+  }
 
-  renderConsistencyCalendar(heatEl, daySets, today);
+  renderConsistencyCalendar(heatEl, daySets, today, 112);   // 16 weeks (spec 7)
+}
+
+// "Next training day: today, Pull + Core." From the same split engine the coach
+// reads, so the card and the coach cannot name different days.
+function nextTrainingNote() {
+  const rec = (typeof nextTrainingDay === 'function') ? nextTrainingDay() : null;
+  if (!rec || !rec.label) return '';
+  const when = isConsistencyDay(getTodayStr()) ? 'tomorrow' : 'today';
+  if (rec.day === 'recovery') return `${when === 'today' ? 'Today' : 'Tomorrow'} is a recovery day.`;
+  return `Next training day: ${when}, ${rec.label}.`;
 }
 
 // Last-30-days calendar: columns = weeks, rows = Mon..Sun (so it reads down a
@@ -1004,15 +977,19 @@ function gymSheetIsMobile() {
   return window.matchMedia('(max-width: 900px)').matches;
 }
 
-function openGymLogSheet(prefillName) {
+// prefillSets: [{reps, weight}] as strings, for a nudge that arrives with its
+// numbers (the plateau card's "Try 3 x 6 at 160", the coach's "Start it").
+function openGymLogSheet(prefillName, prefillSets) {
   const sheet = document.getElementById('gymLogSheet');
   if (!sheet) return;
-  if (gymEditingIdx === null) gymSets = (typeof defaultGymSets === 'function') ? defaultGymSets() : gymSets;
+  if (Array.isArray(prefillSets) && prefillSets.length) gymSets = prefillSets;
+  else if (gymEditingIdx === null) gymSets = (typeof defaultGymSets === 'function') ? defaultGymSets() : gymSets;
   const input = document.getElementById('gymExerciseName');
   if (input && typeof prefillName === 'string') input.value = prefillName;
   renderGym();
-  sheet.classList.add('is-open');
-  document.body.classList.add('gym-sheet-lock');
+  // A .dl-sheet like the task sheet: bottom sheet on a phone, centred panel on
+  // desktop, closes on backdrop / Esc / swipe unless the form has been edited.
+  openDlSheet(sheet);
   if (typeof haptic === 'function') haptic('light');
   const title = document.getElementById('gymLogSheetTitle');
   if (title) title.textContent = gymEditingIdx === null ? 'Log exercise' : 'Edit exercise';
@@ -1028,10 +1005,21 @@ function openGymLogSheet(prefillName) {
 function closeGymLogSheet() {
   const sheet = document.getElementById('gymLogSheet');
   if (!sheet) return;
-  sheet.classList.remove('is-open');
-  document.body.classList.remove('gym-sheet-lock');
+  closeDlSheet(sheet);
+}
+
+// Runs on EVERY close (the sheet fires dl-sheet-close whether it was Save, the
+// x, the backdrop or Esc). Without it, closing an edit left the form in edit
+// mode, and the next "Log exercise" opened as "Edit exercise" holding the old
+// sets.
+function resetGymLogForm() {
+  gymEditingIdx = null;
   const input = document.getElementById('gymExerciseName');
-  if (input) input.blur();
+  if (input) { input.value = ''; input.blur(); }
+  gymSets = (typeof defaultGymSets === 'function') ? defaultGymSets() : [{ reps: '', weight: '' }];
+  gymBodyweight = false;
+  const btn = document.getElementById('gymSaveExerciseBtn');
+  if (btn) btn.textContent = 'Save';
 }
 
 function bindGymSuggestions() {
@@ -1055,13 +1043,9 @@ function bindGymSuggestions() {
 
   const close = document.getElementById('gymLogClose');
   if (close) close.addEventListener('click', closeGymLogSheet);
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeGymLogSheet();
-  });
-  // Desktop popup: clicking the dimmed backdrop (the sheet element itself, never
-  // the panel inside it) closes, matching how the New Task modal behaves.
+  // Backdrop, Esc and swipe are the shared .dl-sheet handlers in js/utils.js.
   const sheet = document.getElementById('gymLogSheet');
-  if (sheet) sheet.addEventListener('click', (e) => { if (e.target === sheet) closeGymLogSheet(); });
+  if (sheet) sheet.addEventListener('dl-sheet-close', resetGymLogForm);
 }
 
 // ---- Rest timer ----
@@ -1072,7 +1056,7 @@ function stopRestTimer() {
   restInterval = null;
   $$('.gym-rest-btn').forEach(b => {
     b.classList.remove('active');
-    b.textContent = `Rest ${b.dataset.rest}s`;
+    b.textContent = `${b.dataset.rest}s`;
   });
 }
 
@@ -1211,7 +1195,7 @@ function renderGymCoach() {
   const burn = burnInfo.cal;
   const pct = Math.min(100, Math.round((burn / burnGoal) * 100));
   const isToday = gymViewDate === getTodayStr();
-  $('#burnGoalChip').textContent = `Burn goal: ${burnGoal} cal/day`;
+  $('#burnGoalChip').textContent = `Burn goal ${burnGoal} kcal`;
 
   const pace = weighInPace();
   const cutting = latestBodyWeightLbs() > goals.weight;
@@ -1222,9 +1206,9 @@ function renderGymCoach() {
   let paceFlag = '';
   if (pace) {
     const pw = Math.round(pace.perWeek * 10) / 10;
-    paceVal = `${pw > 0 ? '+' : ''}${pw}<small> lbs/wk</small>`;
+    paceVal = `${pw > 0 ? '+' : ''}${pw}<small>lb/wk</small>`;
     const onTrack = cutting ? pace.perWeek <= -0.5 : pace.perWeek >= 0.5;
-    paceFlag = `<span class="coach-pace-flag ${onTrack ? 'good' : 'bad'}">${onTrack ? 'On track' : 'Off pace'}</span>`;
+    paceFlag = onTrack ? 'on pace' : 'off pace';
     const toGo = goals.weight - pace.lastW;
     const movingToward = toGo / pace.perWeek > 0;
     if (Math.abs(pace.lastW - goals.weight) < 0.5) {
@@ -1243,23 +1227,69 @@ function renderGymCoach() {
     }
   }
 
+  // Two tiles (spec 7): burn against its target, and the weigh-in pace.
   targetsEl.innerHTML = `
-    <div class="coach-target">
-      <span class="coach-target-lbl">${burnInfo.watch ? 'Active Burn' : 'Est. Burn'} &mdash; ${isToday ? 'Today' : formatDate(gymViewDate)}</span>
-      <span class="coach-target-val">${burnInfo.watch ? '' : '~'}${burn}<small> / ${burnGoal} cal</small></span>
-      <div class="coach-bar-track"><div class="coach-bar-fill ${burn >= burnGoal ? 'done' : ''}" style="width:${pct}%"></div></div>
-      <span class="coach-target-sub">${burn >= burnGoal ? 'Burn target hit' : `${burnGoal - burn} cal to go`} &middot; ${burnInfo.watch ? 'measured by your Apple Watch' : 'estimated from your logged sets'}</span>
+    <div class="dl-tile co-tile">
+      <b>${burnInfo.watch ? '' : '~'}${burn}<small>/ ${burnGoal}</small></b>
+      <span>kcal burned ${isToday ? 'today' : esc(formatDate(gymViewDate))}, ${burnInfo.watch ? 'from your Watch' : 'estimated'}</span>
+      <span class="dl-meter c-move"><i style="width:${pct}%"></i></span>
     </div>
-    <div class="coach-target">
-      <span class="coach-target-lbl">Weekly Pace &rarr; ${goals.weight} lbs ${paceFlag}</span>
-      <span class="coach-target-val">${paceVal}</span>
-      <span class="coach-target-sub">${paceSub}</span>
+    <div class="dl-tile co-tile">
+      <b>${paceVal}</b>
+      <span>goal ${targetPace} lb/wk${paceFlag ? ', ' + paceFlag : ''}</span>
     </div>
-  `;
+    <p class="sp-note co-pace-note">${paceSub}</p>`;
 
-  $('#coachRecs').innerHTML = coachRecommendations(burn, burnGoal, pace).map(r => `
-    <div class="coach-rec ${r.type}"><span class="coach-rec-dot"></span><span>${r.text}</span></div>
-  `).join('');
+  // The remaining advice, one row each. Text is escaped: it carries exercise
+  // names the user typed.
+  const SW = { warn: 'food', info: 'water', good: 'move' };
+  $('#coachRecs').innerHTML = `
+    <div class="dl-card co-card">
+      <h6 class="dl-card-h"><span>Worth knowing</span></h6>
+      ${coachRecommendations(burn, burnGoal, pace).map(r => `
+        <div class="co-row c-${SW[r.type] || 'water'}"><span class="co-sw"></span><div class="co-row-b"><div class="co-row-t">${esc(r.text)}</div></div></div>`).join('')}
+    </div>`;
+  renderCoachLadder();
+}
+
+// ---- Calisthenics ladder ----
+// The progression chains as a list with done / current / next steps (spec 7).
+// A chain shows once you have logged anything on it; the step you are on is the
+// hardest variation you have logged.
+function coachLadders() {
+  const gym = state.gym || [];
+  const logged = new Set(gym.map(e => (e.exercise || '').trim().toLowerCase()));
+  const out = [];
+  PROGRESSION_CHAINS.forEach(({ chain, threshold }) => {
+    let cur = -1;
+    chain.forEach((n, i) => { if (logged.has(n.toLowerCase())) cur = i; });
+    if (cur === -1) return;
+    const name = chain[cur].toLowerCase();
+    const sessions = gym.filter(e => (e.exercise || '').trim().toLowerCase() === name);
+    const best = sessions.reduce((m, e) => Math.max(m, (e.sets || []).reduce((x, st) => Math.max(x, Number(st.reps) || 0), 0)), 0);
+    out.push({ chain, threshold, cur, best, count: sessions.length });
+  });
+  // Most-trained first; two is enough to read on a phone.
+  return out.sort((a, b) => b.count - a.count).slice(0, 2);
+}
+
+function renderCoachLadder() {
+  const host = document.getElementById('coachLadder');
+  if (!host) return;
+  host.innerHTML = coachLadders().map(l => {
+    const from = Math.max(0, l.cur - 2), to = Math.min(l.chain.length, l.cur + 3);
+    const steps = l.chain.slice(from, to).map((n, k) => {
+      const i = from + k;
+      const cls = i < l.cur ? 'is-done' : i === l.cur ? 'is-cur' : '';
+      const note = i === l.cur ? `<em>You are here: best ${l.best} reps. Move up at 3 x ${l.threshold}.</em>` : '';
+      return `<li class="${cls}"><i aria-hidden="true"></i><span>${esc(n)}${note}</span></li>`;
+    }).join('');
+    return `
+      <div class="dl-card co-card">
+        <h6 class="dl-card-h"><span>${esc(l.chain[l.cur])} ladder</span><em>step ${l.cur + 1} of ${l.chain.length}</em></h6>
+        <ol class="co-ladder">${steps}</ol>
+      </div>`;
+  }).join('');
 }
 
 function renderGym() {
@@ -1267,7 +1297,6 @@ function renderGym() {
   if (!dateInput) return;
   dateInput.value = gymViewDate;
 
-  renderWeight();
   renderGymCoach();
   renderGoalProgress();
   renderActivityBreakdown();
@@ -1278,8 +1307,12 @@ function renderGym() {
   const todayStr = getTodayStr();
   const viewDate = new Date(gymViewDate + 'T00:00:00');
   const isToday = gymViewDate === todayStr;
-  $('#gymDateLabel').textContent = isToday ? 'Today' :
-    viewDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  // Built by hand: asking Intl for weekday + day alone gives "30 Wed" in en-US.
+  const shortDay = viewDate.toLocaleDateString('en-US', { weekday: 'short' }) + ' ' + viewDate.getDate();
+  $('#gymDateLabel').textContent = isToday ? `Today, ${shortDay}`
+    : viewDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const todayBtn = $('#gymToday');
+  if (todayBtn) todayBtn.hidden = isToday;
 
   // Populate exercise suggestions
   const allExercises = [...new Set([...COMMON_EXERCISES, ...state.gym.map(e => e.exercise)])].sort();
@@ -1290,16 +1323,18 @@ function renderGym() {
   const exerciseName = $('#gymExerciseName').value.trim();
   gymBodyweight = isBodyweightExercise(exerciseName);
 
-  // Render set inputs
+  // Set rows in the log sheet. The input classes are what the listeners below
+  // bind to; everything else is the v3 row.
   $('#gymSetsList').innerHTML = gymSets.map((s, i) => `
-    <div class="gym-set-chip" data-index="${i}">
-      <span class="gym-set-chip-num">${i + 1}</span>
-      <input type="number" class="gym-reps-input" value="${s.reps}" placeholder="reps" min="0" data-index="${i}">
+    <div class="gl-set" data-index="${i}">
+      <span class="gl-set-n">Set ${i + 1}</span>
+      <span class="gl-set-spacer"></span>
+      <input type="number" inputmode="numeric" class="gym-reps-input" value="${s.reps}" placeholder="0" min="0" data-index="${i}" aria-label="Set ${i + 1} reps">
+      <span class="gl-set-u">reps</span>
       ${!gymBodyweight ? `
-        <span class="gym-set-chip-x">&times;</span>
-        <input type="number" class="gym-weight-input" value="${s.weight}" placeholder="lbs" min="0" step="2.5" data-index="${i}">
-      ` : '<span class="gym-bw-label">BW</span>'}
-      ${gymSets.length > 1 ? `<button type="button" class="gym-remove-set" data-index="${i}">&times;</button>` : ''}
+        <input type="number" inputmode="decimal" class="gym-weight-input" value="${s.weight}" placeholder="0" min="0" step="2.5" data-index="${i}" aria-label="Set ${i + 1} weight">
+        <span class="gl-set-u">lb</span>` : '<span class="gl-set-u">bodyweight</span>'}
+      ${gymSets.length > 1 ? `<button type="button" class="gym-remove-set" data-index="${i}" aria-label="Remove set ${i + 1}"><span class="ms" aria-hidden="true">remove_circle</span></button>` : ''}
     </div>
   `).join('');
 
@@ -1320,52 +1355,39 @@ function renderGym() {
   const totalVolume = weightedExercises.reduce((s, ex) => s + ex.sets.reduce((v, set) => v + Number(set.reps) * Number(set.weight), 0), 0);
   const totalReps = dayExercises.reduce((s, ex) => s + ex.sets.reduce((v, set) => v + Number(set.reps), 0), 0);
 
-  // Stats
+  // The session card (spec 7): a header that names the day and carries the
+  // three numbers, then one row per exercise. It replaced a stats band, a focus
+  // row and a card per exercise with a set table inside each.
+  const session = document.getElementById('gymSession');
+  if (session) session.classList.toggle('is-empty', !dayExercises.length);
+  const focus = sessionFocusData(dayExercises);
+  const liftKcal = dayExercises.length
+    ? Math.max(0, estimateBurnForDate(gymViewDate) - ((typeof cardioBurnForDate === 'function') ? cardioBurnForDate(gymViewDate) : 0))
+    : 0;
+  const headBits = [`${totalSets} set${totalSets === 1 ? '' : 's'}`];
+  if (totalVolume) headBits.push(`${totalVolume.toLocaleString()} lb`);
+  if (liftKcal) headBits.push(`~${Math.round(liftKcal)} kcal`);
   $('#gymStats').innerHTML = dayExercises.length ? `
-    <div class="gym-stat"><span class="gym-stat-val">${dayExercises.length}</span><span class="gym-stat-lbl">Exercises</span></div>
-    <div class="gym-stat"><span class="gym-stat-val">${totalSets}</span><span class="gym-stat-lbl">Sets</span></div>
-    <div class="gym-stat"><span class="gym-stat-val">${totalReps.toLocaleString()}</span><span class="gym-stat-lbl">Reps</span></div>
-    <div class="gym-stat"><span class="gym-stat-val">${totalVolume.toLocaleString()}</span><span class="gym-stat-lbl">Volume (lbs)</span></div>
-  ` : '';
+    <h6 class="dl-card-h ss-h"><span>${esc(focus ? focus.label : 'Session')}</span><em>${headBits.join(' · ')}</em></h6>
+    ${focus && focus.parts.length > 1 ? `<p class="ss-focus">${esc(focus.parts.join(' · '))} sets</p>` : ''}` : '';
 
-  // Exercise list
   if (!dayExercises.length) {
-    $('#gymTodayList').innerHTML = '<div class="gym-empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" opacity="0.4"><path d="M6.5 6.5h-3a1 1 0 00-1 1v9a1 1 0 001 1h3"/><path d="M17.5 6.5h3a1 1 0 011 1v9a1 1 0 01-1 1h-3"/><rect x="6.5" y="4" width="4" height="16" rx="1"/><rect x="13.5" y="4" width="4" height="16" rx="1"/><line x1="10.5" y1="12" x2="13.5" y2="12"/></svg><p>No exercises logged</p><p class="gym-empty-sub">Tap “+ Add Exercise” to start tracking</p></div>';
+    $('#gymTodayList').innerHTML = `<p class="ss-empty">Nothing logged ${isToday ? 'yet today' : 'on this day'}.</p>`;
   } else {
-    $('#gymTodayList').innerHTML = sessionFocusRow(dayExercises) + dayExercises.map((ex, idx) => {
+    $('#gymTodayList').innerHTML = dayExercises.map((ex, idx) => {
       const isBW = ex.bodyweight || isBodyweightExercise(ex.exercise);
-      const totalRepsEx = ex.sets.reduce((sum, s) => sum + Number(s.reps), 0);
-      const vol = ex.sets.reduce((sum, s) => sum + (Number(s.reps) * Number(s.weight)), 0);
       // PR: best set today beats every earlier session of this exercise
       const hist = exerciseHistory(ex.exercise, ex.date);
       const isPR = hist.length > 0 && bestSetScore(ex) > hist.reduce((m, h) => Math.max(m, bestSetScore(h)), 0);
-      const grp = muscleGroupFor(ex.exercise);
       return `
-      <div class="gym-entry">
-        <div class="gym-entry-head">
-          <div class="gym-entry-left">
-            <span class="gym-entry-num">${idx + 1}</span>
-            <span class="gym-entry-name">${esc(ex.exercise)}</span>
-            ${grp ? `<span class="gym-group-badge" data-group="${grp}">${groupLabel(grp)}</span>` : ''}
-            ${isPR ? '<span class="gym-pr-badge">PR</span>' : ''}
-            ${isBW ? '<span class="gym-bw-badge">Bodyweight</span>' : ''}
-          </div>
-          <div class="gym-entry-right">
-            <span class="gym-entry-vol">${isBW ? totalRepsEx + ' reps' : vol.toLocaleString() + ' lbs'}</span>
-            <button class="gym-entry-edit" data-gym-idx="${idx}" title="Edit">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            </button>
-            <button class="gym-entry-del" data-gym-idx="${idx}" title="Delete">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-            </button>
-          </div>
+      <div class="ss-row">
+        <span class="ss-sw"></span>
+        <div class="ss-main">
+          <div class="ss-name">${esc(ex.exercise)}${isPR ? '<span class="dl-chip c-food ss-pr"><span class="ms" aria-hidden="true">trophy</span>PR</span>' : ''}</div>
+          <div class="ss-sets">${esc(setsSummary(ex, isBW))}</div>
         </div>
-        <table class="gym-sets-table">
-          <thead><tr><th>Set</th><th>Reps</th>${!isBW ? '<th>Weight</th>' : ''}</tr></thead>
-          <tbody>
-            ${ex.sets.map((s, si) => `<tr><td>${si + 1}</td><td>${s.reps}</td>${!isBW ? `<td>${s.weight} lbs</td>` : ''}</tr>`).join('')}
-          </tbody>
-        </table>
+        <button type="button" class="ss-act gym-entry-edit" data-gym-idx="${idx}" aria-label="Edit ${esc(ex.exercise)}"><span class="ms" aria-hidden="true">edit</span></button>
+        <button type="button" class="ss-act gym-entry-del" data-gym-idx="${idx}" aria-label="Delete ${esc(ex.exercise)}"><span class="ms" aria-hidden="true">delete</span></button>
       </div>`;
     }).join('');
   }
@@ -1380,9 +1402,7 @@ function renderGym() {
       $('#gymExerciseName').value = ex.exercise;
       gymSets = ex.sets.map(s => ({ reps: String(s.reps), weight: String(s.weight) }));
       // Update button text
-      $('#gymSaveExerciseBtn').innerHTML = `
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
-        Update Exercise`;
+      $('#gymSaveExerciseBtn').textContent = 'Save changes';
       // Editing opens the same popup as logging — on both mobile and desktop now.
       // openGymLogSheet() calls renderGym() and handles focus per platform.
       if (typeof openGymLogSheet === 'function') openGymLogSheet(ex.exercise);
@@ -1395,11 +1415,19 @@ function renderGym() {
     btn.addEventListener('click', () => {
       const dayEx = state.gym.filter(e => e.date === gymViewDate);
       const target = dayEx[btn.dataset.gymIdx];
-      if (target) {
-        state.gym = state.gym.filter(e => e !== target);
+      if (!target) return;
+      // One tap removes it, and the toast brings it back, in the same place.
+      // It used to go with no confirm and no way back.
+      const at = state.gym.indexOf(target);
+      state.gym = state.gym.filter(e => e !== target);
+      saveData(state);
+      renderGym();
+      showToast(`Deleted ${target.exercise || 'exercise'} · Undo`, () => {
+        state.gym.splice(Math.min(at, state.gym.length), 0, target);
         saveData(state);
         renderGym();
-      }
+        if (typeof renderTrainingShell === 'function') renderTrainingShell();
+      });
     });
   });
 
@@ -1407,7 +1435,6 @@ function renderGym() {
   // the Training shell above it (week line + weight readout) has to be brought
   // along or it shows stale numbers until the next navigation.
   if (typeof renderTrainingShell === 'function') renderTrainingShell();
-  if (typeof renderWeightSheetBody === 'function') renderWeightSheetBody();
 }
 
 function bindGymEvents() {
@@ -1418,7 +1445,10 @@ function bindGymEvents() {
   // Live "beat last time" chip while typing (chip only — no full re-render mid-keystroke)
   $('#gymExerciseName').addEventListener('input', renderLastTimeChip);
   $$('.gym-rest-btn').forEach(btn => btn.addEventListener('click', () => startRestTimer(btn)));
-  $('#gymDate').addEventListener('change', (e) => { gymViewDate = e.target.value; renderGym(); });
+  $('#gymDate').addEventListener('change', (e) => { if (e.target.value) { gymViewDate = e.target.value; renderGym(); } });
+  // The date input sits invisibly over the day label; desktop browsers only
+  // open the picker from their own icon, so ask for it.
+  $('#gymDate').addEventListener('click', (e) => { try { e.target.showPicker(); } catch (err) { /* not supported: the field still works */ } });
   $('#gymPrevDay').addEventListener('click', () => {
     const d = new Date(gymViewDate + 'T00:00:00');
     d.setDate(d.getDate() - 1);
@@ -1436,36 +1466,16 @@ function bindGymEvents() {
     renderGym();
   });
   $('#gymAddSetBtn').addEventListener('click', () => { gymSets.push({ reps: '', weight: '' }); renderGym(); });
-  $('#weightLogBtn').addEventListener('click', () => {
-    const v = Number($('#weightInput').value);
-    const waistEl = $('#waistInput');
-    const waist = waistEl ? Number(waistEl.value) : 0;
-    const hasW = v && v >= 50 && v <= 500;
-    const hasWaist = waist && waist >= 15 && waist <= 80;
-    if (!hasW && !hasWaist) { showToast('Enter your weight or waist'); return; }
-    if (hasW) { state.weight = state.weight || {}; state.weight[gymViewDate] = Math.round(v * 10) / 10; }
-    if (hasWaist) { state.waist = state.waist || {}; state.waist[gymViewDate] = Math.round(waist * 10) / 10; }
-    saveData(state);
-    $('#weightInput').value = '';
-    if (waistEl) waistEl.value = '';
-    renderGym();
-    if (typeof renderWeightSheetBody === 'function') renderWeightSheetBody();
-    const parts = [hasW ? `${Math.round(v * 10) / 10} lbs` : null, hasWaist ? `${Math.round(waist * 10) / 10}" waist` : null].filter(Boolean);
-    showToast(`Logged: ${parts.join(' · ')}`);
-  });
-  ['#weightInput', '#waistInput'].forEach(sel => {
-    const el = $(sel);
-    if (el) el.addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#weightLogBtn').click(); });
-  });
   bindGymSuggestions();
   $('#gymSaveExerciseBtn').addEventListener('click', () => {
     const name = $('#gymExerciseName').value.trim();
-    if (!name) return;
+    // Both of these used to return silently: a Save button that does nothing.
+    if (!name) { showToast('Name the exercise first'); $('#gymExerciseName').focus(); return; }
     const bw = isBodyweightExercise(name);
     const validSets = gymSets
       .filter(s => s.reps && (bw || s.weight))
       .map(s => ({ reps: Number(s.reps), weight: bw ? 0 : Number(s.weight) }));
-    if (!validSets.length) return;
+    if (!validSets.length) { showToast(bw ? 'Add the reps for at least one set' : 'Add reps and weight for at least one set'); return; }
 
     if (gymEditingIdx !== null) {
       // Update existing exercise
@@ -1477,9 +1487,7 @@ function bindGymEvents() {
         target.bodyweight = bw;
       }
       gymEditingIdx = null;
-      $('#gymSaveExerciseBtn').innerHTML = `
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Add Exercise`;
+      $('#gymSaveExerciseBtn').textContent = 'Save';
     } else {
       state.gym.push({ date: gymViewDate, exercise: name, sets: validSets, bodyweight: bw });
     }

@@ -1,13 +1,15 @@
-// ========== Daily brief ==========
-// The morning read on the whole day, not just training. It shares
-// coachSnapshot/coachDecision with the Training coach on purpose — two engines
-// would eventually contradict each other ("rest today" on one screen, "push
-// hard" on another). This surface adds the domains the fitness coach doesn't
-// cover: nutrition pacing, tasks, and week-over-week movement.
+// ========== Brief and actions (spec 4.5) ==========
+// One sentence and up to three chips. It shares coachSnapshot/coachDecision
+// with the Training coach on purpose — two engines would eventually contradict
+// each other ("rest today" on one screen, "push hard" on another). This surface
+// adds the domains the fitness coach doesn't cover: nutrition pacing and tasks.
 //
-// Not built, deliberately: habit reminders (the app has no habits feature) and
-// calendar analysis (the calendar has zero events). Inventing either would mean
-// showing advice about data that does not exist.
+// v3 folded three things into this one sentence: the brief's readiness badge and
+// training row (now the bold first clause), the reminder CARDS (now the chips —
+// same rules, a tenth of the height), and the tasks row (now "Due soon"). The
+// this-week grid belongs to Insights' weekly report.
+//
+// Not built, deliberately: advice about data that does not exist.
 
 function briefNutrition() {
   const goals = (typeof getGoals === 'function') ? getGoals() : {};
@@ -116,89 +118,132 @@ function briefWeek() {
   };
 }
 
-// The single most important thing today, ordered by what costs the most if
-// ignored: recovery, then commitments already made, then consistency.
-function briefFocus(s, nut, tasks) {
-  const r = s.readiness;
-  const staleDays = (typeof COACH_STALE_DAYS !== 'undefined') ? COACH_STALE_DAYS : 4;
 
-  if (r && r.score < 45) {
-    return { text: "Recovery is today's job. Sleep is the lever — everything else can wait a day.", tone: 'bad' };
-  }
-  if (tasks.overdue > 0) {
-    return { text: "Clear what's overdue. " + tasks.overdue + ' task' + (tasks.overdue === 1 ? '' : 's') +
-      ' past due outranks starting anything new.', tone: 'warn' };
-  }
-  if (!s.trainedToday && s.daysSinceLast !== null && s.daysSinceLast >= staleDays) {
-    return { text: 'Get a session in. ' + s.daysSinceLast +
-      " days off — the workout doesn't have to be good, it has to happen.", tone: 'warn' };
-  }
-  if (nut.chronicLow) {
-    return { text: "Lead every meal with protein. You're averaging " + nut.avgProtein +
-      'g against a ' + nut.proteinGoal + 'g target.', tone: 'warn' };
-  }
-  if (!s.trainedToday && s.stalled.length && r && r.score >= 60) {
-    const m = s.stalled[0];
-    const bump = m.bodyweight ? m.typical + 2 : m.typical + 5;
-    return { text: 'Break the plateau. ' + m.name + ' has sat at ' + m.typical +
-      ' for weeks — go for ' + bump + ' today.', tone: 'good' };
-  }
-  if (s.trainedToday) {
-    return { text: "Training's done. Protect it with food and sleep — that's where the adaptation happens.", tone: 'good' };
-  }
-  return { text: 'Keep the streak honest. One session, one good meal, one task closed.', tone: 'good' };
+// ---------- the sentence ----------
+// Bold first clause: what today IS, from the coach. Muted second clause: the one
+// thing most worth knowing beyond it. Deliberately short of numbers the now
+// block already shows two inches above — a sentence that repeats them is a
+// sentence you learn to skip.
+// Written the way the line writes it (24-hour), because the row this sentence
+// points at is a few inches below: "at 6:30" over a node labelled 18:30 reads
+// as two different sessions.
+function briefWorkoutClock() {
+  const mins = (typeof LINE_SLOT !== 'undefined' && LINE_SLOT.workout) || (18 * 60 + 30);
+  if (typeof lineClock === 'function') return lineClock(mins);
+  return Math.floor(mins / 60) + ':' + String(mins % 60).padStart(2, '0');
 }
 
-function renderDailyBrief() {
-  const host = document.getElementById('dailyBrief');
+function briefSentence(s, nut, tasks) {
+  const d = (typeof coachDecision === 'function') ? coachDecision(s) : { verdict: 'Today' };
+  // "Push today" reads better as "Push day at 6:30" once there is a time to put
+  // on it — and it is the same session the line is drawing at that time.
+  let lead = d.verdict;
+  if (!s.trainedToday && /today$/i.test(lead)) {
+    lead = lead.replace(/\s*today$/i, ' day at ' + briefWorkoutClock());
+  }
+
+  let rest;
+  if (tasks.overdue > 0) {
+    rest = tasks.overdue + ' task' + (tasks.overdue === 1 ? ' is' : 's are') + ' past due — clear the oldest first.';
+  } else if (!nut.logged) {
+    rest = new Date().getHours() < 11
+      ? 'Nothing logged yet; start the day with protein.'
+      : 'Nothing logged today — the day is guesswork without it.';
+  } else if (nut.chronicLow) {
+    rest = 'Protein has been short all week; lead every meal with it.';
+  } else if (nut.proteinLeft > 0) {
+    rest = 'Food is on pace, ' + nut.proteinLeft + 'g of protein to go.';
+  } else if (tasks.dueToday > 0) {
+    rest = tasks.dueToday + ' due today.';
+  } else {
+    rest = 'Food is handled. Protect it with sleep.';
+  }
+  return { lead, rest };
+}
+
+// ---------- the action chips ----------
+// The v2 reminder rules, unchanged in substance: workout, water, weigh-in,
+// calories, protein, gym gap. They were six stacked cards with icons, titles,
+// sub-lines and buttons — around 400px of Today. Same decisions, three chips.
+// Ordered by what costs most if ignored; only the top three are drawn.
+function briefActions(s, nut) {
+  const today = getTodayStr();
+  const hour = new Date().getHours();
+  const g = (typeof getGoals === 'function') ? getGoals() : { calories: 2000, protein: 150, water: 66 };
+  const out = [];
+
+  // A rest verdict must not be followed by a chip telling you to train: the
+  // reminder cards used to do exactly that, because they never asked the coach.
+  const fullToday = (typeof isFullSession === 'function') ? isFullSession(today) : false;
+  const verdict = (typeof coachDecision === 'function') ? coachDecision(s).verdict : '';
+  const restDay = /^(rest|recovery|done)/i.test(verdict);
+  if (!fullToday && !restDay) {
+    out.push({ icon: 'fitness_center', label: 'Log workout', act: 'training' });
+  }
+
+  const weighDates = Object.keys(state.weight || {}).sort();
+  const last = weighDates[weighDates.length - 1] || null;
+  const sinceWeigh = last
+    ? Math.round((new Date(today + 'T00:00:00') - new Date(last + 'T00:00:00')) / 86400000)
+    : null;
+  if (hour >= 6 && (sinceWeigh === null || sinceWeigh >= 3)) {
+    out.push({ icon: 'monitor_weight', label: 'Weigh in', act: 'weigh' });
+  }
+
+  const water = ((state.water || {})[today] || []).reduce((a, b) => a + b, 0);
+  if (hour >= 10 && water < (g.water || 66) * 0.8) {
+    out.push({ icon: 'water_drop', label: 'Water', act: 'diet' });
+  }
+
+  const cal = Math.round((nut.totals && nut.totals.calories) || 0);
+  const protein = (nut.totals && nut.totals.protein) || 0;
+  if (cal > (g.calories || 2000)) {
+    out.push({ icon: 'restaurant', label: 'Over budget', act: 'diet' });
+  } else if (!nut.logged || (hour >= 12 && cal < (g.calories || 2000) * 0.2)) {
+    out.push({ icon: 'restaurant', label: 'Log food', act: 'diet' });
+  } else if (hour >= 14 && protein < 50) {
+    out.push({ icon: 'egg_alt', label: 'Protein', act: 'diet' });
+  }
+
+  return out.slice(0, 3);
+}
+
+function renderBrief() {
+  const host = document.getElementById('todayBrief');
   if (!host) return;
   if (typeof coachSnapshot !== 'function') { host.innerHTML = ''; return; }
 
   const s = coachSnapshot();
   const nut = briefNutrition();
   const tasks = briefTasks();
-  const week = briefWeek();
-  const focus = briefFocus(s, nut, tasks);
-  const decision = coachDecision(s);
-  const r = s.readiness;
-
-  const hour = new Date().getHours();
-  const part = hour < 12 ? 'This morning' : hour < 18 ? 'This afternoon' : 'Tonight';
-
-  const delta = (now, prev, unit) => {
-    if (now === null || prev === null || prev === undefined) return '';
-    const d = now - prev;
-    if (!d) return '<span class="brief-flat">same as last week</span>';
-    const up = d > 0;
-    return '<span class="brief-delta ' + (up ? 'up' : 'down') + '">' + (up ? '▲' : '▼') + ' ' +
-      Math.abs(Math.round(d)) + (unit || '') + ' vs last week</span>';
-  };
+  const sentence = briefSentence(s, nut, tasks);
+  const acts = briefActions(s, nut);
 
   host.innerHTML =
-    '<div class="card brief-card brief-' + focus.tone + '">' +
-      '<div class="brief-head">' +
-        '<span class="brief-eyebrow">' + part + ' · your brief</span>' +
-        (r ? '<span class="brief-ready" title="Recovery score">' + r.score + '<small> ready</small></span>' : '') +
-      '</div>' +
-      '<div class="brief-focus">' + esc(focus.text) + '</div>' +
-      '<div class="brief-rows">' +
-        '<div class="brief-row"><span class="brief-label">Training</span>' +
-          '<span class="brief-value"><strong>' + esc(decision.verdict) + '</strong> — ' + esc(decision.line) + '</span></div>' +
-        '<div class="brief-row"><span class="brief-label">Nutrition</span>' +
-          '<span class="brief-value">' + esc(nut.text) + '</span></div>' +
-        '<div class="brief-row"><span class="brief-label">Tasks</span>' +
-          '<span class="brief-value">' + tasks.text + '</span></div>' +
-      '</div>' +
-      '<div class="brief-week">' +
-        '<div class="brief-week-title">This week</div>' +
-        '<div class="brief-week-grid">' +
-          '<div class="brief-stat"><div class="brief-stat-v tnum">' + week.sessions + '</div>' +
-            '<div class="brief-stat-l">sessions</div>' + delta(week.sessions, week.sessionsPrev) + '</div>' +
-          '<div class="brief-stat"><div class="brief-stat-v tnum">' + (week.protein === null ? '—' : week.protein + 'g') + '</div>' +
-            '<div class="brief-stat-l">avg protein</div>' + delta(week.protein, week.proteinPrev, 'g') + '</div>' +
-          '<div class="brief-stat"><div class="brief-stat-v tnum">' + week.tasks + '</div>' +
-            '<div class="brief-stat-l">tasks done</div>' + delta(week.tasks, week.tasksPrev) + '</div>' +
-        '</div>' +
-      '</div>' +
-    '</div>';
+    '<p class="brief-say"><b>' + esc(sentence.lead) + '.</b> <span>' + esc(sentence.rest) + '</span></p>' +
+    (acts.length ? '<div class="brief-acts">' + acts.map((a, i) =>
+      '<button type="button" class="brief-act' + (i === 0 ? ' primary' : '') + '" data-brief-act="' + a.act + '">' +
+      '<span class="ms">' + a.icon + '</span>' + esc(a.label) + '</button>').join('') + '</div>' : '');
+
+  bindBrief();
+}
+
+// #todayBrief survives every render — the chips inside it do not — so this is
+// bound once on the host and delegates.
+let briefBound = false;
+function bindBrief() {
+  const host = document.getElementById('todayBrief');
+  if (!host || briefBound) return;
+  briefBound = true;
+  host.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-brief-act]');
+    if (!btn) return;
+    const act = btn.dataset.briefAct;
+    if (act === 'weigh') {
+      if (typeof openWeightSheet === 'function') openWeightSheet();
+      else if (typeof switchView === 'function') switchView('training');
+      return;
+    }
+    if (typeof switchView === 'function') switchView(act);
+  });
 }

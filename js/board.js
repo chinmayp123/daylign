@@ -1,143 +1,144 @@
-// ========== Board View ==========
-function renderBoard() {
-  const cats = state.categories.filter(c =>
-    state.tasks.some(t => t.category === c.id)
-  );
-  const filtersHtml = `
-    <button class="my-tasks-tab ${activeBoardFilter === null ? 'active' : ''}" data-cat="all">All</button>
-    ${cats.map(c => `
-      <button class="my-tasks-tab ${activeBoardFilter === c.id ? 'active' : ''}" data-cat="${c.id}">
-        <span class="category-dot" style="background:${c.color}"></span>${c.name}
-      </button>
-    `).join('')}`;
-  $('#boardFilters').innerHTML = filtersHtml;
+// ========== Board (v3, spec 5) ==========
+// The Board face of Tasks. Three columns on desktop with drag between them; on
+// a phone one column at a time, chosen with the switcher above, because three
+// 110px columns side by side are unreadable.
+//
+// Cards carry a 3px bar in their category's colour (spec 2.3): the colour is
+// the category, so a card does not need to spell it out in a footer as well.
 
-  $$('#boardFilters .my-tasks-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
+const BOARD_STATUSES = ['todo', 'in-progress', 'done'];
+const BOARD_COL_HOST = { todo: 'boardTodo', 'in-progress': 'boardProgress', done: 'boardDone' };
+const BOARD_COL_COUNT = { todo: 'boardTodoCount', 'in-progress': 'boardProgressCount', done: 'boardDoneCount' };
+const BOARD_BMS_COUNT = { todo: 'bmsTodo', 'in-progress': 'bmsProgress', done: 'bmsDone' };
+
+function boardCardHtml(t, hideCategory) {
+  const cat = (state.categories || []).find(c => c.id === t.category);
+  const proj = t.project ? (state.projects || []).find(p => p.id === t.project) : null;
+  const today = getTodayStr();
+  const overdue = t.dueDate && t.dueDate < today && t.status !== 'done';
+  const steps = (t.subtasks && t.subtasks.length)
+    ? `<span class="bc-steps">${t.subtasks.filter(s => s.done).length}/${t.subtasks.length}</span>` : '';
+  const clock = (typeof taskTimeOf === 'function') ? taskTimeOf(t) : (t.time || '');
+  const due = t.dueDate
+    ? `<span class="bc-due${overdue ? ' od' : ''}">${esc(formatDate(t.dueDate))}${clock ? ' ' + esc(clock) : ''}</span>` : '';
+  const flag = ['high', 'medium', 'low'].indexOf(t.priority) !== -1
+    ? `<span class="ms bc-flag p-${t.priority}" aria-hidden="true">flag</span>` : '';
+  const catLine = (!hideCategory && cat)
+    ? `<span class="dl-chip bc-cat" style="--c:${taxColor(cat)};--c-ink:var(--c-${cat.color || 'none'}-ink)">${esc(cat.name)}</span>` : '';
+  const projLine = proj
+    ? `<span class="dl-chip bc-cat" style="--c:${taxColor(proj)};--c-ink:var(--c-${proj.color || 'none'}-ink)">${esc(proj.name)}</span>` : '';
+  const doneLine = t.status === 'done' && t.completedAt
+    ? `<span class="bc-doneon">Done ${esc(formatDate(t.completedAt))}</span>` : '';
+
+  return `
+    <div class="board-card" data-id="${esc(t.id)}" style="--c:${taxColor(cat)}">
+      <div class="bc-name">${esc(t.name)}</div>
+      ${(catLine || projLine || due || steps || flag || doneLine)
+        ? `<div class="bc-meta">${catLine}${projLine}${due}${steps}${flag}${doneLine}</div>` : ''}
+    </div>`;
+}
+
+function renderBoard() {
+  const cats = (state.categories || []).filter(c => (state.tasks || []).some(t => t.category === c.id));
+  const filters = document.getElementById('boardFilters');
+  if (filters) {
+    filters.innerHTML = `
+      <button type="button" class="dl-chip tk-chip${activeBoardFilter === null ? ' on' : ''}" data-cat="all">All</button>
+      ${cats.map(c => `
+        <button type="button" class="dl-chip tk-chip${activeBoardFilter === c.id ? ' on' : ''}" data-cat="${esc(c.id)}" style="--c:${taxColor(c)}">
+          <span class="dl-dot" style="--c:${taxColor(c)}"></span>${esc(c.name)}
+        </button>`).join('')}`;
+    filters.querySelectorAll('[data-cat]').forEach(tab => tab.addEventListener('click', () => {
       activeBoardFilter = tab.dataset.cat === 'all' ? null : tab.dataset.cat;
       renderBoard();
-    });
-  });
+    }));
+  }
 
-  const statuses = ['todo', 'in-progress', 'done'];
-  const containers = { todo: $('#boardTodo'), 'in-progress': $('#boardProgress'), done: $('#boardDone') };
-  const counts = { todo: $('#boardTodoCount'), 'in-progress': $('#boardProgressCount'), done: $('#boardDoneCount') };
-
-  // hideCategory: when cards are grouped by category the folder header already
-  // names it, so repeating it in each card footer is just noise — drop it.
-  const renderCard = (t, hideCategory) => {
-    const cat = state.categories.find(c => c.id === t.category);
-    const proj = t.project ? state.projects.find(p => p.id === t.project) : null;
-    const completedLine = t.status === 'done' && t.completedAt
-      ? `<div class="board-card-completed">Completed ${new Date(t.completedAt + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>`
-      : '';
-    const footer = (!hideCategory && cat)
-      ? `<div class="board-card-footer"><span class="board-card-category"><span class="category-dot" style="background:${cat.color}"></span>${cat.name}</span></div>`
-      : '';
-    return `
-      <div class="board-card" data-id="${t.id}">
-        <div class="board-card-name">${esc(t.name)}</div>
-        ${proj ? `<span class="board-card-project" style="color:${proj.color};background:${proj.color}15"><span class="category-dot" style="background:${proj.color}"></span>${proj.name}</span>` : ''}
-        ${completedLine}
-        ${footer}
-      </div>`;
-  };
-
-  statuses.forEach(status => {
+  BOARD_STATUSES.forEach(status => {
+    const host = document.getElementById(BOARD_COL_HOST[status]);
+    if (!host) return;
     // Hide auto-archived tasks (done 1+ week ago) so the Done column doesn't
-    // pile up forever — same rule the Tasks view uses. They're not deleted;
-    // they stay in Tasks → Archived.
-    let tasks = state.tasks.filter(t => t.status === status && !(typeof isArchived === 'function' && isArchived(t)));
-    if (activeBoardFilter) {
-      tasks = tasks.filter(t => t.category === activeBoardFilter);
+    // pile up forever — same rule the list uses. They're not deleted; they
+    // stay in Tasks → Archived.
+    let tasks = (state.tasks || []).filter(t =>
+      t.status === status && !(typeof isArchived === 'function' && isArchived(t)));
+    if (activeBoardFilter) tasks = tasks.filter(t => t.category === activeBoardFilter);
+    if (activeProject) tasks = tasks.filter(t => t.project === activeProject);
+
+    const countEl = document.getElementById(BOARD_COL_COUNT[status]);
+    if (countEl) countEl.textContent = tasks.length;
+    const bms = document.getElementById(BOARD_BMS_COUNT[status]);
+    if (bms) {
+      bms.textContent = tasks.length;
+      // Dims an empty column's badge — a zero is the one count that means
+      // "nothing here", and it should not compete with the real numbers.
+      bms.dataset.zero = tasks.length === 0 ? '1' : '0';
     }
-    if (activeProject) {
-      tasks = tasks.filter(t => t.project === activeProject);
-    }
-    counts[status].textContent = tasks.length;
 
     if (!tasks.length) {
-      containers[status].innerHTML = emptyState({ icon: 'tasks', title: 'Nothing here', compact: true });
+      host.innerHTML = emptyState({ icon: 'tasks', title: 'Nothing here', compact: true });
       return;
     }
 
-    // Group by project if filtering Work, otherwise by category
-    const useProjectGrouping = activeBoardFilter === 'work' || activeProject;
+    // Group by project when a project is the lens, otherwise by category.
+    const useProjectGrouping = activeBoardFilter === 'work' || !!activeProject;
     const grouped = {};
     tasks.forEach(t => {
-      let key, groupData;
+      let key, data;
       if (useProjectGrouping) {
-        const proj = state.projects.find(p => p.id === t.project);
+        const proj = (state.projects || []).find(p => p.id === t.project);
         key = proj ? proj.id : '_no-project';
-        groupData = proj ? { name: proj.name, color: proj.color } : { name: 'No Project', color: 'var(--text-muted)' };
+        data = proj ? { name: proj.name, color: taxColor(proj) } : { name: 'No project', color: 'var(--text-muted)' };
       } else {
-        const cat = state.categories.find(c => c.id === t.category);
+        const cat = (state.categories || []).find(c => c.id === t.category);
         key = cat ? cat.id : '_uncategorized';
-        groupData = cat ? { name: cat.name, color: cat.color } : { name: 'Uncategorized', color: 'var(--text-muted)' };
+        data = cat ? { name: cat.name, color: taxColor(cat) } : { name: 'Uncategorised', color: 'var(--text-muted)' };
       }
-      if (!grouped[key]) grouped[key] = { ...groupData, tasks: [] };
+      if (!grouped[key]) grouped[key] = Object.assign({ tasks: [] }, data);
       grouped[key].tasks.push(t);
     });
 
-    const folderKey = (status, catKey) => `${status}_${catKey}`;
-
-    containers[status].innerHTML = Object.entries(grouped).map(([key, group]) => {
-      const fKey = folderKey(status, key);
+    host.innerHTML = Object.keys(grouped).map(key => {
+      const group = grouped[key];
+      const fKey = status + '_' + key;
       const isOpen = !boardFoldersCollapsed[fKey];
       return `
-        <div class="board-folder ${isOpen ? 'open' : ''}" data-folder="${fKey}">
-          <div class="board-folder-header" data-folder="${fKey}">
-            <svg class="board-folder-chevron" width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <span class="category-dot" style="background:${group.color}"></span>
-            <span class="board-folder-name">${group.name}</span>
+        <div class="board-folder${isOpen ? ' open' : ''}" data-folder="${esc(fKey)}">
+          <button type="button" class="board-folder-header" data-folder="${esc(fKey)}" aria-expanded="${isOpen}">
+            <span class="ms board-folder-chev" aria-hidden="true">chevron_right</span>
+            <span class="dl-dot" style="--c:${group.color}"></span>
+            <span class="board-folder-name">${esc(group.name)}</span>
             <span class="board-folder-count">${group.tasks.length}</span>
-          </div>
+          </button>
           <div class="board-folder-body">
-            ${group.tasks.map(t => renderCard(t, !useProjectGrouping)).join('')}
+            ${group.tasks.map(t => boardCardHtml(t, !useProjectGrouping)).join('')}
           </div>
         </div>`;
     }).join('');
   });
 
-  // Keep the mobile column-switch counts in sync on every render — not just on
-  // nav-button clicks — so completing, adding, or dragging a task updates the
-  // To Do / Doing / Done tallies immediately.
-  const bmsCounts = { todo: $('#bmsTodo'), 'in-progress': $('#bmsProgress'), done: $('#bmsDone') };
-  statuses.forEach(s => {
-    const el = bmsCounts[s];
-    if (!el || !counts[s]) return;
-    const n = counts[s].textContent;
-    el.textContent = n;
-    // Dims an empty column's badge — a zero is the one count that means
-    // "nothing here", and it should not compete with the real numbers.
-    el.dataset.zero = (parseInt(n, 10) || 0) === 0 ? '1' : '0';
-  });
-
-  $$('.board-folder-header').forEach(header => {
+  // These nodes were just replaced, so re-binding them adds nothing that lasts.
+  document.querySelectorAll('#tasksBoardPane .board-folder-header').forEach(header => {
     header.addEventListener('click', (e) => {
       e.stopPropagation();
       const key = header.dataset.folder;
       boardFoldersCollapsed[key] = !boardFoldersCollapsed[key];
-      header.closest('.board-folder').classList.toggle('open');
+      const open = !boardFoldersCollapsed[key];
+      header.closest('.board-folder').classList.toggle('open', open);
+      header.setAttribute('aria-expanded', String(open));
     });
   });
 
-  $$('.board-card').forEach(el => {
-    el.addEventListener('click', () => openModal(el.dataset.id));
-  });
-
-  // Drag and drop
-  $$('.board-card').forEach(card => {
+  document.querySelectorAll('#tasksBoardPane .board-card').forEach(card => {
+    card.addEventListener('click', () => openTaskSheet(card.dataset.id));
     card.draggable = true;
     card.addEventListener('dragstart', (e) => {
       e.dataTransfer.setData('text/plain', card.dataset.id);
-      card.style.opacity = '0.5';
+      e.dataTransfer.effectAllowed = 'move';
+      card.classList.add('dragging');
     });
-    card.addEventListener('dragend', () => { card.style.opacity = '1'; });
+    card.addEventListener('dragend', () => card.classList.remove('dragging'));
   });
-
 }
 
 // The .column-tasks containers are static markup — renderBoard only rewrites
@@ -149,22 +150,30 @@ let boardDropBound = false;
 function bindBoardDropTargets() {
   if (boardDropBound) return;
   boardDropBound = true;
-  $$('.column-tasks').forEach(col => {
-    col.addEventListener('dragover', (e) => { e.preventDefault(); col.style.background = 'var(--accent-glow)'; });
-    col.addEventListener('dragleave', () => { col.style.background = ''; });
+  document.querySelectorAll('.column-tasks').forEach(col => {
+    col.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      col.classList.add('drop-over');
+    });
+    col.addEventListener('dragenter', (e) => { e.preventDefault(); col.classList.add('drop-over'); });
+    col.addEventListener('dragleave', (e) => {
+      // A dragleave fires for every child crossed, so only the one that leaves
+      // the column itself should clear the highlight.
+      if (col.contains(e.relatedTarget)) return;
+      col.classList.remove('drop-over');
+    });
     col.addEventListener('drop', (e) => {
       e.preventDefault();
-      col.style.background = '';
+      col.classList.remove('drop-over');
       const taskId = e.dataTransfer.getData('text/plain');
       const newStatus = col.closest('.board-column').dataset.status;
-      const task = state.tasks.find(t => t.id === taskId);
-      if (task) {
-        task.status = newStatus;
-        if (newStatus === 'done') task.completedAt = getTodayStr();
-        else task.completedAt = null;
-        saveData(state);
-        render();
-      }
+      const task = (state.tasks || []).find(t => t.id === taskId);
+      if (!task || task.status === newStatus) return;
+      task.status = newStatus;
+      task.completedAt = newStatus === 'done' ? getTodayStr() : null;
+      saveData(state);
+      render();
     });
   });
 }

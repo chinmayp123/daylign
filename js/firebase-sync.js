@@ -9,9 +9,25 @@ const firebaseConfig = {
   appId: "1:126263493016:web:e3afbc4136d45525d9abed"
 };
 
-// Initialize Firebase
-const firebaseApp = firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+// Initialize Firebase.
+//
+// Guarded, because this is an offline-first PWA and the SDK comes from a CDN
+// that is NOT in the service worker's asset list. A first load with no network,
+// a blocked CDN or an ad blocker left `firebase` undefined, and these two lines
+// threw at the top of the file - which meant every `const`/`let` below them
+// (db, DATA_REF, externalData...) stayed uninitialised in the temporal dead
+// zone. Touching any of them then threw ReferenceError rather than reading as
+// undefined, so render() died on lastExternalSyncDate() and the app showed a
+// blank screen instead of the cached local data it already had.
+//
+// Now the app simply runs local-only when the SDK is absent: `db` is null,
+// every sync call no-ops, and localStorage still drives the UI.
+const firebaseSdkLoaded = (typeof firebase !== 'undefined' && firebase && typeof firebase.initializeApp === 'function');
+if (!firebaseSdkLoaded) {
+  console.warn('[daylign] Firebase SDK unavailable — running local-only this session.');
+}
+const firebaseApp = firebaseSdkLoaded ? firebase.initializeApp(firebaseConfig) : null;
+const db = firebaseSdkLoaded ? firebase.database() : null;
 
 // Whose data this session reads and writes. Assigned in initFirebaseSync once
 // a profile has been chosen (see js/profile.js) — it is deliberately not set at
@@ -235,6 +251,7 @@ function refreshFromCloud() {
           seedSyncBaseline(v);
           applyFirebaseData(v);
           suppressFirebaseWrite = false;
+          clearSyncConflicts();
         }
       }).catch(() => {}));
     } catch (e) { /* offline */ }
@@ -261,11 +278,126 @@ function shouldApplyCloudData(data) {
   if (!data || !data.lastUpdated) return false;
   // A write of ours is still in flight. Anything the cloud can return right now
   // was written before it, so applying it would undo changes already on screen.
-  if (pendingWrites > 0 && data.lastUpdated <= lastWriteStamp) return false;
+  if (pendingWrites > 0 && data.lastUpdated <= lastWriteStamp) { noteSyncConflicts(data); return false; }
   const localTimestamp = parseInt(localStorage.getItem('tf_last_updated') || '0', 10) || 0;
   // The 1s margin absorbs clock skew between this device and the write it just
   // made; without it a device can keep re-applying its own echo.
-  return data.lastUpdated > localTimestamp + 1000;
+  if (data.lastUpdated > localTimestamp + 1000) return true;
+  noteSyncConflicts(data);
+  return false;
+}
+
+// ---- Sync conflicts ----
+// Skipping a snapshot protects what was just typed, but it has a cost. Writes
+// go up per key, so a snapshot that is skipped can still be carrying another
+// device's change to a key this device never touched. Nothing re-applies it
+// later: the cloud's clock is now this device's own, so it never looks newer.
+// This device goes on showing the old value, and the next edit to that key
+// here overwrites the other device's.
+//
+// So a skipped snapshot is compared, key by key, with what this device last
+// knew the cloud held. A key that differs from that AND from what is on screen
+// is another device's change that did not land here. It is recorded, in memory
+// only, and Settings asks which copy to keep (js/settings.js).
+let syncConflicts = [];   // { key, local, remote, at, untouched, extra }
+
+// Keys that only ever change together with another, and are decided with it.
+const SYNC_COMPANIONS = { water: ['waterAt'], customFoods: ['removedFoods'] };
+
+// Firebase does not hand data back the way it was sent: empty arrays and
+// objects vanish, keys come back sorted, and an array can return as an object
+// with numeric keys. Comparing raw JSON would call every one of those a
+// conflict, so both sides are reduced to the same shape first.
+function syncCanon(v) {
+  if (v === null || v === undefined) return undefined;
+  if (typeof v !== 'object') return v;
+  const out = {};
+  Object.keys(v).sort().forEach(k => {
+    const c = syncCanon(v[k]);
+    if (c !== undefined) out[k] = c;
+  });
+  return Object.keys(out).length ? out : undefined;
+}
+
+function syncCanonStr(v) {
+  const c = syncCanon(v);
+  return c === undefined ? '' : JSON.stringify(c);
+}
+
+function syncCopy(v) {
+  return v === undefined ? undefined : JSON.parse(JSON.stringify(v));
+}
+
+function noteSyncConflicts(data) {
+  // No baseline means nothing has been read or sent yet this session, so there
+  // is no telling another device's change from this device's own.
+  if (!lastSentByKey || typeof state === 'undefined' || !state) return;
+  try {
+    const companions = [].concat.apply([], Object.keys(SYNC_COMPANIONS).map(k => SYNC_COMPANIONS[k]));
+    const cloud = (k) => (data[k] !== undefined && data[k] !== null ? data[k] : SYNC_KEYS[k]);
+    const fresh = [];
+    let changed = false;
+    Object.keys(SYNC_KEYS).forEach(k => {
+      if (companions.indexOf(k) !== -1) return;
+      const base = lastSentByKey[k];
+      if (base === null || base === undefined) return;
+      const remote = cloud(k);
+      const had = syncConflicts.findIndex(c => c.key === k);
+      let differs = false, untouched = false, rc = '';
+      // Most keys, most of the time, are exactly what the cloud already held.
+      if (JSON.stringify(remote) !== base) {
+        rc = syncCanonStr(remote);
+        const lc = syncCanonStr(state[k]);
+        const bc = syncCanonStr(JSON.parse(base));
+        differs = rc !== bc && rc !== lc;
+        untouched = lc === bc;
+      }
+      if (!differs) {
+        // Settled by itself: the two copies agree again.
+        if (had !== -1) { syncConflicts.splice(had, 1); changed = true; }
+        return;
+      }
+      if (had !== -1 && syncConflicts[had].rc === rc) return;   // already waiting, unchanged
+      const rec = { key: k, local: syncCopy(state[k]), remote: syncCopy(remote), at: Date.now(), untouched: untouched, rc: rc, extra: {} };
+      (SYNC_COMPANIONS[k] || []).forEach(x => { rec.extra[x] = syncCopy(cloud(x)); });
+      if (had === -1) { syncConflicts.push(rec); fresh.push(k); } else syncConflicts[had] = rec;
+      changed = true;
+    });
+    if (changed && typeof onSyncConflictsChanged === 'function') onSyncConflictsChanged(fresh);
+  } catch (e) {
+    // A notice is a nicety. It must never be the reason a sync callback dies.
+    console.warn('[daylign] could not compare a skipped snapshot:', e);
+  }
+}
+
+// Use theirs: take the other device's copy of this key. Keep mine: send this
+// device's copy up over it. Either way the two agree afterwards.
+function resolveSyncConflict(key, useTheirs) {
+  const c = syncConflicts.find(x => x.key === key);
+  if (!c) return false;
+  const keys = [key].concat(SYNC_COMPANIONS[key] || []);
+  keys.forEach(k => {
+    if (useTheirs) {
+      const v = k === key ? c.remote : c.extra[k];
+      state[k] = syncCopy(v !== undefined && v !== null ? v : SYNC_KEYS[k]);
+      // This is what the cloud holds, so the save below has nothing to send.
+      if (lastSentByKey) lastSentByKey[k] = JSON.stringify(state[k]);
+    } else if (lastSentByKey) {
+      // Unknown baseline = changed, so the save below sends this key.
+      lastSentByKey[k] = null;
+    }
+  });
+  syncConflicts = syncConflicts.filter(x => x !== c);
+  if (typeof saveData === 'function') saveData(state);
+  if (typeof render === 'function') render();
+  return true;
+}
+
+// Cloud data was applied whole: this device now holds what the cloud holds.
+function clearSyncConflicts() {
+  if (!syncConflicts.length) return;
+  syncConflicts = [];
+  if (typeof onSyncConflictsChanged === 'function') onSyncConflictsChanged([]);
 }
 
 // Sync state
@@ -285,15 +417,30 @@ let appReconciled = false;
 // no way whatsoever to find out why or to do anything about it.
 let lastSyncError = null;
 let syncRetryTimer = null;
+// The same state the header pill shows, kept as data so Settings can describe
+// it in a sentence without reading class names back off the pill.
+let syncState = 'connecting';
+let lastSyncedAt = 0;
+
+const SYNC_STATE_LABELS = { connecting: 'Connecting…', saving: 'Saving…', synced: 'Synced', error: 'Not saving', offline: 'Offline' };
+
+function syncStatusInfo() {
+  return { state: syncState, label: SYNC_STATE_LABELS[syncState] || SYNC_STATE_LABELS.connecting, message: lastSyncError, at: lastSyncedAt };
+}
 
 function setSyncStatus(state, message) {
   const el = document.getElementById('syncStatus');
   lastSyncError = state === 'error' ? (message || 'Cloud sync failed.') : null;
+  syncState = SYNC_STATE_LABELS[state] ? state : 'connecting';
+  if (state === 'synced') lastSyncedAt = Date.now();
   if (state === 'error') scheduleSyncRetry(); else cancelSyncRetry();
+  if (typeof onSyncStatusChanged === 'function') {
+    try { onSyncStatusChanged(); } catch (e) { console.warn(e); }
+  }
   const detail = document.getElementById('syncDetail');
   if (detail && state !== 'error') detail.hidden = true;
   if (!el) return;
-  el.classList.remove('is-synced', 'is-saving', 'is-error');
+  el.classList.remove('is-synced', 'is-saving', 'is-error', 'is-offline');
   const txt = el.querySelector('.sync-text');
   switch (state) {
     case 'saving':
@@ -311,6 +458,13 @@ function setSyncStatus(state, message) {
       if (txt) txt.textContent = 'Not saving';
       el.title = message || 'Cloud sync failed — your changes are only on this device. Use Backup to be safe.';
       break;
+    case 'offline':
+      // No network, or no SDK at all this session. Distinct from 'error',
+      // which means the cloud is reachable but a write failed.
+      el.classList.add('is-offline');
+      if (txt) txt.textContent = 'Offline';
+      el.title = 'Offline. Changes are saved on this device.';
+      break;
     default:
       if (txt) txt.textContent = 'Connecting…';
       el.title = 'Connecting to cloud…';
@@ -323,8 +477,8 @@ function setSyncStatus(state, message) {
 // change tracker.
 const SYNC_KEYS = {
   tasks: [], categories: [], projects: [], gym: [], cardio: [], modules: {},
-  diet: [], customFoods: {}, water: {}, events: [], removedFoods: {},
-  weight: {}, goals: {}, sleep: {}, aiUsage: {}, combos: [],
+  diet: [], customFoods: {}, water: {}, waterAt: {}, events: [], removedFoods: {},
+  weight: {}, waist: {}, goals: {}, sleep: {}, aiUsage: {}, combos: [],
 };
 
 // What we last successfully sent, serialized per key. Anything unchanged is
@@ -359,7 +513,11 @@ function saveToFirebase(data) {
     try { ser = JSON.stringify(v); } catch (e) { ser = null; }
     serialized[k] = ser;
     if (!lastSentByKey || ser === null || lastSentByKey[k] !== ser) {
-      payload[k] = v;
+      // The serialized copy, not the live value: JSON drops every undefined,
+      // which Firebase would reject outright (a food logged for yesterday once
+      // carried at: undefined and stopped all syncing). It is also exactly
+      // what lastSentByKey compares against.
+      payload[k] = ser !== null ? JSON.parse(ser) : v;
       changed.push(k);
     }
   });
@@ -380,10 +538,12 @@ function saveToFirebase(data) {
   // plainly that it is stalled instead. The write is NOT cancelled — Firebase
   // keeps retrying and will flip this to Synced if it lands.
   const stallTimer = setTimeout(() => {
+    // With no network at all this is not an error, it is simply offline.
+    if (!navigator.onLine) { setSyncStatus('offline'); return; }
     setSyncStatus('error', 'Still trying to reach the cloud — your data is saved on this device and will sync when the connection recovers.');
   }, 12000);
 
-  setSyncStatus('saving');
+  setSyncStatus(navigator.onLine ? 'saving' : 'offline');
 
   // Last line of defence on key names. customFoods is keyed by the food's
   // display name, and the photo/voice analysis invents those names — one called
@@ -463,6 +623,25 @@ function migrateOwnerData() {
 // Load from Firebase once on startup, then listen for changes.
 // Must run only after a profile is chosen — see requireProfile in js/profile.js.
 function initFirebaseSync(onDataReceived) {
+  // No SDK: stay on the cached local state rather than throwing on db.ref.
+  // Deliberately does NOT call onDataReceived - that is applyFirebaseData,
+  // which reads data.tasks and throws on null. There is no cloud snapshot to
+  // apply here; state.js has already loaded localStorage, so the right move is
+  // to leave it alone and just render.
+  if (!db) {
+    // Saves must still advance this device's clock, or an edit made in a
+    // session with no SDK looks older than the cloud and is overwritten on the
+    // next online load. Same trade-off as a failed first read (below): what was
+    // done on this device wins.
+    appReconciled = true;
+    setSyncStatus('offline');
+    document.body.classList.remove('app-loading');
+    if (typeof render === 'function') render();
+    // A profile created with no SDK still gets its setup, as it does when the
+    // first read fails (below). It saves on this device like everything else.
+    if (typeof maybeStartOnboarding === 'function') maybeStartOnboarding();
+    return;
+  }
   setSyncStatus('connecting');
   // Drives the top progress bar + any skeletons until the first read settles.
   document.body.classList.add('app-loading');
@@ -503,6 +682,9 @@ function startFirebaseSync(onDataReceived) {
       appReconciled = true;
       document.body.classList.remove('app-loading');
       setSyncStatus('synced');
+      // One-time data migrations run here, after reconciliation, so their save
+      // advances the clock and reaches the cloud rather than losing to it.
+      if (typeof migrateTaxonomyColors === 'function') migrateTaxonomyColors();
       // Now that cloud state (if any) has loaded, decide whether a freshly
       // created profile still needs onboarding. Runs after sync so a returning
       // person whose cloud data carries _onboarded is never re-onboarded.
@@ -516,6 +698,10 @@ function startFirebaseSync(onDataReceived) {
       // are recognized as newer and preserved on the next successful load.
       firebaseReady = false;
       appReconciled = true;
+      // No colour migration here: it would save a state that never met the
+      // cloud with a fresh stamp, and the next load would push it over newer
+      // cloud data. taxColor() still draws an old hex colour meanwhile, and the
+      // migration runs after the next successful load.
       // A stuck progress bar is worse than none — clear it on failure too.
       document.body.classList.remove('app-loading');
       setSyncStatus('error', 'Could not reach the cloud: ' + (err && err.message ? err.message : 'unknown error') + '. Changes save on this device only — reopen when online to sync.');
@@ -535,6 +721,7 @@ function startFirebaseSync(onDataReceived) {
       seedSyncBaseline(data);
       onDataReceived(data);
       suppressFirebaseWrite = false;
+      clearSyncConflicts();
       console.log('Received real-time update from Firebase');
     }
   });
@@ -573,6 +760,21 @@ function retrySync() {
   catch (e) { setSyncStatus('error', 'Retry failed: ' + (e && e.message ? e.message : 'unknown error')); }
 }
 
+// What the pill's detail says: the state in a sentence, and when this device
+// last heard the cloud confirm a save.
+function syncDetailText() {
+  const info = syncStatusInfo();
+  let msg;
+  if (info.state === 'error') msg = lastSyncError || 'Cloud sync failed. Your changes are saved on this device.';
+  else if (info.state === 'offline') msg = db ? 'Offline. Changes are saved on this device and sync when the connection is back.'
+    : 'Cloud sync is unavailable this session. Changes are saved on this device.';
+  else if (info.state === 'saving') msg = 'Saving to the cloud…';
+  else if (info.state === 'connecting') msg = 'Connecting to the cloud…';
+  else msg = 'Everything on this device is saved to the cloud.';
+  if (info.at && typeof relativeTime === 'function') msg += ' Last saved ' + relativeTime(info.at) + '.';
+  return msg;
+}
+
 function bindSyncStatusUI() {
   const btn = document.getElementById('syncStatus');
   const detail = document.getElementById('syncDetail');
@@ -581,19 +783,26 @@ function bindSyncStatusUI() {
   const close = document.getElementById('syncDetailClose');
 
   if (btn && detail && msg) {
+    btn.setAttribute('aria-expanded', 'false');
+    btn.setAttribute('aria-controls', 'syncDetail');
     btn.addEventListener('click', () => {
-      msg.textContent = lastSyncError
-        ? lastSyncError
-        : 'Everything on this device is saved to the cloud.';
+      msg.textContent = syncDetailText();
+      // Retry only means something when a write failed.
+      if (retry) retry.hidden = syncState !== 'error';
       detail.hidden = !detail.hidden;
+      btn.setAttribute('aria-expanded', detail.hidden ? 'false' : 'true');
     });
   }
-  if (close && detail) close.addEventListener('click', () => { detail.hidden = true; });
+  if (close && detail) close.addEventListener('click', () => { detail.hidden = true; if (btn) btn.setAttribute('aria-expanded', 'false'); });
   if (retry) retry.addEventListener('click', () => {
     if (detail) detail.hidden = true;
     retrySync();
   });
 
   // Coming back online is the single best moment to try again.
-  window.addEventListener('online', () => { if (lastSyncError) retrySync(); });
+  window.addEventListener('online', () => {
+    if (lastSyncError) { retrySync(); return; }
+    if (syncState === 'offline' && db) setSyncStatus(pendingWrites > 0 ? 'saving' : 'synced');
+  });
+  window.addEventListener('offline', () => { if (db) setSyncStatus('offline'); });
 }

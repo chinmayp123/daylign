@@ -1,0 +1,2368 @@
+[
+{
+"area": "Today",
+"feature": "Calories tile",
+"home": "Today > now block",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Today",
+"feature": "Activity/burn tile",
+"home": "Today > now block",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Today",
+"feature": "Protein tile",
+"home": "Today > now block",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Today",
+"feature": "Water tile",
+"home": "Today > now block",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Today",
+"feature": "Steps tile (conditional)",
+"home": "Today > now block",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Today",
+"feature": "Exercise minutes tile (conditional)",
+"home": "Today > now block",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Today",
+"feature": "Sleep tile (conditional)",
+"home": "Today > now block",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Today",
+"feature": "Weight tile plus quick weigh in modal",
+"home": "Global > weigh-in sheet",
+"status": "kept",
+"note": "opened from the weight in the now block"
+},
+{
+"area": "Today",
+"feature": "Daily Brief card",
+"home": "Today > brief",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Today",
+"feature": "Brief readiness badge",
+"home": "Today > brief",
+"status": "merged",
+"note": "folded into one-sentence brief"
+},
+{
+"area": "Today",
+"feature": "Brief training row",
+"home": "Today > brief",
+"status": "merged",
+"note": "folded into one-sentence brief, dup of Training Coach panel"
+},
+{
+"area": "Today",
+"feature": "Brief nutrition row",
+"home": "Today > now block",
+"status": "merged",
+"note": "restates Calories/Protein tiles"
+},
+{
+"area": "Today",
+"feature": "Brief tasks row",
+"home": "Today > due-soon list",
+"status": "merged",
+"note": "restates due-soon/triage content"
+},
+{
+"area": "Today",
+"feature": "Brief this week stat grid",
+"home": "Insights > weekly report",
+"status": "merged",
+"note": "dup of Weekly Report/Insights trends"
+},
+{
+"area": "Today",
+"feature": "Dateless task triage nudge",
+"home": "Today > triage nudge",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Today",
+"feature": "Triage plus Today chip",
+"home": "Today > triage nudge",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Today",
+"feature": "Triage see all N",
+"home": "Today > triage nudge",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Today",
+"feature": "Scheduled lane",
+"home": "Today > time line",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Today",
+"feature": "Anytime lane",
+"home": "Today > no-time tray",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Today",
+"feature": "Anytime schedule via clock button",
+"home": "Today > no-time tray",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Today",
+"feature": "Anytime drag to schedule",
+"home": "Today > time line",
+"status": "merged",
+"note": "dup of Daily Schedule drag-to-hour-slot"
+},
+{
+"area": "Today",
+"feature": "Empty lane suppression",
+"home": "Today > time line",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Today",
+"feature": "Dashboard project filter",
+"home": "Tasks > project filter",
+"status": "merged",
+"note": "consolidated with Board/Tasks project filters"
+},
+{
+"area": "Today",
+"feature": "Daily cardio one tap",
+"home": "Training > Cardio",
+"status": "merged",
+"note": "dup of Cardio quick-log card; survives as Today action chip"
+},
+{
+"area": "Today",
+"feature": "Reminder brush teeth AM/PM",
+"home": "Today > due-soon list",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Today",
+"feature": "Reminder morning routine",
+"home": "Today > due-soon list",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Today",
+"feature": "Reminder gym gap",
+"home": "Today > due-soon list",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Today",
+"feature": "Reminder water (2 tiers)",
+"home": "Today > now block",
+"status": "merged",
+"note": "dup of Water tile"
+},
+{
+"area": "Today",
+"feature": "Reminder calories (3 variants)",
+"home": "Today > now block",
+"status": "merged",
+"note": "dup of Calories tile"
+},
+{
+"area": "Today",
+"feature": "Reminder weigh in",
+"home": "Global > weigh-in sheet",
+"status": "merged",
+"note": "third weigh-in entry point"
+},
+{
+"area": "Today",
+"feature": "Reminder protein",
+"home": "Today > now block",
+"status": "merged",
+"note": "dup of Protein tile"
+},
+{
+"area": "Today",
+"feature": "Reminders bar empty state",
+"home": "Today > due-soon list",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Today",
+"feature": "My Tasks board card",
+"home": "Today > due-soon list",
+"status": "merged",
+"note": "consolidated into due-soon list widget"
+},
+{
+"area": "Today",
+"feature": "Upcoming deadlines card",
+"home": "Today > due-soon list",
+"status": "merged",
+"note": "dup of due-soon list content"
+},
+{
+"area": "Today",
+"feature": "Daily schedule card",
+"home": "Today > time line",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Today",
+"feature": "Layout editor entry button",
+"home": "Today > Edit layout sheet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Today",
+"feature": "Weight trend chart dead render",
+"home": "Removed",
+"status": "removed",
+"note": "dead render, no host div in Today; trend lives in Insights"
+},
+{
+"area": "Today",
+"feature": "Weekly report card dead render",
+"home": "Removed",
+"status": "removed",
+"note": "dead render on Today; card lives in Insights weekly report"
+},
+{
+"area": "Today",
+"feature": "Wide widget span toggle",
+"home": "Removed",
+"status": "removed",
+"note": "dead feature flag, no UI ever shipped"
+},
+{
+"area": "Tasks",
+"feature": "Add task header button/FAB",
+"home": "Global > + sheet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Tasks",
+"feature": "Task row read view",
+"home": "Tasks > List view",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Tasks",
+"feature": "Check off/uncheck task",
+"home": "Tasks > List view",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Tasks",
+"feature": "Search tasks",
+"home": "Tasks > List view",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Tasks",
+"feature": "Filter by status",
+"home": "Tasks > List view",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Tasks",
+"feature": "Filter by category",
+"home": "Tasks > List view",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Tasks",
+"feature": "Sort tasks",
+"home": "Tasks > List view",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Tasks",
+"feature": "Filter by active project sidebar",
+"home": "Tasks > project filter",
+"status": "merged",
+"note": "dup with Board/sidebar project filters"
+},
+{
+"area": "Tasks",
+"feature": "Task row chips, dates, stamps, badge",
+"home": "Tasks > List view",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Tasks",
+"feature": "Auto archive done 7+ days",
+"home": "Tasks > List view",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Tasks",
+"feature": "Archived section toggle",
+"home": "Tasks > List view",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Tasks",
+"feature": "View archived via status filter",
+"home": "Tasks > List view",
+"status": "merged",
+"note": "dup of archived section toggle"
+},
+{
+"area": "Tasks",
+"feature": "Empty state no matches",
+"home": "Tasks > List view",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Tasks",
+"feature": "Empty state no archived",
+"home": "Tasks > List view",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Tasks",
+"feature": "Manage categories/projects sidebar",
+"home": "Settings > Categories",
+"status": "merged",
+"note": "identical manager consolidated to Settings"
+},
+{
+"area": "Tasks",
+"feature": "Delete category/project",
+"home": "Settings > Categories",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Tasks",
+"feature": "Category/project color picker gap",
+"home": "Settings > Categories",
+"status": "added",
+"note": "new custom color picker, no picker existed before"
+},
+{
+"area": "Board",
+"feature": "Three column layout plus counts",
+"home": "Tasks > Board view",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Board",
+"feature": "Category filter tabs",
+"home": "Tasks > Board view",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Board",
+"feature": "Project filter sidebar",
+"home": "Tasks > project filter",
+"status": "merged",
+"note": "dup with Tasks project filter"
+},
+{
+"area": "Board",
+"feature": "Grouping by category vs project",
+"home": "Tasks > Board view",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Board",
+"feature": "Collapsible group folders per column",
+"home": "Tasks > Board view",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Board",
+"feature": "Board card open",
+"home": "Tasks > Board view",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Board",
+"feature": "Drag card between columns",
+"home": "Tasks > Board view",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Board",
+"feature": "Drop target highlight",
+"home": "Tasks > Board view",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Board",
+"feature": "Mobile column switcher",
+"home": "Tasks > Board view",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Board",
+"feature": "Auto archive hides done cards",
+"home": "Tasks > Board view",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Board",
+"feature": "Empty column state",
+"home": "Tasks > Board view",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Board",
+"feature": "Inbox/tester report panel on Board",
+"home": "Tasks > Board > tester reports",
+"status": "kept",
+"note": "top of the Board; also in the avatar sheet"
+},
+{
+"area": "Board",
+"feature": "No board native add card",
+"home": "Global > + sheet",
+"status": "merged",
+"note": "uses shared add flow"
+},
+{
+"area": "Calendar",
+"feature": "Month/Week toggle",
+"home": "Calendar",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Calendar",
+"feature": "Prev/Next navigation",
+"home": "Calendar",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Calendar",
+"feature": "Month grid plus today highlight",
+"home": "Calendar",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Calendar",
+"feature": "US holidays",
+"home": "Calendar",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Calendar",
+"feature": "Task due date dots priority colored",
+"home": "Calendar",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Calendar",
+"feature": "Custom event dots",
+"home": "Calendar",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Calendar",
+"feature": "Create event via double click day",
+"home": "Calendar > Add event button",
+"status": "merged",
+"note": "undiscoverable dup of Add-event button"
+},
+{
+"area": "Calendar",
+"feature": "Create event via Add event button",
+"home": "Calendar",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Calendar",
+"feature": "Event modal name/date/time/desc/color",
+"home": "Calendar",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Calendar",
+"feature": "Edit/delete event",
+"home": "Calendar",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Calendar",
+"feature": "Week view grid",
+"home": "Calendar",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Calendar",
+"feature": "Week view double click to add event",
+"home": "Calendar > Add event button",
+"status": "merged",
+"note": "same undiscoverable dup as month view"
+},
+{
+"area": "Calendar",
+"feature": "Week view task/event click",
+"home": "Calendar",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Calendar",
+"feature": "Week view empty state",
+"home": "Calendar",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Calendar",
+"feature": "Agenda view on phone",
+"home": "Calendar",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Calendar",
+"feature": "Task priority border in week view",
+"home": "Calendar",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Training Shell",
+"feature": "Strength/Cardio mode toggle",
+"home": "Training",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Training Shell",
+"feature": "Body weight readout",
+"home": "Global > weigh-in sheet",
+"status": "merged",
+"note": "third weigh-in entry point"
+},
+{
+"area": "Training Shell",
+"feature": "This week summary chips",
+"home": "Training",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Training Shell",
+"feature": "Log/Progress/Coach tabs",
+"home": "Training",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Training Shell",
+"feature": "Apple Watch sync freshness banner",
+"home": "Training",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Training Shell",
+"feature": "Desktop rail week tiles",
+"home": "Training",
+"status": "merged",
+"note": "responsive dup of week summary chips"
+},
+{
+"area": "Training Shell",
+"feature": "Desktop rail readiness ring",
+"home": "Training > Sleep",
+"status": "merged",
+"note": "dup of mobile Recovery/Readiness card"
+},
+{
+"area": "Training Shell",
+"feature": "Desktop rail consistency mini heatmap",
+"home": "Training > Strength",
+"status": "merged",
+"note": "dup of Gym streak heatmap"
+},
+{
+"area": "Strength/Gym",
+"feature": "Day navigation",
+"home": "Training > Strength",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Strength/Gym",
+"feature": "Log exercise sheet",
+"home": "Training > Strength",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Strength/Gym",
+"feature": "Bodyweight auto detection",
+"home": "Training > Strength",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Strength/Gym",
+"feature": "Ranked exercise suggestions",
+"home": "Training > Strength",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Strength/Gym",
+"feature": "Beat last time chip",
+"home": "Training > Strength",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Strength/Gym",
+"feature": "Rest timer 60s/90s",
+"home": "Training > Strength",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Strength/Gym",
+"feature": "Set add/remove",
+"home": "Training > Strength",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Strength/Gym",
+"feature": "Todays log list plus edit/delete",
+"home": "Training > Strength",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Strength/Gym",
+"feature": "Session focus row",
+"home": "Training > Strength",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Strength/Gym",
+"feature": "PR badge per entry",
+"home": "Training > Strength > analytics",
+"status": "merged",
+"note": "dup of personal records shelf"
+},
+{
+"area": "Strength/Gym",
+"feature": "Day stats",
+"home": "Training > Strength",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Strength/Gym",
+"feature": "Body weight/waist logging plus spark",
+"home": "Global > weigh-in sheet",
+"status": "merged",
+"note": "another weigh-in entry point"
+},
+{
+"area": "Strength/Gym",
+"feature": "Calorie burn tile MET vs Watch",
+"home": "Training > Strength",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Strength/Gym",
+"feature": "Weigh in pace vs goal",
+"home": "Training > Strength",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Strength/Gym",
+"feature": "Gym coach recommendations",
+"home": "Training > Coach",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Strength/Gym",
+"feature": "Goal progress rows",
+"home": "Training > Strength",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Strength/Gym",
+"feature": "Activity breakdown strength/cardio/walk",
+"home": "Training > Strength",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Strength/Gym",
+"feature": "Calisthenics progression ladder suggestion",
+"home": "Training > Strength",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Strength/Gym",
+"feature": "Bodyweight stall detection",
+"home": "Training > Coach",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Strength/Gym",
+"feature": "16 week/30 day heatmap plus streak",
+"home": "Training > Strength",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Strength/Gym",
+"feature": "Next training day recommendation",
+"home": "Training > Coach",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Strength Analytics",
+"feature": "Last 30 days summary tiles",
+"home": "Training > Strength > analytics",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Strength Analytics",
+"feature": "Plateau insight plus try 3xN CTA",
+"home": "Training > Strength > analytics",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Strength Analytics",
+"feature": "Muscle balance card",
+"home": "Training > Strength > analytics",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Strength Analytics",
+"feature": "Movement list with sparkline",
+"home": "Training > Strength > analytics",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Strength Analytics",
+"feature": "Per movement progression curve",
+"home": "Training > Strength > analytics",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Strength Analytics",
+"feature": "Personal records shelf",
+"home": "Training > Strength > analytics",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Strength Analytics",
+"feature": "Estimated 1RM Epley computation",
+"home": "Training > Strength > analytics",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Cardio",
+"feature": "Day navigation",
+"home": "Training > Cardio",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Cardio",
+"feature": "One tap log your usual plus streak",
+"home": "Training > Cardio",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Cardio",
+"feature": "Sport tabs run/ride/swim",
+"home": "Training > Cardio",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Cardio",
+"feature": "Session add form distance/duration/pace",
+"home": "Training > Cardio",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Cardio",
+"feature": "Run intensity chips",
+"home": "Training > Cardio",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Cardio",
+"feature": "Run detail HR/elevation/RPE/zone bar",
+"home": "Training > Cardio",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Cardio",
+"feature": "Apple Watch cross check chip",
+"home": "Training > Cardio",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Cardio",
+"feature": "Apple Watch workout import list",
+"home": "Training > Cardio",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Cardio",
+"feature": "Days session list plus delete",
+"home": "Training > Cardio",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Cardio",
+"feature": "Day calorie burn total",
+"home": "Training > Cardio",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Cardio",
+"feature": "Weekly volume tiles plus mileage ring",
+"home": "Training > Cardio",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Cardio",
+"feature": "Race countdown plus projected finish",
+"home": "Training > Cardio",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Cardio",
+"feature": "Race target settings",
+"home": "Training > Cardio",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Cardio",
+"feature": "Cardio coach recommendations",
+"home": "Training > Coach",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Coach",
+"feature": "Headline verdict",
+"home": "Training > Coach",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Coach",
+"feature": "Evidence chips",
+"home": "Training > Coach",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Coach",
+"feature": "Do this workout pick",
+"home": "Training > Coach",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Coach",
+"feature": "Volume call",
+"home": "Training > Coach",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Coach",
+"feature": "Recovery lever",
+"home": "Training > Sleep",
+"status": "merged",
+"note": "same readinessAdvice text as Recovery card"
+},
+{
+"area": "Coach",
+"feature": "Cardio coach 4 message types",
+"home": "Training > Coach",
+"status": "merged",
+"note": "duplicate listing of Cardio coach recommendations"
+},
+{
+"area": "Diet",
+"feature": "Built in food database",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Date navigation",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Week strip",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Calorie ring",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Macro bars",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Activity/burn caption",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Edit goals modal",
+"home": "Global > goals sheet",
+"status": "merged",
+"note": "same state as Settings goals editor"
+},
+{
+"area": "Diet",
+"feature": "Food recommendations",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Yesterdays advice",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "End of day review",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Water quick add buttons",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Water custom amount",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Water undo",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Meal grouped log",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Log bar inline search plus one tap add",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Log by voice",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Log by photo",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Add unmatched term as new food inline",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Your usuals quick add tiles",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Saved meal combo quick add tile",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Save meal as combo",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Edit/delete saved combo",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Logged combo group expand/collapse",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Add ingredient to logged combo",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Delete whole logged combo group",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Servings stepper",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Row editor fix name plus macros",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Delete logged entry",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Food library toggle",
+"home": "Diet > Food Library",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Manual add to bank form",
+"home": "Diet > Food Library",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Live search OFF plus USDA fallback",
+"home": "Diet > Food Library",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Community food bank",
+"home": "Diet > Food Library",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "My food bank list plus filter",
+"home": "Diet > Food Library",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Edit/remove bank food",
+"home": "Diet > Food Library",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Recent foods list per meal",
+"home": "Diet > Food Library",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Saved meals section",
+"home": "Diet > Food Library",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Diet history 14 days",
+"home": "Insights > weekly report",
+"status": "merged",
+"note": "dup of Insights weekly report"
+},
+{
+"area": "Diet",
+"feature": "Auto remember/backfill logged foods",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Diet",
+"feature": "Empty states",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Insights",
+"feature": "Range selector week/month/year/all",
+"home": "Insights",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Insights",
+"feature": "Export CSV",
+"home": "Insights",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Insights",
+"feature": "Summary tiles",
+"home": "Insights",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Insights",
+"feature": "Eight trend charts",
+"home": "Insights > trends",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Insights",
+"feature": "Sets by muscle group",
+"home": "Insights",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Insights",
+"feature": "Tasks card",
+"home": "Insights",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Insights",
+"feature": "Weekly report card",
+"home": "Insights > weekly report",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Insights",
+"feature": "Chart hover/tap tooltip",
+"home": "Insights",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Insights",
+"feature": "Not enough data growing state",
+"home": "Insights",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Settings",
+"feature": "Sync status indicator mirrored",
+"home": "Global > sync indicator",
+"status": "merged",
+"note": "mirrors header sync status"
+},
+{
+"area": "Settings",
+"feature": "Whos using this device",
+"home": "Settings > Account",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Settings",
+"feature": "Switch profile",
+"home": "Settings > Account",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Settings",
+"feature": "Start fresh erase profile",
+"home": "Settings > Account",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Settings",
+"feature": "Connect Apple Watch",
+"home": "Settings > Data & sync",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Settings",
+"feature": "Goals summary plus edit goals modal",
+"home": "Settings > Profile & goals",
+"status": "kept",
+"note": "Edit opens the one goals sheet"
+},
+{
+"area": "Settings",
+"feature": "Theme segmented control",
+"home": "Settings > Appearance",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Settings",
+"feature": "Modules on/off gym/cardio/diet",
+"home": "Settings > Modules",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Settings",
+"feature": "Categories and projects manager",
+"home": "Settings > Categories",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Settings",
+"feature": "Anthropic API key set/remove",
+"home": "Settings > AI usage",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Settings",
+"feature": "AI usage and cost report",
+"home": "Settings > AI usage",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Settings",
+"feature": "Accent color picker",
+"home": "Settings > Appearance",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Settings",
+"feature": "Dashboard widgets visibility",
+"home": "Settings > Today layout",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Settings",
+"feature": "Saved layouts save/apply/delete",
+"home": "Settings > Today layout",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Settings",
+"feature": "Workout defaults rest timer/sets",
+"home": "Settings > Workouts",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Settings",
+"feature": "Accessibility reduce motion/text/haptics",
+"home": "Settings > Appearance",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Settings",
+"feature": "Backup your data export",
+"home": "Settings > Data & sync",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Settings",
+"feature": "Import from a spreadsheet CSV",
+"home": "Settings > Import CSV",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Settings",
+"feature": "Recent errors diagnostics",
+"home": "Settings > Data & sync",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Settings",
+"feature": "How the app is being used engagement",
+"home": "Settings > Account",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Settings",
+"feature": "Restore from a backup",
+"home": "Settings > Data & sync",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Sleep",
+"feature": "Sleep hours stepper",
+"home": "Training > Sleep",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Sleep",
+"feature": "Sleep quality picker",
+"home": "Training > Sleep",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Sleep",
+"feature": "Save sleep entry",
+"home": "Training > Sleep",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Sleep",
+"feature": "Freshness label",
+"home": "Training > Sleep",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Sleep",
+"feature": "Seven night trend bars",
+"home": "Training > Sleep",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Sleep",
+"feature": "Readiness score ring plus verdict",
+"home": "Training > Sleep",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Sleep",
+"feature": "Readiness advice text",
+"home": "Training > Sleep",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Sleep",
+"feature": "Empty state",
+"home": "Training > Sleep",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Onboarding",
+"feature": "Welcome step",
+"home": "Settings > Onboarding replay",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Onboarding",
+"feature": "Skip setup",
+"home": "Settings > Onboarding replay",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Onboarding",
+"feature": "Pick modules step",
+"home": "Settings > Onboarding replay",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Onboarding",
+"feature": "Set goals step",
+"home": "Global > goals sheet",
+"status": "merged",
+"note": "subset of full goals modal"
+},
+{
+"area": "Onboarding",
+"feature": "Connect Apple Watch step",
+"home": "Settings > Data & sync",
+"status": "merged",
+"note": "dup of Settings watch connect card"
+},
+{
+"area": "Onboarding",
+"feature": "Done step",
+"home": "Settings > Onboarding replay",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Onboarding",
+"feature": "Step nav back/continue/dots",
+"home": "Settings > Onboarding replay",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Onboarding",
+"feature": "Gap no re-entry point",
+"home": "Settings > Onboarding replay",
+"status": "added",
+"note": "replay entry point added"
+},
+{
+"area": "Profiles",
+"feature": "Profile gate first run block",
+"home": "Settings > Account",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Profiles",
+"feature": "Pick existing profile",
+"home": "Settings > Account",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Profiles",
+"feature": "Create new profile",
+"home": "Settings > Account",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Profiles",
+"feature": "Current profile display 2 places",
+"home": "Settings > Account",
+"status": "merged",
+"note": "dup of sidebar profile display"
+},
+{
+"area": "Profiles",
+"feature": "Sidebar tap to Settings",
+"home": "Global > sidebar/bottom nav",
+"status": "merged",
+"note": "same entry point listed under Sidebar Nav"
+},
+{
+"area": "Profiles",
+"feature": "Switch profile/start fresh cross listed",
+"home": "Settings > Account",
+"status": "merged",
+"note": "cross-listing of Settings rows"
+},
+{
+"area": "Profiles",
+"feature": "Profiles registry write",
+"home": "Settings > Account",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Profiles",
+"feature": "Engagement/usage report cross listed",
+"home": "Settings > Account",
+"status": "merged",
+"note": "cross-listing of Settings usage report row"
+},
+{
+"area": "Sidebar Nav",
+"feature": "Logo",
+"home": "Global > sidebar/bottom nav",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Sidebar Nav",
+"feature": "Profile switcher entry",
+"home": "Global > sidebar/bottom nav",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Sidebar Nav",
+"feature": "Nav links to all views",
+"home": "Global > sidebar/bottom nav",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Sidebar Nav",
+"feature": "Board inbox badge",
+"home": "Tasks > Board > tester reports",
+"status": "merged",
+"note": "badge on Tasks and the avatar"
+},
+{
+"area": "Sidebar Nav",
+"feature": "Theme toggle sidebar",
+"home": "Settings > Appearance",
+"status": "merged",
+"note": "one of 3 theme toggle copies"
+},
+{
+"area": "Sidebar Nav",
+"feature": "Section dividers",
+"home": "Global > sidebar/bottom nav",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Sidebar Nav",
+"feature": "Categories list plus counts plus delete",
+"home": "Tasks > project filter",
+"status": "merged",
+"note": "consolidated into category/project filtering"
+},
+{
+"area": "Sidebar Nav",
+"feature": "Manage categories/projects button",
+"home": "Settings > Categories",
+"status": "merged",
+"note": "dup manager, consolidated to Settings"
+},
+{
+"area": "Sidebar Nav",
+"feature": "Add category/project",
+"home": "Settings > Categories",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Sidebar Nav",
+"feature": "Projects list plus active filter plus delete",
+"home": "Tasks > project filter",
+"status": "merged",
+"note": "consolidated into category/project filtering"
+},
+{
+"area": "Sidebar Nav",
+"feature": "Mobile sidebar open/close",
+"home": "Global > sidebar/bottom nav",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Bottom Nav",
+"feature": "Today/Tasks/Board/Training/Diet icons",
+"home": "Global > sidebar/bottom nav",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Bottom Nav",
+"feature": "More overflow trigger",
+"home": "Global > More sheet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "More Sheet",
+"feature": "Sheet open/close",
+"home": "Global > More sheet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "More Sheet",
+"feature": "Calendar entry",
+"home": "Global > More sheet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "More Sheet",
+"feature": "Search entry",
+"home": "Global > Ctrl K search",
+"status": "merged",
+"note": "dup of header search icon"
+},
+{
+"area": "More Sheet",
+"feature": "Insights entry",
+"home": "Global > More sheet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "More Sheet",
+"feature": "Settings entry",
+"home": "Global > More sheet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "More Sheet",
+"feature": "Theme toggle more sheet",
+"home": "Settings > Appearance",
+"status": "merged",
+"note": "third theme toggle copy"
+},
+{
+"area": "Header & Search",
+"feature": "View title plus date",
+"home": "Global",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Header & Search",
+"feature": "Header condense on scroll",
+"home": "Global",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Header & Search",
+"feature": "Mobile menu button",
+"home": "Global",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Header & Search",
+"feature": "Search icon mobile",
+"home": "Global > Ctrl K search",
+"status": "merged",
+"note": "dup of More sheet search"
+},
+{
+"area": "Header & Search",
+"feature": "Inline search box desktop",
+"home": "Tasks > List view",
+"status": "merged",
+"note": "same searchInput element as Tasks search"
+},
+{
+"area": "Header & Search",
+"feature": "Command palette Ctrl K",
+"home": "Global > Ctrl K search",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Header & Search",
+"feature": "Sync status indicator header",
+"home": "Global > sync indicator",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Header & Search",
+"feature": "Header primary action button",
+"home": "Global > + sheet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Header & Search",
+"feature": "Mobile primary FAB",
+"home": "Global > + sheet",
+"status": "merged",
+"note": "dup of header primary action"
+},
+{
+"area": "Header & Search",
+"feature": "Top sync progress bar",
+"home": "Global > sync indicator",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Header & Search",
+"feature": "Update available banner",
+"home": "Global",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Sync Status",
+"feature": "Status pill connecting/saving/synced/error",
+"home": "Global > sync indicator",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Sync Status",
+"feature": "Tap to expand detail panel",
+"home": "Global > sync indicator",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Sync Status",
+"feature": "Close detail",
+"home": "Global > sync indicator",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Sync Status",
+"feature": "Manual retry",
+"home": "Global > sync indicator",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Sync Status",
+"feature": "Automatic retry loop 30s",
+"home": "Global > sync indicator",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Sync Status",
+"feature": "Stalled write timeout message",
+"home": "Global > sync indicator",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Sync Status",
+"feature": "Silent gap no conflict indicator",
+"home": "Global > sync indicator",
+"status": "added",
+"note": "new conflict indicator for silently dropped cloud data"
+},
+{
+"area": "Layout Editor",
+"feature": "Enter/exit edit mode",
+"home": "Today > Edit layout sheet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Layout Editor",
+"feature": "Per widget handle drag/up/down/hide",
+"home": "Today > Edit layout sheet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Layout Editor",
+"feature": "Hidden widgets tray plus restore",
+"home": "Today > Edit layout sheet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Layout Editor",
+"feature": "Save/apply/delete named layout",
+"home": "Settings > Today layout",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Layout Editor",
+"feature": "Wide span toggle dead flag",
+"home": "Removed",
+"status": "removed",
+"note": "same dead prefs.wide flag as Today row, never had UI"
+},
+{
+"area": "Pull-to-Refresh",
+"feature": "Gesture arm plus visual indicator",
+"home": "Global > pull to refresh",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Pull-to-Refresh",
+"feature": "Commit threshold ready state",
+"home": "Global > pull to refresh",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Pull-to-Refresh",
+"feature": "Refresh execution plus completion toast",
+"home": "Global > pull to refresh",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Pull-to-Refresh",
+"feature": "Horizontal swipe cancellation",
+"home": "Global > pull to refresh",
+"status": "kept",
+"note": ""
+},
+{
+"area": "CSV Import",
+"feature": "Open import modal",
+"home": "Settings > Import CSV",
+"status": "kept",
+"note": ""
+},
+{
+"area": "CSV Import",
+"feature": "Paste textarea plus project dropdown",
+"home": "Settings > Import CSV",
+"status": "kept",
+"note": ""
+},
+{
+"area": "CSV Import",
+"feature": "Preview success/parse errors",
+"home": "Settings > Import CSV",
+"status": "kept",
+"note": ""
+},
+{
+"area": "CSV Import",
+"feature": "Import execution/cancel",
+"home": "Settings > Import CSV",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Inbox",
+"feature": "Live watch of inbox node",
+"home": "Tasks > Board > tester reports",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Inbox",
+"feature": "Board nav badge unread count",
+"home": "Tasks > Board > tester reports",
+"status": "kept",
+"note": "badge on Tasks and the avatar"
+},
+{
+"area": "Inbox",
+"feature": "Inbox panel report cards plus screenshots",
+"home": "Tasks > Board > tester reports",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Inbox",
+"feature": "View screenshot full size",
+"home": "Tasks > Board > tester reports",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Inbox",
+"feature": "Accept report creates task",
+"home": "Tasks > Board > tester reports",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Inbox",
+"feature": "Dismiss report",
+"home": "Tasks > Board > tester reports",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Inbox",
+"feature": "Clear handled reports",
+"home": "Tasks > Board > tester reports",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Photo Logging",
+"feature": "Snap a meal trigger per meal row",
+"home": "Diet",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Photo Logging",
+"feature": "Photo capture input",
+"home": "Global > Photo Logging",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Photo Logging",
+"feature": "Photo analysis Claude vision",
+"home": "Global > Photo Logging",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Photo Logging",
+"feature": "Analyzing spinner",
+"home": "Global > Photo Logging",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Photo Logging",
+"feature": "Confirmation card edit before save",
+"home": "Global > Photo Logging",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Photo Logging",
+"feature": "Meal target selector",
+"home": "Global > Photo Logging",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Photo Logging",
+"feature": "Add all to log",
+"home": "Global > Photo Logging",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Photo Logging",
+"feature": "Discard analysis",
+"home": "Global > Photo Logging",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Photo Logging",
+"feature": "Pending photo persistence 12h",
+"home": "Global > Photo Logging",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Photo Logging",
+"feature": "No key inline prompt",
+"home": "Global > Photo Logging",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Photo Logging",
+"feature": "Error states unreadable/rejected/network",
+"home": "Global > Photo Logging",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Voice",
+"feature": "Floating mic FAB",
+"home": "Global > voice commands",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Voice",
+"feature": "Voice command panel",
+"home": "Global > voice commands",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Voice",
+"feature": "Mic listen toggle speech to text",
+"home": "Global > voice commands",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Voice",
+"feature": "Typed command fallback",
+"home": "Global > voice commands",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Voice",
+"feature": "Task creation via voice",
+"home": "Global > voice commands",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Voice",
+"feature": "Water logging via voice",
+"home": "Global > voice commands",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Voice",
+"feature": "Weight logging via voice",
+"home": "Global > voice commands",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Voice",
+"feature": "Food logging via voice",
+"home": "Global > voice commands",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Voice",
+"feature": "Navigation via voice",
+"home": "Global > voice commands",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Voice",
+"feature": "Multi command per utterance",
+"home": "Global > voice commands",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Voice",
+"feature": "Result list plus per command undo",
+"home": "Global > voice commands",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Voice",
+"feature": "Unrecognized speech notice",
+"home": "Global > voice commands",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Voice",
+"feature": "No key/error states voice",
+"home": "Global > voice commands",
+"status": "kept",
+"note": ""
+},
+{
+"area": "AI Usage Tracker",
+"feature": "Usage/cost report panel",
+"home": "Settings > AI usage",
+"status": "kept",
+"note": ""
+},
+{
+"area": "AI Usage Tracker",
+"feature": "Empty state AI usage",
+"home": "Settings > AI usage",
+"status": "kept",
+"note": ""
+},
+{
+"area": "AI Usage Tracker",
+"feature": "Totals row",
+"home": "Settings > AI usage",
+"status": "kept",
+"note": ""
+},
+{
+"area": "AI Usage Tracker",
+"feature": "Per feature breakdown",
+"home": "Settings > AI usage",
+"status": "kept",
+"note": ""
+},
+{
+"area": "AI Usage Tracker",
+"feature": "Per day breakdown 14 days",
+"home": "Settings > AI usage",
+"status": "kept",
+"note": ""
+},
+{
+"area": "AI Usage Tracker",
+"feature": "Cost estimate disclaimer",
+"home": "Settings > AI usage",
+"status": "kept",
+"note": ""
+},
+{
+"area": "AI Usage Tracker",
+"feature": "Anthropic API key setup adjacent",
+"home": "Settings > AI usage",
+"status": "merged",
+"note": "same key slot as Settings API key row"
+},
+{
+"area": "Toasts/Notifications",
+"feature": "Toast host plus plain toast",
+"home": "Global > toasts",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Toasts/Notifications",
+"feature": "Actionable/undo toast",
+"home": "Global > toasts",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Toasts/Notifications",
+"feature": "Global empty state component",
+"home": "Global > toasts",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Toasts/Notifications",
+"feature": "Empty state CTA",
+"home": "Global > toasts",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Toasts/Notifications",
+"feature": "Keyboard access promotion",
+"home": "Global > toasts",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Toasts/Notifications",
+"feature": "Global error toast",
+"home": "Global > toasts",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Toasts/Notifications",
+"feature": "Recent errors diagnostics panel",
+"home": "Settings > Data & sync",
+"status": "merged",
+"note": "dup of Settings diagnostics row"
+},
+{
+"area": "Toasts/Notifications",
+"feature": "Haptic feedback",
+"home": "Global > toasts",
+"status": "kept",
+"note": ""
+},
+{
+"area": "Notable gaps",
+"feature": "No priority control in task modal",
+"home": "Tasks > task detail sheet",
+"status": "added",
+"note": "new priority picker, feeds Calendar dot/border colors"
+},
+{
+"area": "Notable gaps",
+"feature": "No custom category/project color picker",
+"home": "Settings > Categories",
+"status": "added",
+"note": "new color picker for categories and projects"
+},
+{
+"area": "Notable gaps",
+"feature": "No install/Add to Home Screen prompt",
+"home": "Global",
+"status": "added",
+"note": "new install prompt UI"
+},
+{
+"area": "Notable gaps",
+"feature": "No conflict indicator for sync",
+"home": "Global > sync indicator",
+"status": "added",
+"note": "new indicator so dropped cloud writes are visible"
+},
+{
+"area": "Notable gaps",
+"feature": "Two dead renders fire with no host div",
+"home": "Today",
+"status": "added",
+"note": "cleanup: remove dead renderWeightTrend/renderWeeklyReport calls from Today"
+},
+{
+"area": "Notable gaps",
+"feature": "Stale voice error copy says Diet tab",
+"home": "Global > voice commands",
+"status": "added",
+"note": "fix copy to point to Settings instead of Diet tab"
+},
+{
+"area": "Notable gaps",
+"feature": "Wide widget toggle unshipped in data model",
+"home": "Settings > Today layout",
+"status": "added",
+"note": "either ship a wide-span UI or remove the dead prefs.wide flag"
+},
+{
+"area": "Notable gaps",
+"feature": "No way to replay onboarding",
+"home": "Settings > Onboarding replay",
+"status": "added",
+"note": "new replay entry point added"
+}
+]

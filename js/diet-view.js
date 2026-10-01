@@ -1,3 +1,41 @@
+// ========== Diet: the day (v3, spec 8) ==========
+// One screen, top to bottom: the day stepper and week strip, the calorie ring
+// with its macro bars, ONE add bar, water, the four meals as a line, and three
+// folded rows of advice. Tapping a meal opens the meal sheet, which is where
+// its entries are changed. The Food library is its own full screen; its code
+// is the second half of this file.
+//
+// renderDiet() reads state and writes nothing. The v2 version banked unknown
+// foods and called saveData() from inside the render; that backfill now runs
+// when the Food library is opened, which is a user action.
+
+const DIET_MEALS = ['breakfast', 'lunch', 'snack', 'dinner'];   // in clock order
+const DIET_MEAL_LABEL = { breakfast: 'Breakfast', lunch: 'Lunch', snack: 'Snack', dinner: 'Dinner' };
+const DIET_MEAL_ICON = { breakfast: 'breakfast_dining', lunch: 'lunch_dining', snack: 'cookie', dinner: 'dinner_dining' };
+const DIET_MEAL_SLOT = { breakfast: 8 * 60, lunch: 12 * 60 + 30, snack: 16 * 60, dinner: 19 * 60 + 30 };
+
+// The usual tiles currently on screen, so a delegated click can find the food.
+let dietUsualsShown = [];
+// Which meal the meal sheet is showing; null when it is closed.
+let dietSheetMeal = null;
+// True while the sheet's own "Add food" field is showing.
+let dietSheetSearch = false;
+
+function dietMealGroups() {
+  const dayEntries = state.diet.filter(e => e.date === dietViewDate);
+  return DIET_MEALS.map(meal => ({
+    meal,
+    label: DIET_MEAL_LABEL[meal],
+    entries: dayEntries.filter(e => e.meal === meal),
+  }));
+}
+
+// Minutes after midnight for a clock label like the line's.
+function dietClock(min) {
+  if (typeof lineClock === 'function') return lineClock(min);
+  return Math.floor(min / 60) + ':' + String(Math.round(min % 60)).padStart(2, '0');
+}
+
 function renderDiet() {
   const dateInput = $('#dietDate');
   if (!dateInput) return;
@@ -7,711 +45,751 @@ function renderDiet() {
   // date picker, the Today button - ends in a renderDiet().
   if (typeof setHeaderDate === 'function') setHeaderDate();
 
-  // Bank any dishes from the log that aren't in the food bank yet
-  // (history from before auto-remember, or entries synced from other devices)
-  const backfilled = backfillRememberedFoods();
-  if (backfilled > 0) {
-    saveData(state);
-    if (!dietBackfillNotified) {
-      dietBackfillNotified = true;
-      showToast(`Added ${backfilled} dish${backfilled === 1 ? '' : 'es'} from your log to My Foods`);
-    }
-  }
-  // Ensure dietViewDate is set
   if (!dietViewDate) dietViewDate = getTodayStr();
   dateInput.value = dietViewDate;
 
-  // Date navigation label
   const todayStr = getTodayStr();
   const isToday = dietViewDate === todayStr;
   const viewDate = new Date(dietViewDate + 'T00:00:00');
-  $('#dietDateLabel').textContent = isToday ? 'Today' :
-    viewDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  $('#dietDateLabel').textContent = isToday
+    ? 'Today, ' + viewDate.toLocaleDateString('en-US', { weekday: 'short' }) + ' ' + viewDate.getDate()
+    : viewDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const todayBtn = $('#dietToday');
+  if (todayBtn) todayBtn.hidden = isToday;
 
-  const dayLabel = isToday ? "Today's Nutrition" :
-    new Date(dietViewDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-  $('#dietSummaryTitle').textContent = dietViewDate === todayStr ? "Today's Nutrition" : dayLabel;
-
-  const dayEntries = state.diet.filter(e => e.date === dietViewDate);
-
-  // Totals
+  const mealGroups = dietMealGroups();
+  const dayEntries = mealGroups.reduce((all, g) => all.concat(g.entries), []);
   const totals = sumMacros(dayEntries);
 
-  // Goal tracker
   renderDietGoals(totals);
   renderDietWeek();
-
-  // Food recommendations based on remaining macros
-  renderDietRecs(totals);
-
-  // Skip-list for today, learned from the last logged day
-  renderYesterdayAdvice();
-
-  // End-of-day review: what pushed you over each macro
-  renderDietReview(totals, dayEntries);
-
-  // Water tracker
+  renderDietAdd(mealGroups);
   renderWater();
+  renderDietLine(mealGroups, totals);
+  renderDietRecs(totals);
+  renderYesterdayAdvice();
+  renderDietReview(totals, dayEntries);
+  if (typeof renderPhotoPending === 'function') renderPhotoPending();
 
-  // Meals grouped
-  const meals = ['breakfast', 'lunch', 'dinner', 'snack'];
-  const mealLabels = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snack: 'Snack' };
+  if (dietSheetMeal) renderMealSheet();
+  if (foodLibraryOpen()) renderFoodLibrary();
 
-  // Every meal is listed, even empty ones (design_handoff_daylign_v2 section 4:
-  // "Empty meals still show (0 cal + add row)"). A day's plan reads as a whole
-  // this way — an empty Dinner is information, and it gives you somewhere to
-  // tap. Hiding it made the log look finished when it wasn't.
-  const mealGroups = meals.map(meal => ({
-    meal,
-    label: mealLabels[meal],
-    entries: dayEntries.filter(e => e.meal === meal),
-  }));
-
-  const usualsByMeal = {};
-  {
-    // LOG FIRST. One meal is open - the one you are in - and it carries the
-    // input bar, the usuals and the rows. The other three fold to a line each,
-    // so the thing you came here to do sits at the top instead of underneath
-    // everything else.
-    const openMeal = activeDietMeal(mealGroups);
-
-    const renderOpenMeal = (g) => {
-      return (() => {
-      const mealMacros = sumMacros(g.entries);
-      const isEmpty = g.entries.length === 0;
-      // Your Usuals: your most-logged foods for THIS meal — one tap to log.
-      const usuals = mealUsuals(g.meal, 4);
-      usualsByMeal[g.meal] = usuals;
-      // Saved combos sit with the usuals — same gesture, one tap to log — but
-      // styled apart, because a chip that writes five rows should not look
-      // identical to one that writes a single food.
-      const combos = (typeof comboList === 'function') ? comboList() : [];
-      const comboChips = combos.map(c => {
-        const t = comboTotals(c);
-        return `<button type="button" class="diet-combo-tile" data-combo-id="${esc(c.id)}" data-combo-meal="${g.meal}" title="${esc(c.items.map(i => i.food).join(', '))}">
-          <span class="diet-combo-name">${esc(c.name)}</span>
-          <span class="diet-combo-meta">${Math.round(t.calories)}</span>
-        </button>`;
-      }).join('');
-      const usualsHtml = (usuals.length || comboChips) ? `
-          <div class="diet-usuals">
-            ${comboChips}
-            ${usuals.map((u, i) => `<button type="button" class="diet-usual-tile" data-usual-meal="${g.meal}" data-usual-idx="${i}">${esc(u.name)}</button>`).join('')}
-          </div>` : '';
-      return `
-        <div class="diet-meal-group${isEmpty ? ' is-empty' : ''}">
-          <div class="diet-meal-header">
-            <span class="diet-meal-name">${g.label}</span>
-            <span class="diet-meal-cal">
-              <span class="diet-meal-cal-val">${Math.round(mealMacros.calories)} cal</span>
-              ${isEmpty ? '' : `
-              <span class="diet-meal-macro">${Math.round(mealMacros.protein)}g P</span>
-              <span class="diet-meal-macro">${Math.round(mealMacros.carbs)}g C</span>
-              <span class="diet-meal-macro">${Math.round(mealMacros.fat)}g F</span>`}
-            </span>
-          </div>
-          ${g.entries.length ? `
-            <div class="diet-row-head">
-              <span>food</span><span></span>
-              <span>cal</span><span>P</span><span>C</span><span>F</span><span></span>
-            </div>` : ''}
-          ${groupMealEntries(g.entries).map(block => {
-            const renderEntry = (e, isIngredient) => {
-              const idx = state.diet.indexOf(e);
-              const servVal = Number(e.servings) > 0 ? Number(e.servings) : 1;
-              return `
-              <div class="diet-food-entry${isIngredient ? ' is-ingredient' : ''}" data-entry-idx="${idx}">
-                <!-- One grid line: food | serving | cal | P | C | F | x. It used
-                     to be a name row with "205 cal 4g P 45g C 0g F" underneath as
-                     a run of text, which you cannot compare down a column. -->
-                <div class="diet-food-entry-main">
-                  <span class="diet-food-name">${esc(e.food)}</span>
-                  <button type="button" class="diet-serv-pill" data-idx="${idx}" title="Tap to change servings">${servVal}×</button>
-                  <span class="dfm dfm-cal">${Math.round(e.calories || 0)}</span>
-                  <span class="dfm dfm-p">${Math.round(e.protein || 0)}</span>
-                  <span class="dfm dfm-c">${Math.round(e.carbs || 0)}</span>
-                  <span class="dfm dfm-f">${Math.round(e.fat || 0)}</span>
-                  <button class="diet-delete-food" data-diet-idx="${idx}">&times;</button>
-                </div>
-                <div class="diet-entry-edit"${dietEditOpenIdx === idx ? '' : ' hidden'}>
-                  <button type="button" class="diet-serv-step" data-step="-0.5" data-idx="${idx}" aria-label="Fewer servings">−</button>
-                  <span class="diet-serv-val">${servVal}</span>
-                  <button type="button" class="diet-serv-step" data-step="0.5" data-idx="${idx}" aria-label="More servings">+</button>
-                  <span class="diet-serv-caption">servings</span>
-                  <button type="button" class="diet-entry-editbtn" data-idx="${idx}" title="Fix the name or the numbers">Edit</button>
-                </div>
-                <form class="diet-entry-form" data-idx="${idx}"${dietEditFormIdx === idx ? '' : ' hidden'}>
-                  <input type="text" class="dic-in def-name" name="food" value="${esc(e.food)}" placeholder="Food" maxlength="80" autocomplete="off">
-                  <div class="def-macros">
-                    <label>cal<input type="number" class="dic-in" name="calories" inputmode="decimal" min="0" step="1" value="${Math.round(e.calories || 0)}"></label>
-                    <label>protein<input type="number" class="dic-in" name="protein" inputmode="decimal" min="0" step="0.1" value="${Math.round((e.protein || 0) * 10) / 10}"></label>
-                    <label>carbs<input type="number" class="dic-in" name="carbs" inputmode="decimal" min="0" step="0.1" value="${Math.round((e.carbs || 0) * 10) / 10}"></label>
-                    <label>fat<input type="number" class="dic-in" name="fat" inputmode="decimal" min="0" step="0.1" value="${Math.round((e.fat || 0) * 10) / 10}"></label>
-                  </div>
-                  <div class="def-caption">as logged, for ${servVal}× serving${servVal === 1 ? '' : 's'}</div>
-                  <label class="def-bank"><input type="checkbox" name="fixBank" checked> Fix it in My Foods and saved meals too</label>
-                  <div class="def-actions"><button type="submit" class="def-save">Save</button><button type="button" class="def-cancel">Cancel</button></div>
-                </form>
-              </div>`;
-            };
-            if (block.type === 'single') return renderEntry(block.entry, false);
-            const open = !!dietGroupOpen[block.gid];
-            const t = block.totals;
-            return `
-              <div class="diet-combo-group${open ? ' open' : ''}" data-group-id="${esc(block.gid)}">
-                <div class="diet-combo-group-head" data-toggle-group="${esc(block.gid)}">
-                  <span class="diet-combo-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,6 15,12 9,18"/></svg></span>
-                  <span class="diet-combo-group-name">${esc(block.name)}</span>
-                  <span class="diet-combo-group-count">${block.items.length}</span>
-                  <span class="diet-combo-group-cal">${Math.round(t.calories)} cal</span><button type="button" class="diet-combo-group-del" data-del-group="${esc(block.gid)}" title="Remove this whole meal from the log" aria-label="Remove ${esc(block.name)}">&times;</button>
-                </div>
-                <div class="diet-combo-group-macros">
-                  <span>${Math.round(t.protein)}g P</span>
-                  <span>${Math.round(t.carbs)}g C</span>
-                  <span>${Math.round(t.fat)}g F</span>
-                </div>
-                <div class="diet-combo-group-body"${open ? '' : ' hidden'}>
-                  ${block.items.map(e => renderEntry(e, true)).join('')}
-                  <button type="button" class="diet-combo-add-ing" data-add-ing="${esc(block.gid)}" data-add-ing-meal="${g.meal}">+ Add ingredient</button>
-                </div>
-              </div>`;
-          }).join('')}
-          ${usualsHtml}
-          <div class="diet-meal-addwrap" data-meal="${g.meal}">
-            <!-- One bar, three ways in: type, say it, snap it. These were three
-                 separate controls in a row, which made logging look like three
-                 decisions instead of one. -->
-            <div class="diet-logbar" data-logbar-meal="${g.meal}">
-              <svg class="dlb-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-              <input type="text" class="diet-inline-input dlb-input" data-input-meal="${g.meal}" placeholder="Log to ${esc(g.label.toLowerCase())} &mdash; type it, say it, or snap it" autocomplete="off" enterkeyhint="search">
-              <button type="button" class="dlb-btn" data-logbar-voice="${g.meal}" title="Say what you ate" aria-label="Log ${esc(g.label)} by voice">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0014 0M12 17v4M8 21h8"/></svg>
-              </button>
-              <button type="button" class="dlb-btn diet-meal-snap" data-snap-meal="${g.meal}" title="Snap a photo of this meal" aria-label="Snap a photo for ${esc(g.label)}">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
-              </button>
-            </div>
-            <!-- Results hang straight off the bar. There used to be a second
-                 field below it ("+ Something else" opening its own search box),
-                 so the meal carried TWO search inputs that did the same thing -
-                 and the lower one stuck open after every add. -->
-            <div class="diet-inline-results"></div>
-            ${g.entries.length >= 2 ? `<div class="diet-meal-addrow"><button type="button" class="diet-meal-savecombo" data-savecombo-meal="${g.meal}" title="Save these ${g.entries.length} items as a named meal you can log in one tap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>Save these ${g.entries.length}</button></div>` : ''}
-            <div class="diet-inline-photo" data-photo-meal="${g.meal}"></div>
-          </div>
-        </div>`;
-      })();
-    };
-
-    const foldLine = (g) => {
-      const m = sumMacros(g.entries);
-      // What is IN the meal, not a macro run: at a glance you want to recognise
-      // the meal, and calories are the only number that survives being skimmed.
-      const names = groupMealEntries(g.entries)
-        .map(b => b.type === 'group' ? b.name : ((b.entry && b.entry.food) || ''))
-        .filter(Boolean);
-      const summary = names.length ? names.join(' · ') : 'nothing yet';
-      return `
-        <button type="button" class="diet-meal-fold${g.entries.length ? '' : ' is-empty'}" data-open-meal="${g.meal}">
-          <svg class="dmf-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,6 15,12 9,18"/></svg>
-          <span class="dmf-name">${esc(g.label)}</span>
-          <span class="dmf-summary">${esc(summary)}</span>
-          ${g.entries.length
-            ? `<span class="dmf-cal">${Math.round(m.calories)} <small>cal</small></span>`
-            : '<span class="dmf-add">+ Add</span>'}
-        </button>`;
-    };
-
-    // Breakfast, lunch, dinner, snack - in that order, always. Hoisting the
-    // open meal to the top put an EMPTY lunch above a breakfast you had already
-    // eaten, which reorders the day every time the clock moves on. The active
-    // meal expands where it sits instead.
-    const opened = mealGroups.find(g => g.meal === openMeal) || mealGroups[0];
-    $('#dietMealsList').innerHTML = mealGroups
-      .map(g => (g === opened ? renderOpenMeal(g) : foldLine(g)))
-      .join('');
-
-    watchLogBar();
-
-    // The bar IS the field now, so anywhere on it puts the cursor in it. The
-    // icons inside handle their own clicks.
-    $$('[data-logbar-meal]').forEach(bar => bar.addEventListener('click', (ev) => {
-      if (ev.target.closest('.dlb-btn')) return;
-      const input = bar.querySelector('.dlb-input');
-      if (input && document.activeElement !== input) input.focus();
-    }));
-
-    // Voice is the app's existing panel; it already understands "log X to dinner".
-    $$('[data-logbar-voice]').forEach(b => b.addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      if (typeof openVoicePanel === 'function') openVoicePanel();
-    }));
-
-    $$('[data-open-meal]').forEach(b => b.addEventListener('click', () => {
-      dietOpenMeal = b.dataset.openMeal;
-      dietOpenMealDate = dietViewDate;
-      closeDietInlineSearch(); // the search belonged to the meal that just folded up
-      renderDiet();
-    }));
-  }
-
-  // Your Usuals: tap a tile to log that food to the meal at one serving — no
-  // search, no form. keepSearchOpen=false so the search box stays closed.
-  $$('.diet-usual-tile').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const meal = btn.dataset.usualMeal;
-      const u = (usualsByMeal[meal] || [])[Number(btn.dataset.usualIdx)];
-      if (!u) return;
-      quickAddToMeal(meal, { name: u.name, data: u.per }, false);
-    });
-  });
-
-  // Expand/collapse a logged combo.
-  $$('[data-toggle-group]').forEach(head => {
-    head.addEventListener('click', () => toggleDietGroup(head.dataset.toggleGroup));
-  });
-
-  // Remove a whole logged meal in one action. Without this the only way out
-  // was expanding it and deleting six ingredients one at a time.
-  $$('[data-del-group]').forEach(btn => {
-    btn.addEventListener('click', (ev) => {
-      ev.stopPropagation(); // must not toggle the group open
-      if (typeof deleteDietGroup === 'function') deleteDietGroup(btn.dataset.delGroup);
-    });
-  });
-
-  // Add an ingredient into an existing logged combo — recipes change with what
-  // is actually in the fridge, so a logged group must not be frozen.
-  $$('[data-add-ing]').forEach(btn => {
-    btn.addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      const gid = btn.dataset.addIng;
-      const meal = btn.dataset.addIngMeal;
-      const name = prompt('Ingredient to add:');
-      if (!name || !name.trim()) return;
-      const per = (typeof perServingMacros === 'function') ? perServingMacros(name.trim(), null) : null;
-      if (!per) {
-        showToast(`"${name.trim()}" isn't in your food bank yet — log it from the meal's search field first`);
-        return;
-      }
-      addIngredientToGroup(gid, meal, name.trim(), per);
-    });
-  });
-
-  // One tap logs the whole combo, with undo on the toast.
-  $$('.diet-combo-tile').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (typeof addComboToMeal === 'function') addComboToMeal(btn.dataset.comboId, btn.dataset.comboMeal);
-    });
-  });
-
-  // Save the items of this meal as a named combo. Everything is preselected,
-  // but each row can be unticked — the protein shake was logged alongside two
-  // eggs, and baking those into the shake would be wrong.
-  $$('.diet-meal-savecombo').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (typeof openComboSaver === 'function') openComboSaver(btn.dataset.savecomboMeal);
-    });
-  });
-
-  // Snap a meal, per meal: photo → Claude → confirm inline → logs to this meal.
-  $$('.diet-meal-snap').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (typeof startMealPhoto === 'function') startMealPhoto(btn.dataset.snapMeal);
-    });
-  });
-
-  // Tap a logged entry to reveal its servings stepper (log-first-fix-later).
-  $$('#dietMealsList .diet-food-entry-main').forEach(main => {
-    main.addEventListener('click', (ev) => {
-      if (ev.target.closest('.diet-delete-food')) return;
-      const row = main.closest('.diet-food-entry');
-      const idx = Number(row.dataset.entryIdx);
-      dietEditOpenIdx = (dietEditOpenIdx === idx) ? null : idx;
-      const edit = row.querySelector('.diet-entry-edit');
-      if (edit) edit.hidden = dietEditOpenIdx !== idx;
-    });
-  });
-
-  // Edit opens the row's form (name + macros); Save writes it through updateDietEntry.
-  $$('#dietMealsList .diet-entry-editbtn').forEach(btn => {
-    btn.addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      const idx = Number(btn.dataset.idx);
-      dietEditFormIdx = (dietEditFormIdx === idx) ? null : idx;
-      dietEditOpenIdx = idx;
-      renderDiet();
-      const f = document.querySelector(`#dietMealsList .diet-entry-form[data-idx="${idx}"]`);
-      if (f && !f.hidden) { const inp = f.querySelector('input[name="calories"]'); if (inp) { inp.focus(); inp.select(); } }
-    });
-  });
-  $$('#dietMealsList .diet-entry-form').forEach(form => {
-    form.addEventListener('click', (ev) => ev.stopPropagation());
-    form.addEventListener('submit', (ev) => {
-      ev.preventDefault();
-      const idx = Number(form.dataset.idx);
-      const fd = new FormData(form);
-      const ok = (typeof updateDietEntry === 'function') && updateDietEntry(idx, {
-        food: fd.get('food'), calories: fd.get('calories'), protein: fd.get('protein'), carbs: fd.get('carbs'), fat: fd.get('fat'),
-        fixBank: fd.get('fixBank') === 'on',
-      });
-      dietEditFormIdx = null; dietEditOpenIdx = null;
-      renderDiet();
-      if (ok && typeof showToast === 'function') showToast(fd.get('fixBank') === 'on' ? 'Fixed here, in My Foods and in your saved meals' : 'Fixed this entry');
-    });
-    const cancel = form.querySelector('.def-cancel');
-    if (cancel) cancel.addEventListener('click', () => { dietEditFormIdx = null; renderDiet(); });
-  });
-
-  // Servings +/- rescales that entry's macros in proportion and re-saves.
-  $$('#dietMealsList .diet-serv-step').forEach(btn => {
-    btn.addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      const idx = Number(btn.dataset.idx);
-      const e = state.diet[idx];
-      if (!e) return;
-      const cur = Number(e.servings) > 0 ? Number(e.servings) : 1;
-      let next = cur + Number(btn.dataset.step);
-      next = Math.round(next * 2) / 2; // snap to nearest 0.5, avoids float drift
-      if (next < 0.5) next = 0.5;      // half serving is the floor
-      if (next === cur) return;
-      const ratio = next / cur;
-      e.servings = next;
-      e.calories = Math.round((e.calories || 0) * ratio);
-      e.protein = Math.round(((e.protein || 0) * ratio) * 10) / 10;
-      e.carbs = Math.round(((e.carbs || 0) * ratio) * 10) / 10;
-      e.fat = Math.round(((e.fat || 0) * ratio) * 10) / 10;
-      dietEditOpenIdx = idx; // keep the stepper open across the re-render
-      saveData(state);
-      renderDiet();
-    });
-  });
-
-  // The "+ Add to <meal>" button and its own search box are gone: the log bar
-  // IS the field now, always present, so there is nothing to open or close.
-  // What main's #5 fix was really protecting against - coming back to an empty
-  // "Search food to add to..." box under a meal that reads as though nothing
-  // was logged - can't happen here, because the bar is the meal's permanent
-  // furniture and every render hands it a fresh, empty results list.
-  //
-  // dietInlineOpenMeal survives as the thing it now means: which meal's field
-  // should get the CURSOR back after a re-render. #5's rules still apply to it
-  // - deleting a row, switching meals, or switching days must not yank focus
-  // into a bar the user didn't ask for - so those still call
-  // closeDietInlineSearch(), and the day guard below still runs.
-  $$('.diet-inline-input').forEach(input => {
-    input.addEventListener('input', () => {
-      const wrap = input.closest('.diet-meal-addwrap');
-      renderInlineResults(wrap, input.value);
-    });
-  });
-
-  // Only carry the cursor across a re-render on the same day it was asked for.
-  // Every day-switch entry point (the date input, prev/next, Today, the week
-  // strip, the history list) ends in a renderDiet, so guarding here covers all
-  // of them without touching each handler.
+  // Put the cursor back in the field an add came from, once, on the day it was
+  // asked for. You are usually logging the next thing.
   if (dietInlineOpenMeal && dietInlineOpenDate !== dietViewDate) closeDietInlineSearch();
   if (dietInlineOpenMeal) {
-    const input = document.querySelector(`.dlb-input[data-input-meal="${dietInlineOpenMeal}"]`);
-    // Only when the meal is the OPEN one - a folded meal has no bar to focus.
+    const input = document.querySelector(dietSheetMeal ? '#mealSheetInput' : '#dietAddInput');
     if (input) input.focus();
-    closeDietInlineSearch(); // the cursor is placed; the flag has done its job
+    closeDietInlineSearch();
   }
-
-  // Delete food
-  $$('.diet-delete-food').forEach(btn => {
-    btn.addEventListener('click', () => {
-      state.diet.splice(Number(btn.dataset.dietIdx), 1);
-      dietEditOpenIdx = null; dietEditFormIdx = null; // indices shift after a splice — don't reopen the wrong row
-      closeDietInlineSearch(); // don't leave an empty search box over a meal you just emptied
-      saveData(state);
-      renderDiet();
-    });
-  });
-
-  // Recent Foods — unique dishes per meal, newest first, tap to re-log.
-  // Grouped into collapsible time-of-day sections; the bank keeps powering search.
-  const RECENT_MEALS = ['breakfast', 'lunch', 'dinner', 'snack'];
-  const RECENT_LABELS = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snack: 'Snack' };
-  const PER_MEAL_LIMIT = 6;
-  const recentGroups = { breakfast: [], lunch: [], dinner: [], snack: [] };
-  const recentSeen = { breakfast: new Set(), lunch: new Set(), dinner: new Set(), snack: new Set() };
-  const recentFoods = []; // flat list so click/delete handlers can index into it
-
-  for (let i = state.diet.length - 1; i >= 0; i--) {
-    const e = state.diet[i];
-    const name = (e.food || '').trim();
-    if (!name) continue;
-    const meal = RECENT_MEALS.includes(e.meal) ? e.meal : 'snack';
-    if (recentGroups[meal].length >= PER_MEAL_LIMIT) continue;
-    const lower = name.toLowerCase();
-    if (recentSeen[meal].has(lower) || isRemovedFood(lower)) continue;
-    recentSeen[meal].add(lower);
-    // Per-serving macros from the bank when available, else derived from the entry
-    const bankedEntry = Object.entries(state.customFoods).find(([k]) => k.toLowerCase() === lower);
-    const banked = (bankedEntry && bankedEntry[1]) || FOOD_DATABASE[lower] || (typeof sharedFoods !== 'undefined' && sharedFoods[lower]);
-    const n = Number(e.servings) > 0 ? Number(e.servings) : 1;
-    const per = banked || {
-      calories: Math.round((e.calories || 0) / n),
-      protein: Math.round(((e.protein || 0) / n) * 10) / 10,
-      carbs: Math.round(((e.carbs || 0) / n) * 10) / 10,
-      fat: Math.round(((e.fat || 0) / n) * 10) / 10,
-      serving: '1 serving',
-    };
-    const item = { name, meal, per, idx: recentFoods.length };
-    recentFoods.push(item);
-    recentGroups[meal].push(item);
-  }
-
-  // First render: open the meal that matches the time of day, collapse the rest.
-  //
-  // 'bank' was missing from this object, so recentFoodsOpen.bank read undefined
-  // and My Food Bank rendered collapsed every time — 59 dishes behind a shut
-  // header. This list only appears inside the Food Library, and the bank IS the
-  // library, so opening it to a row of closed accordions showed nothing at all.
-  // The meal groups stay collapsed: those are recent-food shortcuts, and all
-  // five open at once buries the bank under them.
-  if (!recentFoodsOpen) {
-    const hour = new Date().getHours();
-    const nowMeal = mealForHour(hour);
-    recentFoodsOpen = { breakfast: false, lunch: false, dinner: false, snack: false, bank: true, [nowMeal]: true };
-  }
-
-  // Full food bank — every banked dish (your South Indian pool + saved brands), A→Z
-  const bankEntries = Object.entries(state.customFoods).sort((a, b) => a[0].localeCompare(b[0]));
-
-  // Saved meals sit at the top of the Food Library, because this is where you
-  // come looking to change or remove something you saved.
-  const savedCombos = (typeof comboList === 'function') ? comboList() : [];
-  const combosHtml = savedCombos.length ? `
-      <div class="recent-meal recent-combos open" data-recent-meal="combos">
-        <div class="recent-meal-header">
-          <span class="recent-meal-chevron">${'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,6 15,12 9,18"/></svg>'}</span>
-          <span class="recent-meal-label">Saved meals</span>
-          <span class="recent-meal-count">${savedCombos.length}</span>
-        </div>
-        <div class="recent-meal-body">
-          ${savedCombos.map(c => {
-            const t = comboTotals(c);
-            return `
-            <div class="diet-custom-item">
-              <div class="diet-custom-item-main">
-                <span class="diet-custom-item-name">${esc(c.name)}</span>
-                <button class="diet-custom-edit" data-edit-combo="${esc(c.id)}" title="Rename or change what is in this meal"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>
-                <button class="diet-custom-del" data-del-combo="${esc(c.id)}" title="Delete this saved meal">&times;</button>
-              </div>
-              <div class="diet-custom-item-macros">
-                <span>${Math.round(t.calories)} cal</span>
-                <span>${Math.round(t.protein)}g P</span>
-                <span>${c.items.length} items</span>
-              </div>
-              <div class="combo-ingredients">${c.items.map(i => esc(i.food) + (i.servings !== 1 ? ` ${i.servings}&times;` : '')).join(' &middot; ')}</div>
-            </div>`;
-          }).join('')}
-        </div>
-      </div>` : '';
-
-  if (!recentFoods.length && !bankEntries.length && !savedCombos.length) {
-    $('#dietCustomList').innerHTML = emptyState({ icon: 'bookmark', title: 'No saved foods yet', hint: 'Anything you log is remembered here for one-tap re-adding.' });
-  } else {
-    const chevron = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,6 15,12 9,18"/></svg>';
-    const foodItem = (name, per, attrs) => `
-      <div class="diet-custom-item" ${attrs}>
-        <div class="diet-custom-item-main">
-          <span class="diet-custom-item-name">${esc(name)}</span>
-          <button class="diet-custom-edit" data-edit-name="${esc(name)}" title="Fix this food's macros"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>
-          <button class="diet-custom-del" data-del-name="${esc(name)}" title="Remove from the food bank">&times;</button>
-        </div>
-        <div class="diet-custom-item-macros">
-          <span>${Math.round(per.calories)} cal</span>
-          <span>${per.protein}g P</span>
-          <span>${per.carbs}g C</span>
-          <span>${per.fat}g F</span>
-        </div>
-      </div>`;
-
-    const groupsHtml = RECENT_MEALS.filter(m => recentGroups[m].length).map(meal => `
-      <div class="recent-meal ${recentFoodsOpen[meal] ? 'open' : ''}" data-recent-meal="${meal}">
-        <div class="recent-meal-header">
-          <span class="recent-meal-chevron">${chevron}</span>
-          <span class="recent-meal-label">${RECENT_LABELS[meal]}</span>
-          <span class="recent-meal-count">${recentGroups[meal].length}</span>
-        </div>
-        <div class="recent-meal-body">
-          ${recentGroups[meal].map(f => foodItem(f.name, f.per, `data-recent-idx="${f.idx}"`)).join('')}
-        </div>
-      </div>
-    `).join('');
-
-    const bankHtml = bankEntries.length ? `
-      <div class="recent-meal recent-bank ${recentFoodsOpen.bank ? 'open' : ''}" data-recent-meal="bank">
-        <div class="recent-meal-header">
-          <span class="recent-meal-chevron">${chevron}</span>
-          <span class="recent-meal-label">My Food Bank</span>
-          <span class="recent-meal-count">${bankEntries.length}</span>
-        </div>
-        <div class="recent-meal-body">
-          <input type="search" class="diet-bank-filter" id="dietBankFilter" placeholder="Search your ${bankEntries.length} foods" autocomplete="off" aria-label="Search the food bank">
-          <p class="diet-bank-filter-empty" id="dietBankFilterEmpty" hidden>Nothing matches that.</p>
-          ${bankEntries.map(([name, data]) => foodItem(name, data, `data-bank-name="${esc(name)}"`)).join('')}
-        </div>
-      </div>` : '';
-
-    $('#dietCustomList').innerHTML = combosHtml + groupsHtml + bankHtml;
-
-    // 59 dishes A-Z is six screens of scrolling to reach one. Filters in place
-    // rather than re-rendering, so the row you are aiming at does not move out
-    // from under your finger as you type.
-    const bankFilter = document.getElementById('dietBankFilter');
-    if (bankFilter) {
-      bankFilter.addEventListener('click', e => e.stopPropagation());
-      bankFilter.addEventListener('input', () => {
-        const q = bankFilter.value.trim().toLowerCase();
-        let shown = 0;
-        $$('.recent-bank .diet-custom-item').forEach(row => {
-          const name = (row.querySelector('.diet-custom-item-name') || {}).textContent || '';
-          const hit = !q || name.toLowerCase().includes(q);
-          row.hidden = !hit;
-          if (hit) shown++;
-        });
-        const none = document.getElementById('dietBankFilterEmpty');
-        if (none) none.hidden = !(q && shown === 0);
-      });
-    }
-
-    $$('[data-edit-combo]').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (typeof openComboEditor === 'function') openComboEditor(btn.dataset.editCombo);
-      });
-    });
-    $$('[data-del-combo]').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const c = comboList().find(x => x.id === btn.dataset.delCombo);
-        if (!c) return;
-        if (!confirm(`Delete the saved meal "${c.name}"? Food you already logged from it stays.`)) return;
-        deleteCombo(c.id);
-      });
-    });
-
-    // Toggle sections without a full re-render (keeps it snappy)
-    $$('.recent-meal-header').forEach(header => {
-      header.addEventListener('click', () => {
-        const group = header.closest('.recent-meal');
-        const meal = group.dataset.recentMeal;
-        recentFoodsOpen[meal] = !recentFoodsOpen[meal];
-        group.classList.toggle('open', recentFoodsOpen[meal]);
-      });
-    });
-
-    $$('.diet-custom-del').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const name = btn.dataset.delName;
-        if (!name) return;
-        const lower = name.toLowerCase();
-        state.removedFoods = state.removedFoods || [];
-        if (!state.removedFoods.includes(lower)) state.removedFoods.push(lower);
-        // Drop any case-variant from the food bank
-        for (const k of Object.keys(state.customFoods)) {
-          if (k.toLowerCase() === lower) delete state.customFoods[k];
-        }
-        saveData(state);
-        renderDiet();
-        showToast(`${name} removed — it won't be auto-added again`);
-      });
-    });
-
-    // Edit: load the food into the form so corrected macros can overwrite it
-    $$('.diet-custom-edit').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const name = btn.dataset.editName;
-        if (!name) return;
-        const lower = name.toLowerCase();
-        const entry = Object.entries(state.customFoods).find(([k]) => k.toLowerCase() === lower);
-        const data = (entry && entry[1]) || FOOD_DATABASE[lower] || (typeof sharedFoods !== 'undefined' && sharedFoods[lower]);
-        if (!data) return;
-        selectFoodFromDropdown(entry ? entry[0] : name, data);
-        $('#dietFoodName').scrollIntoView({ behavior: 'smooth', block: 'center' });
-        showToast(`Editing ${name} — fix the macros, then press Update My Food`);
-      });
-    });
-
-    $$('.diet-custom-item').forEach(el => {
-      el.addEventListener('click', (e) => {
-        if (e.target.closest('.diet-custom-del')) return;
-        if (el.dataset.recentIdx !== undefined) {
-          const f = recentFoods[Number(el.dataset.recentIdx)];
-          if (!f) return;
-          selectFoodFromDropdown(f.name, f.per);
-          if (f.meal) $('#dietMeal').value = f.meal;
-        } else if (el.dataset.bankName) {
-          const data = state.customFoods[el.dataset.bankName];
-          if (data) selectFoodFromDropdown(el.dataset.bankName, data);
-        }
-      });
-    });
-  }
-
-  // History (last 14 unique days)
-  const historyDays = [...new Set(state.diet.map(e => e.date))].sort().reverse().filter(d => d !== dietViewDate).slice(0, 14);
-  if (!historyDays.length) {
-    $('#dietHistoryList').innerHTML = emptyState({ icon: 'calendar', title: 'No history yet', hint: 'Log a day of meals and it will appear here.' });
-  } else {
-    $('#dietHistoryList').innerHTML = historyDays.map(day => {
-      const entries = state.diet.filter(e => e.date === day);
-      const dayTotals = sumMacros(entries);
-      return `
-        <div class="diet-history-day" data-diet-day="${day}">
-          <div class="diet-history-day-header">
-            <span class="diet-history-date">${new Date(day + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
-            <span class="diet-history-cal ${dayTotals.calories > getGoals().calories ? 'over-budget' : 'under-budget'}"
-              title="${dayTotals.calories > getGoals().calories ? 'Over' : 'Under'} the ${getGoals().calories} cal budget">${Math.round(dayTotals.calories)} cal</span>
-          </div>
-          <div class="diet-history-macros">
-            <span>${Math.round(dayTotals.protein)}g P</span>
-            <span>${Math.round(dayTotals.carbs)}g C</span>
-            <span>${Math.round(dayTotals.fat)}g F</span>
-          </div>
-        </div>`;
-    }).join('');
-
-    $$('.diet-history-day').forEach(el => {
-      el.addEventListener('click', () => {
-        dietViewDate = el.dataset.dietDay;
-        renderDiet();
-      });
-    });
-  }
-
-  // The meal rows were just rebuilt, which destroys the inline photo confirm
-  // box. Put a pending analysis back rather than letting it vanish — this is
-  // the render that used to eat an in-flight photo every time a Firebase
-  // snapshot echoed a save back to us.
-  if (typeof restorePendingPhoto === 'function') restorePendingPhoto();
 }
 
-
-// The floating pill sits bottom-right, which on a phone is exactly where the
-// log bar's voice and camera buttons are - the one control this whole screen
-// exists for was underneath it. Rather than move the pill (it is the only way
-// into the Food Library on mobile), fade it out while the bar is actually on
-// screen and bring it back as soon as it scrolls away.
-let logBarObserver = null;
-
-function watchLogBar() {
-  const bar = document.querySelector('.diet-logbar');
-  if (!bar || typeof IntersectionObserver !== 'function') return;
-  // The bar is rebuilt on every render, so the old element is gone - re-point
-  // the observer rather than stacking up a new one per render.
-  if (!logBarObserver) {
-    logBarObserver = new IntersectionObserver((entries) => {
-      const showing = entries.some(e => e.isIntersecting);
-      document.body.classList.toggle('logbar-open', showing);
-    }, { threshold: 0.4 });
+// ---------- the add bar, and the tiles under it ----------
+// The bar itself is static markup: rebuilding it on every render threw away
+// whatever was being typed whenever a sync echoed back. Only its target meal,
+// its labels and the tiles change here.
+function renderDietAdd(mealGroups) {
+  const wrap = document.getElementById('dietAddWrap');
+  if (!wrap) return;
+  const meal = activeDietMeal(mealGroups);
+  const label = DIET_MEAL_LABEL[meal] || 'Meal';
+  // Only a new day clears what was typed. Picking another meal keeps it: the
+  // owner may type first and then choose where it goes.
+  const changed = wrap.dataset.date !== dietViewDate;
+  wrap.dataset.meal = meal;
+  wrap.dataset.date = dietViewDate;
+  document.querySelectorAll('#dietMealPick [data-pick-meal]').forEach(b => {
+    b.setAttribute('aria-pressed', b.dataset.pickMeal === meal ? 'true' : 'false');
+  });
+  const input = document.getElementById('dietAddInput');
+  if (input) {
+    input.placeholder = `Add food to ${label.toLowerCase()}`;
+    input.setAttribute('aria-label', `Add food to ${label}`);
+    // A different meal or day: whatever was typed belonged to the other one.
+    if (changed && input.value) { input.value = ''; const box = wrap.querySelector('.diet-inline-results'); if (box) box.innerHTML = ''; }
+    // A search already showing re-targets with the meal, so its rows add there.
+    else if (input.value.trim()) { const box = wrap.querySelector('.diet-inline-results'); if (box && box.innerHTML) renderInlineResults(wrap, input.value); }
   }
-  logBarObserver.disconnect();
-  document.body.classList.remove('logbar-open');
-  logBarObserver.observe(bar);
+  const cam = wrap.querySelector('[data-diet-photo]');
+  if (cam) { cam.dataset.dietPhoto = meal; cam.setAttribute('aria-label', `Log ${label} from a photo`); }
+
+  const tiles = document.getElementById('dietTiles');
+  if (!tiles) return;
+  dietUsualsShown = mealUsuals(meal, 4);
+  const combos = (typeof comboList === 'function') ? comboList() : [];
+  // A saved meal writes several rows, so its tile is drawn apart from a single
+  // food's: outlined in the food colour.
+  tiles.innerHTML =
+    dietUsualsShown.map((u, i) => `<button type="button" class="dt-tile" data-usual-idx="${i}">${esc(u.name)}</button>`).join('') +
+    combos.map(c => `<button type="button" class="dt-tile is-meal" data-combo-id="${esc(c.id)}" title="${esc(c.items.map(i => i.food).join(', '))}">${esc(c.name)}<em>${Math.round(comboTotals(c).calories)}</em></button>`).join('');
+  tiles.hidden = !(dietUsualsShown.length || combos.length);
+}
+
+// ---------- the four meals as a line ----------
+function renderDietLine(mealGroups, totals) {
+  const host = document.getElementById('dietMealsList');
+  if (!host) return;
+  const today = getTodayStr();
+  const isToday = dietViewDate === today;
+  const goals = getGoals();
+  const proteinLeft = Math.max(0, goals.protein - Math.round(totals.protein));
+  const nextEmpty = isToday ? activeDietMeal(mealGroups) : null;
+
+  const rows = mealGroups.map(g => {
+    const kcal = Math.round(sumMacros(g.entries).calories);
+    // When it was eaten: the earliest entry that carries a time, else the slot.
+    const at = g.entries.reduce((a, e) => (e.at && (!a || e.at < a) ? e.at : a), null);
+    const min = (typeof lineMinutesFrom === 'function') ? lineMinutesFrom(at, DIET_MEAL_SLOT[g.meal]) : DIET_MEAL_SLOT[g.meal];
+    const names = groupMealEntries(g.entries)
+      .map(b => b.type === 'group' ? b.name : ((b.entry && b.entry.food) || ''))
+      .filter(Boolean);
+    let sub;
+    if (names.length) sub = names.slice(0, 3).join(', ') + (names.length > 3 ? ` and ${names.length - 3} more` : '');
+    else if (g.meal === nextEmpty && proteinLeft > 0) sub = `${proteinLeft}g protein to go, tap to add`;
+    else sub = 'tap to add';
+    return { g, kcal, min, sub, has: g.entries.length > 0 };
+  }).sort((a, b) => a.min - b.min);
+
+  // Where the spine turns from the day's colours to plain ink.
+  let cut = dietViewDate < today ? 100 : 0;
+  if (isToday) {
+    const now = new Date().getHours() * 60 + new Date().getMinutes();
+    const first = rows[0].min, last = rows[rows.length - 1].min;
+    cut = Math.max(0, Math.min(100, ((now - first) / Math.max(1, last - first)) * 100));
+  }
+
+  host.innerHTML = `<div class="dl-line dt-line" style="--cut:${Math.round(cut)}%">${rows.map(r => `
+    <button type="button" class="dl-line-item c-food${r.has ? ' past' : ''}" data-open-meal="${r.g.meal}"
+            aria-label="${r.g.label}: ${r.has ? r.kcal + ' kcal, ' + esc(r.sub) : 'nothing logged, tap to add'}">
+      <span class="t">${dietClock(r.min)}</span><span class="n"></span>
+      <span class="ico"><span class="ms" aria-hidden="true">${DIET_MEAL_ICON[r.g.meal]}</span></span>
+      <span class="body">${r.g.label}<em>${esc(r.sub)}</em></span>
+      <span class="val">${r.has ? r.kcal : ''}</span>
+    </button>`).join('')}</div>`;
+}
+
+// ========== Meal sheet ==========
+function openMealSheet(meal) {
+  if (DIET_MEALS.indexOf(meal) === -1) return;
+  dietSheetMeal = meal;
+  dietSheetSearch = false;
+  dietEditFormIdx = null;
+  // Opening a meal does NOT retarget the add bar behind it. Looking at
+  // breakfast at noon should not make the next thing you add a breakfast; the
+  // sheet has its own Add food for that.
+  renderMealSheet();
+  openDlSheet(document.getElementById('mealSheet'));
+}
+
+function closeMealSheet() {
+  closeDlSheet(document.getElementById('mealSheet'));
+}
+
+function mealSheetEntryRow(e, isIngredient) {
+  const idx = state.diet.indexOf(e);
+  const serv = Number(e.servings) > 0 ? Number(e.servings) : 1;
+  const name = esc(e.food);
+  const row = `
+    <div class="ms-row${isIngredient ? ' is-ing' : ''}" data-entry-idx="${idx}">
+      <span class="ms-name">${name}</span>
+      <span class="ms-kcal">${Math.round(e.calories || 0)}</span>
+      <button type="button" class="ss-act" data-ms-edit="${idx}" aria-label="Edit ${name}" aria-expanded="${dietEditFormIdx === idx}"><span class="ms" aria-hidden="true">edit</span></button>
+      <button type="button" class="ss-act" data-ms-del="${idx}" aria-label="Delete ${name}"><span class="ms" aria-hidden="true">close</span></button>
+      <span class="ms-sub" aria-label="${Math.round(e.protein || 0)} grams protein, ${Math.round(e.carbs || 0)} carbs, ${Math.round(e.fat || 0)} fat">${Math.round(e.protein || 0)}g P · ${Math.round(e.carbs || 0)}g C · ${Math.round(e.fat || 0)}g F</span>
+      <span class="ms-step">
+        <button type="button" data-ms-step="-0.5" data-idx="${idx}" aria-label="Fewer servings of ${name}"><span class="ms" aria-hidden="true">remove</span></button>
+        <b>${serv}x</b>
+        <button type="button" data-ms-step="0.5" data-idx="${idx}" aria-label="More servings of ${name}"><span class="ms" aria-hidden="true">add</span></button>
+      </span>
+    </div>`;
+  if (dietEditFormIdx !== idx) return row;
+  // Name and macros AS LOGGED, for the servings shown.
+  return row + `
+    <form class="dl-card ms-edit" data-ms-form="${idx}" data-sig="${esc(mealEntrySig(e))}">
+      <h6 class="dl-card-h"><span>Edit ${name}</span><em>for ${serv}x</em></h6>
+      <label class="dl-field"><span class="dl-field-label">Name</span>
+        <input type="text" name="food" value="${name}" maxlength="80" autocomplete="off"></label>
+      <div class="ms-macros">
+        <label class="dl-field"><span class="dl-field-label">Kcal</span><input type="number" name="calories" inputmode="decimal" min="0" step="1" value="${Math.round(e.calories || 0)}"></label>
+        <label class="dl-field"><span class="dl-field-label">P</span><input type="number" name="protein" inputmode="decimal" min="0" step="0.1" value="${Math.round((e.protein || 0) * 10) / 10}"></label>
+        <label class="dl-field"><span class="dl-field-label">C</span><input type="number" name="carbs" inputmode="decimal" min="0" step="0.1" value="${Math.round((e.carbs || 0) * 10) / 10}"></label>
+        <label class="dl-field"><span class="dl-field-label">F</span><input type="number" name="fat" inputmode="decimal" min="0" step="0.1" value="${Math.round((e.fat || 0) * 10) / 10}"></label>
+      </div>
+      <label class="dl-field"><span class="dl-field-label">Meal${e.group ? ' (moves the whole ' + esc(e.groupName || 'saved meal') + ')' : ''}</span>
+        <select name="meal">${DIET_MEALS.map(m => `<option value="${m}"${m === e.meal ? ' selected' : ''}>${DIET_MEAL_LABEL[m]}</option>`).join('')}</select></label>
+      <label class="ms-check"><input type="checkbox" name="fixBank" checked> Fix it everywhere: My foods and saved meals too</label>
+      <div class="ts-actions"><span class="ts-spacer"></span>
+        <button type="button" class="dl-btn" data-ms-cancel>Cancel</button>
+        <button type="submit" class="dl-btn primary">Save</button></div>
+    </form>`;
+}
+
+// The usual foods drawn in the open meal sheet (its own list: the add bar's
+// tiles are drawn in the same render pass and index a different meal).
+let dietSheetUsualsShown = [];
+
+// Move an entry to another meal on its day. A saved-meal group moves whole,
+// so it never splits into two half-groups. Its time goes: the line places an
+// entry by `at`, and a breakfast moved to dinner would still draw at 8:00.
+function moveDietEntry(entry, meal) {
+  if (!entry || DIET_MEALS.indexOf(meal) === -1) return 0;
+  const set = entry.group ? state.diet.filter(e => e.group === entry.group && e.date === entry.date) : [entry];
+  set.forEach(e => { e.meal = meal; delete e.at; });
+  saveData(state);
+  return set.length;
+}
+
+// Which entry an open editor belongs to. The editor is keyed by index into
+// state.diet, and a sync can reorder that array under it.
+function mealEntrySig(e) {
+  return [e.date, e.meal, e.food, e.group || ''].join('|');
+}
+
+function renderMealSheet() {
+  const body = document.getElementById('mealSheetBody');
+  if (!body || !dietSheetMeal) return;
+
+  // Every save and every sync echo re-renders this sheet. Whatever is being
+  // typed into the open editor, or an ingredient field, is carried across,
+  // and focus goes back where it was. If the entry under the editor is no
+  // longer the one being edited, the editor closes rather than showing that
+  // draft against another food.
+  const openForm = body.querySelector('[data-ms-form]');
+  const draft = openForm ? {
+    idx: Number(openForm.dataset.msForm), sig: openForm.dataset.sig,
+    fields: Array.from(openForm.elements).filter(el => el.name).map(el => [el.name, el.type === 'checkbox' ? el.checked : el.value]),
+  } : null;
+  const ingTyped = Array.from(body.querySelectorAll('[data-ing-input]')).map(el => [el.dataset.ingInput, el.value]);
+  const act = document.activeElement && body.contains(document.activeElement) ? document.activeElement : null;
+  const actKey = act ? (act.name ? 'form:' + act.name : act.dataset.ingInput ? 'ing:' + act.dataset.ingInput : null) : null;
+  if (draft && dietEditFormIdx === draft.idx) {
+    const cur = state.diet[draft.idx];
+    if (!cur || mealEntrySig(cur) !== draft.sig) dietEditFormIdx = null;
+  }
+  const meal = dietSheetMeal;
+  const label = DIET_MEAL_LABEL[meal];
+  const entries = state.diet.filter(e => e.date === dietViewDate && e.meal === meal);
+  const m = sumMacros(entries);
+  // This meal's usual foods and every saved meal, one tap each, into this meal.
+  dietSheetUsualsShown = mealUsuals(meal, 4);
+  const sheetCombos = (typeof comboList === 'function') ? comboList() : [];
+  const quick = dietSheetUsualsShown.map((u, i) => `<button type="button" class="dt-tile" data-sheet-usual="${i}">${esc(u.name)}</button>`).join('') +
+    sheetCombos.map(c => `<button type="button" class="dt-tile is-meal" data-sheet-combo="${esc(c.id)}" title="${esc(c.items.map(i => i.food).join(', '))}">${esc(c.name)}<em>${Math.round(comboTotals(c).calories)}</em></button>`).join('');
+
+  const title = document.getElementById('mealSheetTitle');
+  if (title) title.innerHTML = `${label} <span class="ms-total">${Math.round(m.calories)}</span>`;
+
+  // Keep what is being typed in the sheet's search across a re-render.
+  const prevInput = document.getElementById('mealSheetInput');
+  const typed = prevInput ? prevInput.value : '';
+
+  const blocks = groupMealEntries(entries).map(block => {
+    if (block.type === 'single') return mealSheetEntryRow(block.entry, false);
+    const open = !!dietGroupOpen[block.gid];
+    const gname = esc(block.name);
+    return `
+      <div class="ms-group${open ? ' open' : ''}">
+        <div class="ms-row ms-grouphead">
+          <button type="button" class="ms-grouptoggle" data-toggle-group="${esc(block.gid)}" aria-expanded="${open}">
+            <span class="ms" aria-hidden="true">chevron_right</span><span class="ms-name">${gname}</span>
+          </button>
+          <span class="ms-kcal">${Math.round(block.totals.calories)}</span>
+          <button type="button" class="ss-act" data-del-group="${esc(block.gid)}" aria-label="Remove the whole ${gname}"><span class="ms" aria-hidden="true">close</span></button>
+          <span class="ms-sub">saved meal · ${block.items.length} item${block.items.length === 1 ? '' : 's'} · ${Math.round(block.totals.protein)}g protein</span>
+        </div>
+        ${open ? `<div class="ms-groupbody">
+          ${block.items.map(e => mealSheetEntryRow(e, true)).join('')}
+          <div class="ms-ing">
+            <input type="text" data-ing-input="${esc(block.gid)}" placeholder="Add an ingredient from your foods" autocomplete="off" aria-label="Ingredient to add to ${gname}">
+            <button type="button" class="dl-btn" data-add-ing="${esc(block.gid)}">Add</button>
+          </div>
+        </div>` : ''}
+      </div>`;
+  }).join('');
+
+  body.innerHTML = `
+    ${entries.length
+      ? `<p class="ms-macro">${Math.round(m.protein)}g protein · ${Math.round(m.carbs)}g carbs · ${Math.round(m.fat)}g fat</p><div class="ms-list">${blocks}</div>`
+      : `<p class="ms-empty">Nothing in ${label.toLowerCase()} yet.</p>`}
+    ${quick ? `<div class="ms-quick" role="group" aria-label="Quick add to ${label}"><span class="ms-quick-h">Quick add</span><div class="dt-tiles">${quick}</div></div>` : ''}
+    <div class="dt-addwrap diet-meal-addwrap" data-meal="${meal}"${dietSheetSearch ? '' : ' hidden'}>
+      <div class="dt-search">
+        <span class="ms" aria-hidden="true">search</span>
+        <input type="text" id="mealSheetInput" class="dt-search-input" placeholder="Add food to ${label.toLowerCase()}" autocomplete="off" enterkeyhint="search" aria-label="Add food to ${label}">
+      </div>
+      <div class="diet-inline-results"></div>
+    </div>
+    <p class="ts-hint">A saved meal logs as one group. Open it to add an ingredient, or remove the whole group with its x.</p>
+    <div class="ts-actions sheet-foot ms-foot">
+      <button type="button" class="dl-btn" data-diet-photo="${meal}" aria-label="Add to ${label} from a photo"><span class="ms" aria-hidden="true">photo_camera</span>Photo</button>
+      ${entries.length >= 2 ? `<button type="button" class="dl-btn" data-ms-savecombo aria-label="Save these ${entries.length} as a meal"><span class="ms" aria-hidden="true">bookmark_add</span>Save meal</button>` : ''}
+      <button type="button" class="dl-btn primary ms-foot-add" data-ms-add aria-expanded="${dietSheetSearch}"><span class="ms" aria-hidden="true">${dietSheetSearch ? 'close' : 'add'}</span>${dietSheetSearch ? 'Close search' : 'Add food'}</button>
+    </div>`;
+
+  if (typed) {
+    const input = document.getElementById('mealSheetInput');
+    if (input) { input.value = typed; renderInlineResults(input.closest('.diet-meal-addwrap'), typed); }
+  }
+  const form = body.querySelector('[data-ms-form]');
+  if (form && draft && Number(form.dataset.msForm) === draft.idx) {
+    draft.fields.forEach(([name, v]) => {
+      const el = form.elements[name];
+      if (!el) return;
+      if (el.type === 'checkbox') el.checked = v; else el.value = v;
+    });
+  }
+  ingTyped.forEach(([gid, v]) => {
+    const el = body.querySelector('[data-ing-input="' + CSS.escape(gid) + '"]');
+    if (el && v) el.value = v;
+  });
+  if (actKey) {
+    const back = actKey.startsWith('form:') ? (form && form.elements[actKey.slice(5)])
+      : body.querySelector('[data-ing-input="' + CSS.escape(actKey.slice(4)) + '"]');
+    if (back) back.focus({ preventScroll: true });
+  }
+}
+
+// Servings +/- rescales that entry's macros in proportion.
+function stepDietServings(idx, step) {
+  const e = state.diet[idx];
+  if (!e) return;
+  const cur = Number(e.servings) > 0 ? Number(e.servings) : 1;
+  let next = Math.round((cur + step) * 2) / 2;   // snap to the half, avoids float drift
+  if (next < 0.5) next = 0.5;                     // half a serving is the floor
+  if (next === cur) return;
+  const ratio = next / cur;
+  e.servings = next;
+  e.calories = Math.round((e.calories || 0) * ratio);
+  e.protein = Math.round(((e.protein || 0) * ratio) * 10) / 10;
+  e.carbs = Math.round(((e.carbs || 0) * ratio) * 10) / 10;
+  e.fat = Math.round(((e.fat || 0) * ratio) * 10) / 10;
+  saveData(state);
+  renderDiet();
+}
+
+// Delete with the way back on the toast, rather than a dialog in front of it.
+function deleteDietEntry(idx) {
+  const e = state.diet[idx];
+  if (!e) return;
+  state.diet.splice(idx, 1);
+  dietEditFormIdx = null;   // indices shift after a splice: never reopen the wrong row
+  closeDietInlineSearch();
+  saveData(state);
+  renderDiet();
+  showToast(`Removed ${e.food}. Tap to undo`, () => {
+    state.diet.splice(Math.min(idx, state.diet.length), 0, e);
+    saveData(state);
+    renderDiet();
+  });
+}
+
+// Every control in the sheet, handled from the wrapper. The body is rewritten
+// on every render; the wrapper is not.
+let mealSheetBound = false;
+function bindMealSheet() {
+  const wrap = document.getElementById('mealSheet');
+  if (!wrap || mealSheetBound) return;
+  mealSheetBound = true;
+
+  wrap.addEventListener('dl-sheet-close', () => { dietSheetMeal = null; dietSheetSearch = false; dietEditFormIdx = null; });
+  const x = document.getElementById('mealSheetClose');
+  if (x) x.addEventListener('click', closeMealSheet);
+
+  wrap.addEventListener('click', (ev) => {
+    const t = ev.target;
+    const step = t.closest('[data-ms-step]');
+    if (step) { stepDietServings(Number(step.dataset.idx), Number(step.dataset.msStep)); return; }
+    const del = t.closest('[data-ms-del]');
+    if (del) { deleteDietEntry(Number(del.dataset.msDel)); return; }
+    const edit = t.closest('[data-ms-edit]');
+    if (edit) {
+      const idx = Number(edit.dataset.msEdit);
+      dietEditFormIdx = dietEditFormIdx === idx ? null : idx;
+      renderMealSheet();
+      const f = wrap.querySelector(`[data-ms-form="${idx}"] input[name="calories"]`);
+      if (f) { f.focus(); f.select(); }
+      return;
+    }
+    if (t.closest('[data-ms-cancel]')) { dietEditFormIdx = null; renderMealSheet(); return; }
+    const tog = t.closest('[data-toggle-group]');
+    if (tog) { toggleDietGroup(tog.dataset.toggleGroup); return; }
+    const delG = t.closest('[data-del-group]');
+    if (delG) { deleteDietGroup(delG.dataset.delGroup); return; }
+    const ing = t.closest('[data-add-ing]');
+    if (ing) { addMealSheetIngredient(ing.dataset.addIng); return; }
+    if (t.closest('[data-ms-add]')) {
+      dietSheetSearch = !dietSheetSearch;
+      renderMealSheet();
+      // The search sits just above the sticky footer; bring it into view.
+      if (dietSheetSearch) { const i = document.getElementById('mealSheetInput'); if (i) { i.scrollIntoView({ block: 'center' }); i.focus({ preventScroll: true }); } }
+      return;
+    }
+    if (t.closest('[data-ms-savecombo]')) { if (typeof openComboSaver === 'function') openComboSaver(dietSheetMeal); return; }
+    // Quick adds in a meal's sheet go into THAT meal, whatever the time.
+    const su = t.closest('[data-sheet-usual]');
+    if (su) {
+      const u = dietSheetUsualsShown[Number(su.dataset.sheetUsual)];
+      if (u) { quickAddToMeal(dietSheetMeal, { name: u.name, data: u.per }, false); showToast(`${u.name} added to ${DIET_MEAL_LABEL[dietSheetMeal].toLowerCase()}`); }
+      return;
+    }
+    const sc = t.closest('[data-sheet-combo]');
+    if (sc) {
+      const c = comboList().find(x => x.id === sc.dataset.sheetCombo);
+      addComboToMeal(sc.dataset.sheetCombo, dietSheetMeal);
+      if (c) showToast(`${c.name} added to ${DIET_MEAL_LABEL[dietSheetMeal].toLowerCase()}`);
+      return;
+    }
+    const cam = t.closest('[data-diet-photo]');
+    if (cam && typeof startMealPhoto === 'function') { const meal = cam.dataset.dietPhoto; closeMealSheet(); startMealPhoto(meal); }
+  });
+
+  wrap.addEventListener('submit', (ev) => {
+    const form = ev.target.closest('[data-ms-form]');
+    if (!form) return;
+    ev.preventDefault();
+    const fd = new FormData(form);
+    const fix = fd.get('fixBank') === 'on';
+    const idx = Number(form.dataset.msForm);
+    const entry = state.diet[idx];
+    const ok = updateDietEntry(idx, {
+      food: fd.get('food'), calories: fd.get('calories'), protein: fd.get('protein'), carbs: fd.get('carbs'), fat: fd.get('fat'),
+      fixBank: fix,
+    });
+    const to = fd.get('meal');
+    const moved = ok && entry && to && to !== entry.meal ? moveDietEntry(entry, to) : 0;
+    dietEditFormIdx = null;
+    renderDiet();
+    if (moved) showToast(`Moved to ${DIET_MEAL_LABEL[to]}${moved > 1 ? ` (${moved} items)` : ''}`);
+    else if (ok) showToast(fix ? 'Fixed here, in My foods and in your saved meals' : 'Fixed this entry');
+  });
+
+  wrap.addEventListener('input', (ev) => {
+    const input = ev.target.closest('#mealSheetInput');
+    if (input) renderInlineResults(input.closest('.diet-meal-addwrap'), input.value);
+  });
+  wrap.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Enter') return;
+    const ing = ev.target.closest('[data-ing-input]');
+    if (ing) { ev.preventDefault(); addMealSheetIngredient(ing.dataset.ingInput); }
+  });
+}
+
+// An ingredient is added by name from foods you already have. It was a
+// browser prompt(); it is a field in the group now.
+function addMealSheetIngredient(gid) {
+  const input = document.querySelector(`[data-ing-input="${gid}"]`);
+  const name = input ? input.value.trim() : '';
+  if (!name) { if (input) input.focus(); return; }
+  const per = perServingMacros(name, null);
+  if (!per) {
+    showToast(`"${name}" is not in your foods yet. Add it with Add food first`);
+    return;
+  }
+  addIngredientToGroup(gid, dietSheetMeal, name, per);
+}
+
+// ---------- page-level bindings (once) ----------
+let dietDayBound = false;
+function bindDietDay() {
+  const view = document.getElementById('dietView');
+  if (!view || dietDayBound) return;
+  dietDayBound = true;
+
+  view.addEventListener('click', (ev) => {
+    const t = ev.target;
+    const open = t.closest('[data-open-meal]');
+    if (open) { openMealSheet(open.dataset.openMeal); return; }
+    const pick = t.closest('[data-pick-meal]');
+    if (pick) {
+      // The same choice v2's meal tap made, for this day only.
+      dietOpenMeal = pick.dataset.pickMeal;
+      dietOpenMealDate = dietViewDate;
+      renderDiet();
+      return;
+    }
+    const usual = t.closest('[data-usual-idx]');
+    if (usual) {
+      const u = dietUsualsShown[Number(usual.dataset.usualIdx)];
+      const wrap = document.getElementById('dietAddWrap');
+      if (u && wrap) quickAddToMeal(wrap.dataset.meal, { name: u.name, data: u.per }, false);
+      return;
+    }
+    const combo = t.closest('[data-combo-id]');
+    if (combo) {
+      const wrap = document.getElementById('dietAddWrap');
+      if (wrap) addComboToMeal(combo.dataset.comboId, wrap.dataset.meal);
+      return;
+    }
+    if (t.closest('[data-diet-voice]')) { if (typeof openVoicePanel === 'function') openVoicePanel(); return; }
+    const cam = t.closest('#dietDay [data-diet-photo]');
+    if (cam && typeof startMealPhoto === 'function') { startMealPhoto(cam.dataset.dietPhoto); return; }
+    // Anywhere on the bar puts the cursor in it.
+    const bar = t.closest('#dietAddWrap .dt-search');
+    if (bar && !t.closest('button')) { const i = document.getElementById('dietAddInput'); if (i && document.activeElement !== i) i.focus(); }
+  });
+
+  const input = document.getElementById('dietAddInput');
+  if (input) input.addEventListener('input', () => renderInlineResults(document.getElementById('dietAddWrap'), input.value));
+
+  bindMealSheet();
+  bindFoodLibraryUi();
+}
+
+// ========== Food library (full screen) ==========
+// My foods / Meals / Recent / History, one search box, and the add-your-own
+// form. It replaced a run of accordions with the editor hidden above them.
+let libTab = 'foods';
+let libQuery = '';
+let libOnline = null;      // null | 'loading' | 'error' | [results]
+let libEditing = null;     // name being edited in the form, or null for a new food
+let libRecentShown = [];
+
+function foodLibraryOpen() {
+  const lib = document.getElementById('dietLibrary');
+  return !!lib && !lib.hidden;
+}
+
+function libRow(name, sub, attrs, actions, chip) {
+  return `
+    <div class="lib-row" ${attrs || ''}>
+      <span class="lib-sw"></span>
+      <span class="lib-main"><span class="lib-name">${esc(name)}${chip || ''}</span><span class="lib-sub">${sub}</span></span>
+      ${actions || ''}
+    </div>`;
+}
+
+function libMacroSub(d) {
+  return `${Math.round(d.calories || 0)} · ${Math.round((d.protein || 0) * 10) / 10}g P${d.serving ? ' · per ' + esc(d.serving) : ''}`;
+}
+
+function renderFoodLibrary() {
+  const body = document.getElementById('libBody');
+  if (!body) return;
+  document.querySelectorAll('#libTabs [data-lib-tab]').forEach(b => {
+    const on = b.dataset.libTab === libTab;
+    if (on) b.setAttribute('aria-pressed', 'true'); else b.removeAttribute('aria-pressed');
+  });
+  const search = document.getElementById('libSearchWrap');
+  if (search) search.hidden = libTab === 'history';
+  const q = libQuery.trim().toLowerCase();
+  const empty = (title, hint) => `<div class="lib-empty"><b>${title}</b>${hint}</div>`;
+  const editBtn = (name) => `<button type="button" class="ss-act" data-lib-edit="${esc(name)}" aria-label="Edit ${esc(name)}"><span class="ms" aria-hidden="true">edit</span></button>`;
+
+  if (libTab === 'foods') {
+    const bank = Object.entries(state.customFoods).sort((a, b) => a[0].localeCompare(b[0]));
+    let html;
+    if (!q) {
+      html = bank.length
+        ? `<div class="dl-card lib-card">${bank.map(([name, d]) => libRow(name, libMacroSub(d), `data-lib-food="${esc(name)}"`,
+            editBtn(name) + `<button type="button" class="ss-act" data-lib-del="${esc(name)}" aria-label="Remove ${esc(name)} from My foods"><span class="ms" aria-hidden="true">close</span></button>`)).join('')}</div>`
+        : empty('No saved foods yet.', 'Anything you log is remembered here. You can also add one below.');
+    } else {
+      const found = searchFoodDatabase(q);
+      html = found.length
+        ? `<div class="dl-card lib-card">${found.map(r => libRow(r.name, libMacroSub(r.data), `data-lib-food="${esc(r.name)}"`,
+            r.custom ? editBtn(r.name) : '',
+            r.shared ? '<span class="dl-chip c-water">Community</span>' : (r.custom ? '' : '<span class="dl-chip">Built in</span>'))).join('')}</div>`
+        : empty('No match in your foods.', 'Look it up online, or add it below.');
+      html += `<button type="button" class="dl-btn full" id="libOnlineBtn"><span class="ms" aria-hidden="true">travel_explore</span>Look up "${esc(libQuery.trim())}" online</button>`;
+      if (libOnline === 'loading') html += '<div class="lib-empty"><span class="dl-skel lib-skel"></span><span class="dl-skel lib-skel"></span>Searching Open Food Facts and USDA...</div>';
+      else if (libOnline === 'error') html += empty('Could not reach the food databases.', 'Check your connection and try again, or add it below.');
+      else if (Array.isArray(libOnline)) {
+        html += libOnline.length
+          ? `<div class="dl-card lib-card"><h6 class="dl-card-h"><span>Online</span><em>tap one to fill the form</em></h6>${libOnline.map((r, i) =>
+              libRow(r.name + (r.brand ? ' (' + r.brand + ')' : ''), `${r.calories} · ${r.protein}g P · per ${esc(r.serving)}`, `data-lib-online="${i}"`, '',
+                `<span class="dl-chip">${r.source === 'OFF' ? 'Open Food Facts' : 'USDA'}</span>`)).join('')}</div>`
+          : empty('Nothing found online.', 'Try a shorter name, or add it below.');
+      }
+    }
+    body.innerHTML = html;
+  } else if (libTab === 'meals') {
+    const combos = comboList().filter(c => !q || c.name.toLowerCase().includes(q));
+    body.innerHTML = combos.length
+      ? `<div class="dl-card lib-card">${combos.map(c => {
+          const t = comboTotals(c);
+          return libRow(c.name, `${Math.round(t.calories)} · ${Math.round(t.protein)}g P · ${c.items.length} item${c.items.length === 1 ? '' : 's'}: ${esc(c.items.map(i => i.food).join(', '))}`, '',
+            `<button type="button" class="ss-act" data-lib-combo-edit="${esc(c.id)}" aria-label="Edit the saved meal ${esc(c.name)}"><span class="ms" aria-hidden="true">edit</span></button>
+             <button type="button" class="ss-act" data-lib-combo-del="${esc(c.id)}" aria-label="Delete the saved meal ${esc(c.name)}"><span class="ms" aria-hidden="true">close</span></button>`);
+        }).join('')}</div>`
+      : empty(q ? 'No saved meal matches.' : 'No saved meals yet.', 'Open a meal with two or more foods and use Save these as a meal.');
+  } else if (libTab === 'recent') {
+    // Unique dishes, newest first.
+    const seen = new Set();
+    libRecentShown = [];
+    for (let i = state.diet.length - 1; i >= 0 && libRecentShown.length < 30; i--) {
+      const e = state.diet[i];
+      const name = (e.food || '').trim();
+      const lower = name.toLowerCase();
+      if (!name || seen.has(lower) || isRemovedFood(lower)) continue;
+      if (q && !lower.includes(q)) continue;
+      seen.add(lower);
+      libRecentShown.push({ name, meal: e.meal, date: e.date, per: perServingMacros(name, e) });
+    }
+    body.innerHTML = libRecentShown.length
+      ? `<div class="dl-card lib-card">${libRecentShown.map((f, i) =>
+          libRow(f.name, `${libMacroSub(f.per || {})} · ${esc(DIET_MEAL_LABEL[f.meal] || 'Snack').toLowerCase()}, ${esc(formatDate(f.date))}`, `data-lib-recent="${i}"`)).join('')}</div>`
+      : empty(q ? 'Nothing recent matches.' : 'Nothing logged yet.', 'Foods appear here as you log them.');
+  } else {
+    const goals = getGoals();
+    const days = [...new Set(state.diet.map(e => e.date))].sort().reverse().slice(0, 14);
+    body.innerHTML = days.length
+      ? `<div class="dl-card lib-card"><h6 class="dl-card-h"><span>Last ${days.length} logged day${days.length === 1 ? '' : 's'}</span><em>tap a day to open it</em></h6>${days.map(day => {
+          const t = sumMacros(state.diet.filter(e => e.date === day));
+          const over = t.calories > goals.calories;
+          return `<button type="button" class="lib-row lib-day" data-lib-day="${day}">
+            <span class="lib-main"><span class="lib-name">${esc(new Date(day + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }))}</span>
+            <span class="lib-sub">${Math.round(t.protein)}g P · ${Math.round(t.carbs)}g C · ${Math.round(t.fat)}g F</span></span>
+            <span class="lib-kcal${over ? ' is-over' : ''}">${Math.round(t.calories).toLocaleString()}${over ? ' over' : ''}</span>
+          </button>`;
+        }).join('')}</div>`
+      : empty('No history yet.', 'Log a day of meals and it appears here.');
+  }
+  syncLibForm();
+}
+
+function syncLibForm() {
+  const title = document.getElementById('libFormTitle');
+  const save = document.getElementById('libSave');
+  const cancel = document.getElementById('libCancel');
+  if (title) title.textContent = libEditing ? `Edit ${libEditing}` : 'Not found? Add it';
+  if (save) save.textContent = libEditing ? 'Update' : 'Add to my foods';
+  if (cancel) cancel.hidden = !libEditing;
+}
+
+function fillLibForm(name, d, editing) {
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  set('libName', name);
+  set('libKcal', d && d.calories != null ? Math.round(d.calories) : '');
+  set('libP', d && d.protein != null ? d.protein : '');
+  set('libC', d && d.carbs != null ? d.carbs : '');
+  set('libF', d && d.fat != null ? d.fat : '');
+  const form = document.getElementById('libForm');
+  if (form) form.dataset.serving = (d && d.serving) || '';
+  libEditing = editing ? name : null;
+  syncLibForm();
+  if (form) form.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+function clearLibForm() {
+  ['libName', 'libKcal', 'libP', 'libC', 'libF'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const form = document.getElementById('libForm');
+  if (form) form.dataset.serving = '';
+  libEditing = null;
+  syncLibForm();
+}
+
+function saveLibFood() {
+  const val = (id) => (document.getElementById(id) || {}).value || '';
+  const typed = val('libName').trim();
+  const calories = Number(val('libKcal'));
+  if (!typed) { showToast('Give the food a name first'); const n = document.getElementById('libName'); if (n) n.focus(); return; }
+  if (!(calories > 0)) { showToast('Add its calories before saving'); const k = document.getElementById('libKcal'); if (k) k.focus(); return; }
+  const food = (typeof safeFoodName === 'function') ? safeFoodName(typed) : typed;
+  if (!food) { showToast('That name cannot be saved. Try plain letters and numbers'); return; }
+  const lower = food.toLowerCase();
+  const was = (libEditing || '').toLowerCase();
+  // An explicit save overrides an earlier delete, and replaces any case variant
+  // (or the old name, when this is a rename) instead of duplicating it.
+  state.removedFoods = (state.removedFoods || []).filter(n => n !== lower);
+  let existed = false;
+  Object.keys(state.customFoods).forEach(k => {
+    const kl = k.toLowerCase();
+    if (kl === lower || (was && kl === was)) { existed = true; delete state.customFoods[k]; }
+  });
+  const form = document.getElementById('libForm');
+  state.customFoods[food] = {
+    calories: Math.round(calories),
+    protein: Math.round((Number(val('libP')) || 0) * 10) / 10,
+    carbs: Math.round((Number(val('libC')) || 0) * 10) / 10,
+    fat: Math.round((Number(val('libF')) || 0) * 10) / 10,
+    serving: (form && form.dataset.serving) || '1 serving',
+    fiber: 0,
+    sugar: 0,
+  };
+  if (typeof publishFoodToBank === 'function') publishFoodToBank(food, state.customFoods[food]);
+  saveData(state);
+  clearLibForm();
+  libTab = 'foods';
+  renderDiet();
+  showToast(existed ? `${food} updated in My foods` : `${food} added to My foods`);
+}
+
+function removeLibFood(name) {
+  const lower = name.toLowerCase();
+  const removed = {};
+  Object.keys(state.customFoods).forEach(k => { if (k.toLowerCase() === lower) { removed[k] = state.customFoods[k]; delete state.customFoods[k]; } });
+  state.removedFoods = state.removedFoods || [];
+  const wasRemoved = state.removedFoods.includes(lower);
+  if (!wasRemoved) state.removedFoods.push(lower);
+  saveData(state);
+  renderDiet();
+  showToast(`${name} removed. Tap to undo`, () => {
+    Object.assign(state.customFoods, removed);
+    if (!wasRemoved) state.removedFoods = state.removedFoods.filter(n => n !== lower);
+    saveData(state);
+    renderDiet();
+  });
+}
+
+let libUiBound = false;
+function bindFoodLibraryUi() {
+  const lib = document.getElementById('dietLibrary');
+  if (!lib || libUiBound) return;
+  libUiBound = true;
+
+  lib.addEventListener('click', (ev) => {
+    const t = ev.target;
+    const tab = t.closest('[data-lib-tab]');
+    if (tab) { libTab = tab.dataset.libTab; renderFoodLibrary(); return; }
+    const del = t.closest('[data-lib-del]');
+    if (del) { removeLibFood(del.dataset.libDel); return; }
+    const edit = t.closest('[data-lib-edit]');
+    if (edit) { const n = edit.dataset.libEdit; fillLibForm(n, state.customFoods[n], true); return; }
+    const cEdit = t.closest('[data-lib-combo-edit]');
+    if (cEdit) { openComboEditor(cEdit.dataset.libComboEdit); return; }
+    const cDel = t.closest('[data-lib-combo-del]');
+    if (cDel) { removeSavedMeal(cDel.dataset.libComboDel); return; }
+    const day = t.closest('[data-lib-day]');
+    if (day) { dietViewDate = day.dataset.libDay; closeFoodLibrary(); return; }
+    if (t.closest('#libOnlineBtn')) { lookupFoodOnline(libQuery); return; }
+    const online = t.closest('[data-lib-online]');
+    if (online && Array.isArray(libOnline)) {
+      const r = libOnline[Number(online.dataset.libOnline)];
+      if (r) {
+        const clean = r.name.split(',')[0].split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+        fillLibForm(r.brand ? `${clean} (${r.brand})` : clean, { calories: r.calories, protein: r.protein, carbs: r.carbs, fat: r.fat, serving: r.serving }, false);
+      }
+      return;
+    }
+    const recent = t.closest('[data-lib-recent]');
+    if (recent) { const f = libRecentShown[Number(recent.dataset.libRecent)]; if (f) fillLibForm(f.name, f.per || {}, !!state.customFoods[f.name]); return; }
+    const food = t.closest('[data-lib-food]');
+    if (food) {
+      const n = food.dataset.libFood;
+      const own = state.customFoods[n];
+      const d = own || FOOD_DATABASE[n.toLowerCase()] || (typeof sharedFoods !== 'undefined' && sharedFoods[n.toLowerCase()]);
+      if (d) fillLibForm(n, d, !!own);
+      return;
+    }
+    if (t.closest('#libSave')) { saveLibFood(); return; }
+    if (t.closest('#libCancel')) { clearLibForm(); }
+  });
+
+  const search = document.getElementById('libSearch');
+  if (search) search.addEventListener('input', () => { libQuery = search.value; libOnline = null; renderFoodLibrary(); });
+}
+
+// Saved meals are deleted with the way back on the toast, not a confirm().
+function removeSavedMeal(id) {
+  const list = comboList();
+  const i = list.findIndex(c => c.id === id);
+  if (i === -1) return;
+  const gone = list.splice(i, 1)[0];
+  saveData(state);
+  renderDiet();
+  showToast(`Deleted the saved meal "${gone.name}". Tap to undo`, () => {
+    comboList().splice(Math.min(i, comboList().length), 0, gone);
+    saveData(state);
+    renderDiet();
+  });
 }

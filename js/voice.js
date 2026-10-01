@@ -15,7 +15,7 @@ function voiceKey() {
 
 // 'gym' and 'cardio' stay listed as aliases — switchView maps them onto
 // Training's two modes, so older phrasings keep working.
-const VOICE_VIEWS = ['dashboard', 'tasks', 'board', 'calendar', 'training', 'gym', 'cardio', 'diet', 'settings'];
+const VOICE_VIEWS = ['today', 'dashboard', 'tasks', 'board', 'calendar', 'training', 'gym', 'cardio', 'diet', 'settings'];
 
 const VOICE_SCHEMA = {
   type: 'object',
@@ -86,15 +86,32 @@ Rules:
 - If a part of the request can't be mapped to any action, emit an unrecognized command with the leftover text.`;
 }
 
+// ---- The voice sheet (spec 10.6) ----
+// Opened from the + sheet, the mic in Diet's add bar, Today's "Say it" and the
+// palette's "Run as a command". The floating mic that used to sit over every
+// screen is gone: it covered content, and it was one more thing on the page.
+
+// What the sheet says while the request is out: the shape of a result, not a
+// spinner.
+const VOICE_PENDING = '<div class="vc-res is-pending"><span class="dl-skel"></span></div><div class="vc-res is-pending"><span class="dl-skel" style="width:60%"></span></div>';
+const VOICE_UNDO_MS = 6000;
+let voiceUndoTimer = null;
+
+function voiceStatus(html, opts) {
+  const o = opts || {};
+  $('#voiceResult').innerHTML = `<div class="vc-status${o.warn ? ' is-warn' : ''}">${html}</div>` +
+    (o.settings ? '<button type="button" class="dl-btn" data-voice-settings><span class="ms" aria-hidden="true">key</span>Open Settings, AI</button>' : '');
+}
+
 async function runVoiceCommand(text) {
-  const resultEl = $('#voiceResult');
   const key = voiceKey();
   if (!key) {
-    resultEl.innerHTML = '<div class="voice-status error">No API key set. Open the Diet tab and tap the key icon next to "Snap a meal" to add your Anthropic key — voice uses the same key.</div>';
+    voiceStatus('No Anthropic key on this device, so voice is off. Add one in Settings, AI.', { warn: true, settings: true });
     return;
   }
   if (!text || !text.trim()) return;
-  resultEl.innerHTML = '<div class="voice-status"><span class="photo-spinner"></span>Understanding&hellip;</div>';
+  $('#voiceTranscript').textContent = '“' + text.trim() + '”';
+  $('#voiceResult').innerHTML = VOICE_PENDING;
 
   const body = {
     model: VOICE_MODEL,
@@ -119,21 +136,20 @@ async function runVoiceCommand(text) {
     data = await res.json();
     if (!res.ok) {
       const msg = (data && data.error && data.error.message) || `HTTP ${res.status}`;
-      resultEl.innerHTML = res.status === 401
-        ? '<div class="voice-status error">API key was rejected — re-add it from the Diet tab.</div>'
-        : `<div class="voice-status error">Couldn't process that: ${esc(msg)}</div>`;
+      if (res.status === 401) voiceStatus('The key was rejected. Replace it in Settings, AI.', { warn: true, settings: true });
+      else voiceStatus(`Couldn't process that: ${esc(msg)}`, { warn: true });
       return;
     }
   } catch (e) {
-    resultEl.innerHTML = '<div class="voice-status error">Network error — check your connection.</div>';
+    voiceStatus('Network error. Check your connection, or type it again later.', { warn: true });
     return;
   }
 
-  // Record the call for the usage tracker (Settings → AI features).
+  // Record the call for the usage tracker (Settings, AI).
   if (typeof logAiCall === 'function' && data.usage) logAiCall('voice', VOICE_MODEL, data.usage);
 
   if (data.stop_reason === 'refusal') {
-    resultEl.innerHTML = '<div class="voice-status error">The model declined that request.</div>';
+    voiceStatus('The model declined that request.', { warn: true });
     return;
   }
 
@@ -142,14 +158,15 @@ async function runVoiceCommand(text) {
     const textBlock = (data.content || []).find(b => b.type === 'text');
     commands = JSON.parse(textBlock.text).commands || [];
   } catch (e) {
-    resultEl.innerHTML = '<div class="voice-status error">Could not understand that — try rephrasing.</div>';
+    voiceStatus('Could not understand that. Try saying it another way.', { warn: true });
     return;
   }
 
   executeVoiceCommands(commands);
 }
 
-// Run each command, collecting a human summary + an undo fn per successful one.
+// Run each command, collecting a line and an undo per one that changed
+// something.
 function executeVoiceCommands(commands) {
   const resultEl = $('#voiceResult');
   const today = getTodayStr();
@@ -176,7 +193,8 @@ function executeVoiceCommands(commands) {
       };
       state.tasks.push(task);
       done.push({
-        label: `Task: <strong>${esc(task.name)}</strong>${task.dueDate ? ` &middot; ${formatDate(task.dueDate)}` : ''} &middot; ${task.priority}`,
+        icon: 'check_circle',
+        label: `Task: <b>${esc(task.name)}</b>${task.dueDate ? `, ${esc(formatDate(task.dueDate))}` : ''}`,
         undo: () => { state.tasks = state.tasks.filter(t => t !== task); },
       });
 
@@ -185,9 +203,24 @@ function executeVoiceCommands(commands) {
       if (oz > 0) {
         state.water[today] = state.water[today] || [];
         state.water[today].push(oz);
+        // The time goes with it, as it does from the Diet buttons, so the
+        // line puts this drink where it was drunk.
+        state.waterAt = state.waterAt || {};
+        state.waterAt[today] = state.waterAt[today] || [];
+        // push(), as the Diet buttons do: assigning by index on a shorter
+        // (older) array would leave holes.
+        state.waterAt[today].push(Date.now());
         done.push({
-          label: `Water: <strong>${oz} oz</strong>`,
-          undo: () => { const a = state.water[today]; if (a) { const i = a.lastIndexOf(oz); if (i >= 0) a.splice(i, 1); } },
+          icon: 'water_drop',
+          label: `Water: <b>+${oz} oz</b>`,
+          undo: () => {
+            const a = state.water[today];
+            if (!a) return;
+            const i = a.lastIndexOf(oz);
+            if (i < 0) return;
+            a.splice(i, 1);
+            if (state.waterAt && state.waterAt[today]) state.waterAt[today].splice(i, 1);
+          },
         });
       }
 
@@ -198,7 +231,8 @@ function executeVoiceCommands(commands) {
         const prev = state.weight[today];
         state.weight[today] = lbs;
         done.push({
-          label: `Weight: <strong>${lbs} lbs</strong>`,
+          icon: 'monitor_weight',
+          label: `Weight: <b>${lbs} lb</b>`,
           undo: () => { if (prev === undefined) delete state.weight[today]; else state.weight[today] = prev; },
         });
       }
@@ -209,7 +243,7 @@ function executeVoiceCommands(commands) {
       const added = [];
       for (const it of (cmd.items || [])) {
         const entry = {
-          date: today, meal, food: String(it.food || 'Food').slice(0, 60), servings: 1,
+          date: today, meal, food: String(it.food || 'Food').slice(0, 60), servings: 1, at: Date.now(),
           calories: Math.max(0, Math.round(Number(it.calories) || 0)),
           protein: Math.max(0, Math.round((Number(it.protein) || 0) * 10) / 10),
           carbs: Math.max(0, Math.round((Number(it.carbs) || 0) * 10) / 10),
@@ -225,7 +259,8 @@ function executeVoiceCommands(commands) {
       if (added.length) {
         const cals = added.reduce((s, e) => s + e.calories, 0);
         done.push({
-          label: `Food (${meal}): <strong>${added.map(e => esc(e.food)).join(', ')}</strong> &middot; ~${cals} cal`,
+          icon: 'restaurant',
+          label: `${esc(meal.charAt(0).toUpperCase() + meal.slice(1))}: <b>${added.map(e => esc(e.food)).join(', ')}</b>, about ${cals} kcal`,
           undo: () => { state.diet = state.diet.filter(e => !added.includes(e)); },
         });
       }
@@ -234,7 +269,7 @@ function executeVoiceCommands(commands) {
       if (VOICE_VIEWS.includes(cmd.view)) navTo = cmd.view;
 
     } else if (cmd.action === 'unrecognized') {
-      done.push({ label: `<span class="voice-unknown">Didn't catch: "${esc(cmd.text || '')}"</span>`, undo: null });
+      done.push({ icon: 'help', miss: true, label: `Didn't catch “${esc(cmd.text || '')}”`, undo: null });
     }
   }
 
@@ -242,43 +277,41 @@ function executeVoiceCommands(commands) {
   if (changed) { saveData(state); render(); }
 
   if (!done.length && !navTo) {
-    resultEl.innerHTML = '<div class="voice-status">Nothing to do — try "log 40 oz of water" or "add a task to call mom tomorrow".</div>';
+    voiceStatus('Nothing to do. Try “16 ounces of water” or “dentist tomorrow at 11”.');
     return;
   }
 
-  resultEl.innerHTML = `
-    <div class="voice-done">
-      ${done.map((d, i) => `
-        <div class="voice-done-row">
-          <span class="voice-done-check">${d.undo ? '✓' : '—'}</span>
-          <span class="voice-done-label">${d.label}</span>
-          ${d.undo ? `<button type="button" class="voice-undo-btn" data-undo="${i}">Undo</button>` : ''}
-        </div>`).join('')}
-      ${navTo ? `<div class="voice-done-row"><span class="voice-done-check">→</span><span class="voice-done-label">Opened <strong>${navTo}</strong></span></div>` : ''}
-    </div>`;
+  resultEl.innerHTML = done.map((d, i) => `
+      <div class="vc-res${d.miss ? ' is-miss' : ''}">
+        <span class="ms${d.miss ? '' : ' fill'}" aria-hidden="true">${d.icon}</span>
+        <span class="vc-res-t">${d.label}</span>
+        ${d.undo ? `<button type="button" class="vc-undo" data-undo="${i}">Undo</button>` : ''}
+      </div>`).join('') +
+    (navTo ? `<div class="vc-res"><span class="ms" aria-hidden="true">arrow_forward</span><span class="vc-res-t">Opening <b>${esc(navTo)}</b></span></div>` : '');
 
-  $$('#voiceResult .voice-undo-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const d = done[Number(btn.dataset.undo)];
-      if (d && d.undo) {
-        d.undo();
-        saveData(state);
-        render();
-        btn.closest('.voice-done-row').classList.add('voice-undone');
-        btn.remove();
-      }
-    });
-  });
+  resultEl._undo = done;
+  // Undo is offered for six seconds, like every other undo in the app. After
+  // that the row stays as a record of what happened.
+  clearTimeout(voiceUndoTimer);
+  voiceUndoTimer = setTimeout(() => { resultEl.querySelectorAll('.vc-undo').forEach(b => b.remove()); }, VOICE_UNDO_MS);
 
   if (navTo) {
-    // Navigate after a beat so the confirmation is visible, then close the panel
-    setTimeout(() => { switchView(navTo); closeVoicePanel(); }, changed ? 900 : 250);
+    // Navigate after a beat so the confirmation is readable, then close.
+    setTimeout(() => { closeVoicePanel(); switchView(navTo); }, changed ? 900 : 250);
   }
 }
 
 // ---- Speech recognition ----
 function voiceSupported() {
   return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+}
+
+function setVoiceMic(on) {
+  const mic = $('#voiceMicBtn');
+  if (!mic) return;
+  mic.classList.toggle('is-listening', on);
+  mic.setAttribute('aria-pressed', on ? 'true' : 'false');
+  mic.setAttribute('aria-label', on ? 'Stop listening' : 'Start listening');
 }
 
 function startVoiceListening() {
@@ -292,108 +325,112 @@ function startVoiceListening() {
   rec.maxAlternatives = 1;
   voiceRecognition = rec;
 
-  const input = $('#voiceInput');
-  const micBtn = $('#voiceMicBtn');
-  micBtn.classList.add('listening');
-  $('#voiceHint').textContent = 'Listening… speak now';
+  setVoiceMic(true);
+  $('#voiceHint').textContent = 'Listening…';
 
   rec.onresult = (e) => {
     let txt = '';
     for (let i = 0; i < e.results.length; i++) txt += e.results[i][0].transcript;
-    input.value = txt;
+    $('#voiceTranscript').textContent = '“' + txt + '”';
+    $('#voiceInput').value = txt;
     const final = e.results[e.results.length - 1].isFinal;
-    if (final) { stopVoiceListening(); runVoiceCommand(txt); }
+    if (final) { stopVoiceListening(); $('#voiceHint').textContent = ''; runVoiceCommand(txt); }
   };
   rec.onerror = (e) => {
     stopVoiceListening();
     if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-      $('#voiceHint').textContent = 'Mic blocked — allow microphone access, or just type below.';
+      $('#voiceHint').textContent = 'The microphone is blocked. Allow it, or type below.';
     } else if (e.error === 'no-speech') {
-      $('#voiceHint').textContent = "Didn't hear anything — tap the mic to retry, or type.";
+      $('#voiceHint').textContent = "Didn't hear anything. Tap the mic to try again, or type.";
     } else {
-      $('#voiceHint').textContent = 'Voice unavailable here — type your command below.';
+      $('#voiceHint').textContent = 'Voice is not available here. Type below.';
     }
   };
-  rec.onend = () => { voiceListening = false; if (micBtn) micBtn.classList.remove('listening'); };
+  rec.onend = () => { voiceListening = false; setVoiceMic(false); };
 
   try { rec.start(); voiceListening = true; }
-  catch (e) { stopVoiceListening(); $('#voiceHint').textContent = 'Type your command below.'; }
+  catch (e) { stopVoiceListening(); $('#voiceHint').textContent = 'Type below.'; }
 }
 
 function stopVoiceListening() {
   if (voiceRecognition) { try { voiceRecognition.stop(); } catch (e) {} voiceRecognition = null; }
   voiceListening = false;
-  const micBtn = $('#voiceMicBtn');
-  if (micBtn) micBtn.classList.remove('listening');
+  setVoiceMic(false);
 }
 
-function openVoicePanel() {
-  const panel = $('#voicePanel');
-  if (!panel) return;
-  panel.classList.add('active');
+// `text` runs straight away (the palette's "Run as a command"); with none the
+// mic starts, in the same tap, which is what iOS needs to allow it.
+function openVoicePanel(text) {
+  const wrap = $('#voiceSheet');
+  if (!wrap) return;
+  clearTimeout(voiceUndoTimer);
   $('#voiceInput').value = '';
   $('#voiceResult').innerHTML = '';
-  const micBtn = $('#voiceMicBtn');
+  $('#voiceResult')._undo = null;
+  $('#voiceTranscript').textContent = '';
+  const mic = $('#voiceMicBtn');
+  openDlSheet(wrap);
+  if (typeof text === 'string' && text.trim()) {
+    $('#voiceInput').value = text.trim();
+    $('#voiceHint').textContent = '';
+    runVoiceCommand(text);
+    return;
+  }
+  if (!voiceKey()) {
+    mic.hidden = !voiceSupported();
+    $('#voiceHint').textContent = '';
+    voiceStatus('No Anthropic key on this device, so voice is off. Add one in Settings, AI.', { warn: true, settings: true });
+    return;
+  }
   if (voiceSupported()) {
-    micBtn.style.display = '';
-    $('#voiceHint').textContent = 'Listening… speak now';
-    startVoiceListening(); // same user-gesture as the FAB tap → iOS-friendly
+    mic.hidden = false;
+    startVoiceListening();
   } else {
-    micBtn.style.display = 'none';
+    mic.hidden = true;
     $('#voiceHint').textContent = 'Type a command and press Run.';
-    $('#voiceInput').focus();
+    setTimeout(() => $('#voiceInput').focus(), 60);
   }
 }
 
 function closeVoicePanel() {
   stopVoiceListening();
-  const panel = $('#voicePanel');
-  if (panel) panel.classList.remove('active');
-}
-
-// The FAB is fixed above the bottom nav and sits on top of whatever content
-// happens to be under it — on a phone it was covering a dashboard stat and the
-// gym date nav. Hide it while scrolling down and bring it back on scroll up,
-// which is the standard behaviour and keeps it out of the way exactly when the
-// user is reading rather than acting.
-function bindFabAutoHide(fab) {
-  let lastY = window.scrollY;
-  let ticking = false;
-  const THRESHOLD = 8; // ignore sub-pixel jitter and rubber-banding
-  // Both floating controls move together — tucking one and leaving the other
-  // would just look broken.
-  const targets = () => [fab, document.getElementById('primaryFab')].filter(Boolean);
-  const update = () => {
-    ticking = false;
-    const y = window.scrollY;
-    const dy = y - lastY;
-    if (Math.abs(dy) < THRESHOLD) return;
-    // Never hide at the very top, where there is nothing to scroll past.
-    const tuck = dy > 0 && y > 120;
-    targets().forEach(el => el.classList.toggle('fab-tucked', tuck));
-    lastY = y;
-  };
-  window.addEventListener('scroll', () => {
-    if (!ticking) { ticking = true; requestAnimationFrame(update); }
-  }, { passive: true });
+  const wrap = $('#voiceSheet');
+  if (wrap && wrap.classList.contains('open')) closeDlSheet(wrap);
 }
 
 function bindVoiceEvents() {
-  const fab = $('#voiceFab');
-  if (!fab) return;
-  fab.addEventListener('click', openVoicePanel);
-  bindFabAutoHide(fab);
-  $('#voicePanelClose').addEventListener('click', closeVoicePanel);
-  $('#voicePanel').addEventListener('click', (e) => { if (e.target === $('#voicePanel')) closeVoicePanel(); });
-
-  $('#voiceMicBtn').addEventListener('click', () => {
-    if (voiceListening) stopVoiceListening();
-    else startVoiceListening();
-  });
-
-  $('#voiceRunBtn').addEventListener('click', () => {
-    stopVoiceListening();
-    runVoiceCommand($('#voiceInput').value);
+  const wrap = $('#voiceSheet');
+  if (!wrap) return;
+  // Swiped away or Esc: stop listening too.
+  wrap.addEventListener('dl-sheet-close', stopVoiceListening);
+  wrap.addEventListener('click', (e) => {
+    if (e.target.closest('#voiceMicBtn')) {
+      if (voiceListening) stopVoiceListening(); else startVoiceListening();
+      return;
+    }
+    if (e.target.closest('#voiceRunBtn')) {
+      stopVoiceListening();
+      runVoiceCommand($('#voiceInput').value);
+      return;
+    }
+    if (e.target.closest('[data-voice-settings]')) {
+      closeVoicePanel();
+      if (typeof openSettingsPage === 'function') openSettingsPage('ai');
+      return;
+    }
+    const undo = e.target.closest('.vc-undo');
+    if (undo) {
+      const list = $('#voiceResult')._undo || [];
+      const d = list[Number(undo.dataset.undo)];
+      if (d && d.undo) {
+        d.undo();
+        d.undo = null;
+        saveData(state);
+        render();
+        undo.closest('.vc-res').classList.add('is-undone');
+        undo.remove();
+      }
+    }
   });
   $('#voiceInput').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); stopVoiceListening(); runVoiceCommand($('#voiceInput').value); }

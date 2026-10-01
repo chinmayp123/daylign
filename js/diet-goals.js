@@ -16,11 +16,16 @@ function getGoals() {
   return { ...DEFAULT_GOALS, ...(state.goals || {}) };
 }
 
-// Redesigned per design_handoff_daylign_v2 §4: a big calorie ring plus three
-// macro mini-rings that spell out eaten / goal in grams with a "left" chip —
-// the explicit user correction was that a percent alone isn't enough.
-// Daylign's burn-aware net line is preserved as a caption under the ring.
+// The summary (spec 8): the calorie ring, three macro bars, one caption.
+//
+// "Left" is goal minus eaten, the same figure the now block on Today shows, and
+// the burn is stated beside it rather than added back. The mockup's example
+// caption nets them ("Burned 420, so about 780 left"); that would put two
+// different "left" numbers on two screens for the same day, so the burn is
+// reported and the arithmetic is left to the reader.
 function renderDietGoals(totals) {
+  const host = $('#dietGoals');
+  if (!host) return;
   const goals = getGoals();
   const cal = Math.round(totals.calories);
   const calPct = Math.min(100, Math.round((cal / goals.calories) * 100));
@@ -30,54 +35,31 @@ function renderDietGoals(totals) {
     : (typeof estimateBurnForDate === 'function') ? { cal: estimateBurnForDate(dietViewDate), watch: false }
     : { cal: 0, watch: false };
   const burn = Number.isFinite(burnInfo.cal) ? Math.max(0, Math.round(burnInfo.cal)) : 0;
-  // No "net calories" number. Exercise-burn estimates are noisy, and folding them
-  // into one net figure reads like you ate less than you did — which nudges you
-  // toward under-eating. Consumed-vs-target is the headline; activity is a
-  // separate, clearly-estimated caption; the status line stays non-judgmental.
-  const overBy = cal - goals.calories; // + = over target
-  const statusLine = overBy > 0
-    ? `${overBy} cal over your ${goals.calories} target${overBy <= 250 ? " — that's okay" : ''}`
-    : overBy < 0
-      ? `${-overBy} cal under your ${goals.calories} target`
-      : `Right on your ${goals.calories} target`;
-  const activityLine = burn > 0
-    ? `${burn} cal ${burnInfo.watch ? 'burned (Apple Watch)' : 'estimated burned'}`
-    : '';
 
-  // README run/domain palette: protein green, carbs blue, fat amber.
   const macros = [
-    { label: 'Protein', current: Math.round(totals.protein), goal: goals.protein, color: '#34d399' },
-    { label: 'Carbs', current: Math.round(totals.carbs), goal: goals.carbs, color: '#5aa5f9' },
-    { label: 'Fat', current: Math.round(totals.fat), goal: goals.fat, color: '#fbbf24' },
+    { label: 'Protein', current: Math.round(totals.protein), goal: goals.protein, k: 'food' },
+    { label: 'Carbs', current: Math.round(totals.carbs), goal: goals.carbs, k: 'habit' },
+    { label: 'Fat', current: Math.round(totals.fat), goal: goals.fat, k: 'meet' },
   ];
+  const caption = (calLeft >= 0 ? `${calLeft.toLocaleString()} left.` : `${(-calLeft).toLocaleString()} over${-calLeft <= 250 ? ', which is fine.' : '.'}`) +
+    (burn > 0 ? ` Burned ${burnInfo.watch ? '' : 'about '}${burn.toLocaleString()}${burnInfo.watch ? ', from your Watch' : ''}.` : '');
 
-  const macroHTML = macros.map(m => {
-    const pct = Math.min(100, Math.round((m.current / m.goal) * 100));
-    const left = m.goal - m.current;
-    const leftTxt = left >= 0 ? `${left}g left` : `${-left}g over`;
-    return `
-      <div class="dg-bar">
-        <div class="dg-bar-head">
-          <span class="dg-bar-label">${m.label}</span>
-          <span class="dg-bar-nums"><b class="tnum">${m.current}</b><span class="dg-bar-goal"> / ${m.goal}g</span><span class="dg-bar-left tnum" style="color:${m.color}">${leftTxt}</span></span>
-        </div>
-        <div class="dg-bar-track"><div class="dg-bar-fill" style="width:${pct}%;background:${m.color}"></div></div>
-      </div>`;
-  }).join('');
-
-  $('#dietGoals').innerHTML = `
-    <div class="dg-cal-wrap">
-      <div class="dg-cal-ring" style="background:conic-gradient(var(--accent) 0 ${calPct}%, var(--border) ${calPct}% 100%)">
-        <div class="dg-cal-hole">
-          <span class="dg-cal-num tnum">${cal}</span>
-          <span class="dg-cal-of">of ${goals.calories} cal</span>
-          <span class="dg-cal-left tnum ${calLeft < 0 ? 'over' : ''}">${calLeft >= 0 ? calLeft + ' left' : -calLeft + ' over'}</span>
-        </div>
-      </div>
-    </div>
-    ${activityLine ? `<div class="dg-activity"><span class="dg-activity-label">Activity</span>${activityLine}</div>` : ''}
-    <div class="dg-status ${overBy > 0 ? 'over' : ''}">${statusLine}</div>
-    <div class="dg-macros">${macroHTML}</div>`;
+  host.innerHTML = `
+    <span class="dl-ring-wrap dt-ring${calLeft < 0 ? ' is-over' : ''}">
+      <svg class="dl-ring c-food" viewBox="0 0 64 64" role="img" aria-label="${cal.toLocaleString()} of ${goals.calories.toLocaleString()} kcal eaten">
+        <circle class="dl-ring-track" cx="32" cy="32" r="28"/>
+        <circle class="dl-ring-fill" cx="32" cy="32" r="28" pathLength="100" style="--pct:${calPct}"/>
+      </svg>
+      <span class="dl-ring-label"><b>${cal.toLocaleString()}</b><small>of ${goals.calories.toLocaleString()}</small></span>
+    </span>
+    <div class="dt-bars">
+      ${macros.map(m => `
+        <div class="dt-bar">
+          <span class="dt-bar-t">${m.label} <b>${m.current}</b> / ${m.goal}g</span>
+          <span class="dl-meter c-${m.k}"><i style="width:${Math.min(100, Math.round((m.current / m.goal) * 100))}%"></i></span>
+        </div>`).join('')}
+      <p class="dt-cap">${caption}</p>
+    </div>`;
 }
 
 // ========== Food Recommendations ==========
@@ -118,33 +100,35 @@ const CUT_RECOMMENDATIONS = [
 ];
 
 function renderDietRecs(totals) {
+  const el = $('#dietRecs');
+  if (!el) return;
   const recGoals = getGoals();
   const remaining = {
     calories: Math.max(0, recGoals.calories - Math.round(totals.calories)),
     protein: Math.max(0, recGoals.protein - Math.round(totals.protein)),
   };
+  const fold = (icon, text, body) => body
+    ? `<summary><span class="ms" aria-hidden="true">${icon}</span><span class="dt-fold-t">${text}</span><span class="ms dt-fold-chev" aria-hidden="true">expand_more</span></summary><div class="dt-fold-b">${body}</div>`
+    : `<summary class="is-plain"><span class="ms" aria-hidden="true">${icon}</span><span class="dt-fold-t">${text}</span></summary>`;
 
-  // On a cut, hitting the budget means the kitchen is closed
+  // On a cut, hitting the budget means the kitchen is closed.
   if (remaining.calories <= 100) {
-    $('#dietRecs').innerHTML = '<div class="diet-recs-done">Calorie budget used up — kitchen\'s closed for today!</div>';
+    el.hidden = false;
+    el.innerHTML = fold('lightbulb', 'Calorie budget used up. Kitchen is closed for today.', '');
+    el.open = false;
     return;
   }
 
-  // Figure out which meals haven't been logged today
   const dayEntries = state.diet.filter(e => e.date === dietViewDate);
   const loggedMeals = new Set(dayEntries.map(e => e.meal));
-
-  // Group meal name ("Snacks") -> entry meal key ("snack")
   const keyOf = name => name.toLowerCase() === 'snacks' ? 'snack' : name.toLowerCase();
 
   // Time-of-day awareness (only when viewing today — a past day has no "now")
   const isToday = dietViewDate === getTodayStr();
   const MEAL_ORDER = ['breakfast', 'lunch', 'dinner', 'snack'];
-  // mealForHour is shared — see diet-core.js.
   const nowMeal = isToday ? mealForHour(new Date().getHours()) : null;
 
-  // Starting from the current time window, find the first meal still worth
-  // eating (unlogged real meal, or a snack which is always fair game).
+  // From the current time window, the first meal still worth eating.
   let featuredKey = null;
   if (nowMeal) {
     const start = MEAL_ORDER.indexOf(nowMeal);
@@ -154,70 +138,32 @@ function renderDietRecs(totals) {
     }
   }
 
-  // Pick recommendations for unlogged meals, or snacks if all meals logged
+  // Two ideas per unlogged meal. Chosen by the DATE, not at random: a random
+  // pick reshuffled the list on every render, so the suggestion you were
+  // reading changed under you each time anything saved.
+  const dayNum = Math.floor(new Date(dietViewDate + 'T00:00:00').getTime() / 86400000);
+  const pick = (foods) => [0, 1].map(i => foods[(dayNum + i) % foods.length]);
   let suggestions = [];
   for (const group of CUT_RECOMMENDATIONS) {
     const mealKey = keyOf(group.meal);
-    if (!loggedMeals.has(mealKey) || mealKey === 'snack') {
-      // Pick 1-2 random foods from this meal
-      const shuffled = [...group.foods].sort(() => Math.random() - 0.5);
-      suggestions.push({ meal: group.meal, foods: shuffled.slice(0, 2) });
-    }
+    if (!loggedMeals.has(mealKey) || mealKey === 'snack') suggestions.push({ meal: group.meal, foods: pick(group.foods) });
   }
-
-  if (!suggestions.length) {
-    suggestions = [{ meal: 'Snacks', foods: CUT_RECOMMENDATIONS[3].foods.slice(0, 2) }];
-  }
-
-  // Lead with the time-appropriate meal and flag it as "now"
+  if (!suggestions.length) suggestions = [{ meal: 'Snacks', foods: pick(CUT_RECOMMENDATIONS[3].foods) }];
   if (featuredKey) {
     suggestions = [
       ...suggestions.filter(s => keyOf(s.meal) === featuredKey),
       ...suggestions.filter(s => keyOf(s.meal) !== featuredKey),
     ];
-    if (suggestions[0] && keyOf(suggestions[0].meal) === featuredKey) suggestions[0].now = true;
   }
 
-  // Header context reflects the time of day
-  const DISPLAY = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snack: 'Snack' };
-  const NOW_LABEL = { breakfast: 'Breakfast time', lunch: 'Lunchtime', dinner: 'Dinner time', snack: 'Snack time' };
-  let contextLabel = 'Suggestions';
-  if (featuredKey) {
-    contextLabel = featuredKey === nowMeal ? NOW_LABEL[nowMeal] : `Up next: ${DISPLAY[featuredKey]}`;
-  }
-
-  const isOpen = $('#dietRecs').classList.contains('open');
-  $('#dietRecs').innerHTML = `
-    <div class="diet-recs-toggle" id="dietRecsToggle">
-      <svg class="diet-recs-chevron" width="14" height="14" viewBox="0 0 16 16" fill="none">
-        <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      <span class="diet-recs-title">${contextLabel}</span>
-      <span class="diet-recs-remaining">${remaining.calories} cal &middot; ${remaining.protein}g protein to go</span>
-    </div>
-    <div class="diet-recs-body">
-      ${suggestions.map(s => `
-        <div class="diet-recs-meal">
-          <span class="diet-recs-meal-label">${s.meal}${s.now ? '<span class="diet-recs-now">now</span>' : ''}</span>
-          ${s.foods.map(f => `
-            <div class="diet-rec-item">
-              <div class="diet-rec-name">${f.name}</div>
-              <div class="diet-rec-meta">
-                <span>${f.cal} cal</span>
-                <span>${f.p}g protein</span>
-                <span class="diet-rec-desc">${f.desc}</span>
-              </div>
-            </div>
-          `).join('')}
-        </div>
-      `).join('')}
-    </div>
-  `;
-  if (isOpen) $('#dietRecs').classList.add('open');
-
-  $('#dietRecsToggle').addEventListener('click', () => {
-    $('#dietRecs').classList.toggle('open');
-  });
+  el.hidden = false;
+  el.innerHTML = fold('lightbulb',
+    `Ideas: ${remaining.calories.toLocaleString()} kcal and ${remaining.protein}g protein to go`,
+    suggestions.map(s => `
+      <div class="dt-idea-meal">${esc(s.meal)}${featuredKey && keyOf(s.meal) === featuredKey && featuredKey === nowMeal ? ' <em>now</em>' : ''}</div>
+      ${s.foods.map(f => `
+        <div class="dt-idea"><span class="dt-idea-n">${esc(f.name)}</span>
+          <span class="dt-idea-m">${f.cal} · ${f.p}g P · ${esc(f.desc)}</span></div>`).join('')}`).join(''));
 }
 
 // ========== Yesterday's Skip-list ==========
@@ -227,7 +173,7 @@ function renderDietRecs(totals) {
 function renderYesterdayAdvice() {
   const el = $('#dietYesterday');
   if (!el) return;
-  const hide = () => { el.innerHTML = ''; el.classList.remove('has-content'); };
+  const hide = () => { el.innerHTML = ''; el.hidden = true; };
 
   const todayStr = getTodayStr();
   if (dietViewDate !== todayStr) return hide();
@@ -271,13 +217,11 @@ function renderYesterdayAdvice() {
   const overCarbs = Math.round(totals.carbs - goals.carbs);
   const overFat = Math.round(totals.fat - goals.fat);
 
-  // Stayed on budget → one quiet green line, no nagging
+  // Stayed on budget → one quiet line, no nagging
   if (overCal <= 0 && overCarbs <= 0 && overFat <= 0) {
-    el.classList.add('has-content');
-    el.innerHTML = `<div class="diet-yesterday-ok">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-      You stayed on budget ${dayName === 'yesterday' ? 'yesterday' : 'on ' + dayName} &mdash; same playbook today.
-    </div>`;
+    el.hidden = false;
+    el.open = false;
+    el.innerHTML = `<summary class="is-plain"><span class="ms" aria-hidden="true">check_circle</span><span class="dt-fold-t">You stayed on budget ${dayName === 'yesterday' ? 'yesterday' : 'on ' + esc(dayName)}. Same playbook today.</span></summary>`;
     return;
   }
 
@@ -318,27 +262,15 @@ function renderYesterdayAdvice() {
   if (overCarbs > 0) overBits.push(`${overCarbs}g carbs`);
   if (overFat > 0) overBits.push(`${overFat}g fat`);
 
-  el.classList.add('has-content');
-  el.classList.toggle('open', dietAdviceOpen);
+  const Day = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+  el.hidden = false;
   el.innerHTML = `
-    <button type="button" class="diet-advice-head" id="dietAdviceToggle">
-      <svg class="diet-advice-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
-      <span class="diet-advice-title">Skip or shrink today</span>
-      <span class="diet-advice-count">${top.length}</span>
-    </button>
-    <div class="diet-advice-body">
-      <div class="diet-advice-sub">${dayName} ran over by ${overBits.join(' · ')}</div>
+    <summary><span class="ms" aria-hidden="true">history</span><span class="dt-fold-t">${esc(Day)} ran over by ${overBits.join(', ')}: ${top.length} to skip or shrink</span><span class="ms dt-fold-chev" aria-hidden="true">expand_more</span></summary>
+    <div class="dt-fold-b">
       ${top.map(f => `
-        <div class="diet-advice-item">
-          <span class="diet-advice-name">${esc(f.food)}</span><span class="diet-advice-meal">${esc(f.meal || '')}</span>
-          <div class="diet-advice-reason">${f.reason}</div>
-        </div>`).join('')}
+        <div class="dt-idea"><span class="dt-idea-n">${esc(f.food)}${f.meal ? ` <em>${esc(f.meal)}</em>` : ''}</span>
+          <span class="dt-idea-m">${esc(f.reason)}</span></div>`).join('')}
     </div>`;
-  const adviceToggle = el.querySelector('#dietAdviceToggle');
-  if (adviceToggle) adviceToggle.addEventListener('click', () => {
-    dietAdviceOpen = !dietAdviceOpen;
-    el.classList.toggle('open', dietAdviceOpen);
-  });
 }
 
 // ========== End-of-day Review ==========
@@ -350,7 +282,7 @@ function renderDietReview(totals, dayEntries) {
   if (!el) return;
 
   // Nothing logged yet → nothing to review
-  if (!dayEntries.length) { el.innerHTML = ''; el.classList.remove('has-content'); return; }
+  if (!dayEntries.length) { el.innerHTML = ''; el.hidden = true; return; }
 
   // This is an after-the-fact summary, not a running scoreboard. Showing it at
   // 11am means being told you are "over" on a day you have barely started —
@@ -362,15 +294,15 @@ function renderDietReview(totals, dayEntries) {
   const lateEnough = new Date().getHours() >= 20;
   if (isToday && !dinnerLogged && !lateEnough) {
     el.innerHTML = '';
-    el.classList.remove('has-content');
+    el.hidden = true;
     return;
   }
 
   const goals = getGoals();
   const LIMITING = [
-    { key: 'calories', label: 'Calories', unit: '', color: 'var(--accent)' },
-    { key: 'carbs', label: 'Carbs', unit: 'g', color: '#eab308' },
-    { key: 'fat', label: 'Fat', unit: 'g', color: '#ef4444' },
+    { key: 'calories', label: 'Calories', unit: '', k: 'food' },
+    { key: 'carbs', label: 'Carbs', unit: 'g', k: 'habit' },
+    { key: 'fat', label: 'Fat', unit: 'g', k: 'meet' },
   ];
 
   const over = LIMITING
@@ -381,18 +313,15 @@ function renderDietReview(totals, dayEntries) {
     .filter(m => m.amount > 0);
 
   // Stayed within every limiting macro → a quick win, no culprit list needed
+  const when = isToday ? 'today' : 'the day';
   if (!over.length) {
-    el.classList.add('has-content');
-    el.innerHTML = `
-      <div class="diet-review-header ok">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-        <span class="diet-review-title">How today landed</span>
-      </div>
-      <div class="diet-review-clean">Landed inside your calorie, carb and fat targets.</div>`;
+    el.hidden = false;
+    el.open = false;
+    el.innerHTML = `<summary class="is-plain"><span class="ms" aria-hidden="true">check_circle</span><span class="dt-fold-t">How ${when} landed: inside your calorie, carb and fat targets.</span></summary>`;
     return;
   }
 
-  el.classList.add('has-content');
+  el.hidden = false;
 
   const sections = over.map(m => {
     const total = m.current;
@@ -428,68 +357,48 @@ function renderDietReview(totals, dayEntries) {
     }
 
     return `
-      <div class="diet-review-macro">
-        <div class="diet-review-macro-head">
-          <span class="diet-review-dot" style="background:${m.color}"></span>
-          <span class="diet-review-macro-label">${m.label}</span>
-          <span class="diet-review-over">+${m.amount}${m.unit}</span>
-        </div>
-        <div class="diet-review-culprits">
-          ${culprits.map(c => {
-            const pct = total > 0 ? Math.round((c.val / total) * 100) : 0;
-            return `
-              <div class="diet-review-culprit">
-                <span class="diet-review-culprit-name">${esc(c.food)}</span>
-                <span class="diet-review-culprit-meal">${c.meal}</span>
-                <span class="diet-review-culprit-val">${c.val}${m.unit} &middot; ${pct}%${c.protein >= 5 ? ` &middot; <span class="diet-review-culprit-protein">${c.protein}g P</span>` : ''}</span>
-              </div>`;
-          }).join('')}
-        </div>
-        ${tip ? `<div class="diet-review-tip">${tip}</div>` : ''}
-      </div>`;
+      <div class="dt-idea-meal c-${m.k}"><span class="dl-dot"></span>${m.label} <em>+${m.amount}${m.unit}</em></div>
+      ${culprits.map(c => {
+        const pct = total > 0 ? Math.round((c.val / total) * 100) : 0;
+        return `<div class="dt-idea"><span class="dt-idea-n">${esc(c.food)} <em>${esc(c.meal || '')}</em></span>
+          <span class="dt-idea-m">${c.val}${m.unit} · ${pct}% of the day${c.protein >= 5 ? ` · ${c.protein}g protein` : ''}</span></div>`;
+      }).join('')}
+      ${tip ? `<p class="dt-tip">${tip}</p>` : ''}`;
   }).join('');
 
   el.innerHTML = `
-    <div class="diet-review-header">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
-      <span class="diet-review-title">How today landed</span>
-      <span class="diet-review-sub">${over.map(m => m.label.toLowerCase() + ' +' + m.amount + m.unit).join(' &middot; ')}</span>
-    </div>
-    ${sections}`;
+    <summary><span class="ms" aria-hidden="true">insights</span><span class="dt-fold-t">How ${when} landed: ${over.map(m => m.label.toLowerCase() + ' +' + m.amount + m.unit).join(', ')}</span><span class="ms dt-fold-chev" aria-hidden="true">expand_more</span></summary>
+    <div class="dt-fold-b">${sections}</div>`;
 }
 
 // ========== Water Tracker ==========
 function renderWater() {
+  const prog = $('#waterProgress');
+  if (!prog) return;
   const waterGoal = getGoals().water;
   const entries = state.water[dietViewDate] || [];
   const total = entries.reduce((s, v) => s + v, 0);
   const pct = Math.min(100, Math.round((total / waterGoal) * 100));
 
-  $('#waterProgress').textContent = `${total} / ${waterGoal} oz`;
-  $('#waterBarFill').style.width = pct + '%';
-
-  // Color the bar based on progress
+  prog.textContent = `${total} / ${waterGoal} oz`;
   const fill = $('#waterBarFill');
-  if (pct >= 100) fill.className = 'water-bar-fill water-complete';
-  else if (pct >= 60) fill.className = 'water-bar-fill water-good';
-  else fill.className = 'water-bar-fill';
+  if (fill) fill.style.width = pct + '%';
 
   // Undo offered itself on a day with no water logged, which is a control that
   // cannot do anything. It appears once there is something to take back.
   const undo = $('#waterUndoBtn');
   if (undo) undo.hidden = !entries.length;
-
-  // Log entries
-  if (!entries.length) {
-    $('#waterLog').innerHTML = '';
-  } else {
-    $('#waterLog').innerHTML = entries.map((oz, i) => `<span class="water-log-chip">${oz} oz</span>`).join('');
-  }
 }
 
 function addWater(oz) {
   if (!state.water[dietViewDate]) state.water[dietViewDate] = [];
   state.water[dietViewDate].push(oz);
+  // v3: the line puts water at its last add, so each add records when. Kept in
+  // a parallel list because state.water[date] is a plain array of ounces
+  // everywhere else and changing that shape would touch every water reader.
+  if (!state.waterAt) state.waterAt = {};
+  if (!state.waterAt[dietViewDate]) state.waterAt[dietViewDate] = [];
+  state.waterAt[dietViewDate].push(Date.now());
   saveData(state);
   renderWater();
 }
@@ -497,11 +406,33 @@ function addWater(oz) {
 function undoWater() {
   if (!state.water[dietViewDate] || !state.water[dietViewDate].length) return;
   state.water[dietViewDate].pop();
+  if (state.waterAt && state.waterAt[dietViewDate]) state.waterAt[dietViewDate].pop();
   saveData(state);
   renderWater();
 }
 
 // ========== Goals Modal ==========
+// The one place goals are written. The goals editor's Save and the setup
+// wizard both come through here, so there is a single rule for what a valid
+// goal is: a positive number, or whatever was there before. `extra` carries
+// flags that ride along (_onboarded).
+function saveGoalValues(values, extra) {
+  const prev = getGoals();
+  const pick = (k) => {
+    const v = Number(values && values[k]);
+    return v > 0 ? v : prev[k];
+  };
+  // Spread prev so cardio race targets (raceKey/raceDate/weeklyMiles) and the
+  // _onboarded marker survive — rebuilding the object from scratch dropped them.
+  state.goals = Object.assign({}, prev, {
+    calories: pick('calories'), protein: pick('protein'), carbs: pick('carbs'), fat: pick('fat'),
+    water: pick('water'), weight: pick('weight'), burn: pick('burn'),
+  }, extra || {});
+  saveData(state);
+}
+
+// The one goals editor (spec 10.5). Kept under its old name: Settings, Diet
+// and the Training burn chip all call it.
 function openGoalsModal() {
   const g = getGoals();
   $('#goalCalories').value = g.calories;
@@ -511,44 +442,28 @@ function openGoalsModal() {
   $('#goalWater').value = g.water;
   $('#goalWeight').value = g.weight;
   $('#goalBurn').value = g.burn;
-  $('#goalsModal').classList.add('active');
+  openDlSheet($('#goalsSheet'));
+  setTimeout(() => $('#goalWeight').focus({ preventScroll: true }), 80);
 }
 
 function closeGoalsModal() {
-  $('#goalsModal').classList.remove('active');
+  closeDlSheet($('#goalsSheet'));
 }
 
 function bindGoalsEvents() {
   $('#editGoalsBtn').addEventListener('click', openGoalsModal);
-  const weightChip = $('#weightGoalChip');
-  if (weightChip) weightChip.addEventListener('click', openGoalsModal);
-  $('#goalsModalClose').addEventListener('click', closeGoalsModal);
   $('#goalsCancelBtn').addEventListener('click', closeGoalsModal);
-  $('#goalsModal').addEventListener('click', (e) => {
-    if (e.target === $('#goalsModal')) closeGoalsModal();
-  });
   $('#goalsSaveBtn').addEventListener('click', () => {
-    const read = (id, fallback) => {
-      const v = Number($(id).value);
-      return v > 0 ? v : fallback;
-    };
-    const prev = getGoals();
-    // Spread prev so cardio race targets (raceKey/raceDate/weeklyMiles) and the
-    // _onboarded marker survive — rebuilding the object from scratch dropped them.
-    state.goals = {
-      ...prev,
-      calories: read('#goalCalories', prev.calories),
-      protein: read('#goalProtein', prev.protein),
-      carbs: read('#goalCarbs', prev.carbs),
-      fat: read('#goalFat', prev.fat),
-      water: read('#goalWater', prev.water),
-      weight: read('#goalWeight', prev.weight),
-      burn: read('#goalBurn', prev.burn),
-    };
-    saveData(state);
+    saveGoalValues({
+      calories: $('#goalCalories').value, protein: $('#goalProtein').value, carbs: $('#goalCarbs').value,
+      fat: $('#goalFat').value, water: $('#goalWater').value, weight: $('#goalWeight').value, burn: $('#goalBurn').value,
+    });
     closeGoalsModal();
     if (typeof render === 'function') render();
-    showToast('Goals updated');
+    showToast('Goals saved');
+  });
+  $('#goalsSheet').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.matches('input')) { e.preventDefault(); $('#goalsSaveBtn').click(); }
   });
 }
 
@@ -556,25 +471,28 @@ function bindWaterEvents() {
   $$('.water-btn[data-oz]').forEach(btn => {
     btn.addEventListener('click', () => addWater(Number(btn.dataset.oz)));
   });
-  $('#waterCustomBtn').addEventListener('click', () => {
-    const val = prompt('Enter oz:');
-    const oz = Number(val);
-    if (oz > 0) addWater(oz);
-  });
-  $('#waterUndoBtn').addEventListener('click', undoWater);
+  // Other: a small inline field. It was a browser prompt().
+  const other = $('#waterCustomBtn'), row = $('#waterOther'), input = $('#waterOtherInput'), add = $('#waterOtherAdd');
+  const commit = () => {
+    const oz = Math.round(Number(input.value));
+    if (!(oz > 0) || oz > 200) { showToast('Enter the ounces, between 1 and 200'); input.focus(); return; }
+    addWater(oz);
+    input.value = '';
+    row.hidden = true;
+    other.setAttribute('aria-expanded', 'false');
+  };
+  if (other && row && input && add) {
+    other.addEventListener('click', () => {
+      row.hidden = !row.hidden;
+      other.setAttribute('aria-expanded', String(!row.hidden));
+      if (!row.hidden) input.focus();
+    });
+    add.addEventListener('click', commit);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); commit(); } });
+  }
+  const undo = $('#waterUndoBtn');
+  if (undo) undo.addEventListener('click', undoWater);
 }
-
-function clearDietForm() {
-  $('#dietFoodName').value = '';
-  $('#dietServings').value = 1;
-  $('#dietCalories').value = '';
-  $('#dietProtein').value = '';
-  $('#dietCarbs').value = '';
-  $('#dietFat').value = '';
-  $('#dietServingInfo').innerHTML = '';
-  dietBaseMacros = null;
-}
-
 
 // ---- Week strip ----
 // Seven days across the top of Diet, one ring each, so a week reads at a glance
@@ -615,15 +533,11 @@ function dietWeekDays(dateStr) {
   return out;
 }
 
-const WEEK_TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-const WEEK_OVER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="5 12 12 5 19 12"/></svg>';
-
 function renderDietWeek() {
   const host = document.getElementById('dietWeek');
   if (!host) return;
   const goals = getGoals();
   const byDate = (typeof dietTotalsByDate === 'function') ? dietTotalsByDate() : {};
-  const today = getTodayStr();
 
   host.innerHTML = dietWeekDays(dietViewDate).map(ds => {
     const t = byDate[ds];
@@ -632,22 +546,22 @@ function renderDietWeek() {
     const protein = t ? Math.round(t.protein) : 0;
     const proteinHit = protein >= goals.protein;
     const dow = new Date(ds + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'narrow' });
-
-    let mark = '';
-    if (status === 'hit') mark = WEEK_TICK;
-    else if (status === 'over') mark = WEEK_OVER;
+    const pct = Math.min(100, Math.round((cal / goals.calories) * 100));
 
     const tip = status === 'future' ? formatDate(ds)
-      : status === 'none' ? `${formatDate(ds)} · nothing logged`
-      : status === 'partial' ? `${formatDate(ds)} · ${cal} cal — looks part-logged`
-      : `${formatDate(ds)} · ${cal} / ${goals.calories} cal · ${protein}g protein`;
+      : status === 'none' ? `${formatDate(ds)}, nothing logged`
+      : status === 'partial' ? `${formatDate(ds)}, ${cal} kcal, looks part-logged`
+      : `${formatDate(ds)}, ${cal} of ${goals.calories} kcal, ${protein}g protein${status === 'over' ? ', over' : ''}`;
 
     return `
-      <button type="button" class="diet-week-day is-${status}${ds === dietViewDate ? ' is-viewing' : ''}"
-              data-diet-week-day="${ds}" ${status === 'future' ? 'disabled' : ''} title="${esc(tip)}">
-        <span class="diet-week-dow">${dow}</span>
-        <span class="diet-week-ring">${mark}</span>
-        ${proteinHit ? '<span class="diet-week-protein" title="Protein goal met"></span>' : ''}
+      <button type="button" class="dt-day is-${status}${ds === dietViewDate ? ' is-viewing' : ''}"
+              data-diet-week-day="${ds}" ${status === 'future' ? 'disabled' : ''} aria-label="${esc(tip)}" title="${esc(tip)}"${ds === dietViewDate ? ' aria-current="date"' : ''}>
+        <span class="dt-day-l">${dow}</span>
+        <svg class="dl-ring dt-day-ring" viewBox="0 0 64 64" aria-hidden="true">
+          <circle class="dl-ring-track" cx="32" cy="32" r="26"/>
+          <circle class="dl-ring-fill" cx="32" cy="32" r="26" pathLength="100" style="--pct:${pct}"/>
+        </svg>
+        ${proteinHit ? '<span class="dt-day-p" title="Protein goal met"></span>' : ''}
       </button>`;
   }).join('');
 

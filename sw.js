@@ -1,7 +1,27 @@
 // Daylign service worker — network-first with cache fallback.
 // Online: every request hits the network (no stale code), responses refresh the cache.
 // Offline: the cached app shell serves, and data loads from localStorage.
-const CACHE = 'daylign-v133';
+const CACHE = 'daylign-v143';
+// Google Fonts (Bricolage Grotesque, Geist, JetBrains Mono, Material Symbols)
+// live in their own cache so a CACHE bump doesn't throw away ~1MB of font
+// files that never change. The stylesheet is network-first like the app shell;
+// the font files are immutable per URL, so they are cache-first.
+const FONT_CACHE = 'daylign-fonts-v1';
+const FONT_CSS_HOST = 'fonts.googleapis.com';
+const FONT_FILE_HOST = 'fonts.gstatic.com';
+// The Firebase SDK comes from a CDN. Without a copy, a first offline load had
+// no `firebase` at all (the app now degrades to "On this device", but sync
+// could not come back without a reconnect). Its URLs carry the version, so
+// like the font files they never change: cache-first, in their own cache so a
+// CACHE bump keeps them.
+const LIB_CACHE = 'daylign-libs-v1';
+const LIB_HOST = 'www.gstatic.com';
+const LIB_PATH = '/firebasejs/';
+const LIBS = [
+  'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js',
+  'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js',
+];
 const ASSETS = [
   '.',
   'index.html',
@@ -10,7 +30,10 @@ const ASSETS = [
   'js/utils.js',
   'js/state.js',
   'js/modal.js',
+  'js/task-sheet.js',
   'js/dashboard.js',
+  'js/now-block.js',
+  'js/line.js',
   'js/tasks.js',
   'js/board.js',
   'js/calendar.js',
@@ -45,6 +68,8 @@ const ASSETS = [
   'js/profile.js',
   'js/inbox.js',
   'js/import-csv.js',
+  'js/settings.js',
+  'js/global.js',
   'icons/icon-180.png',
   'icons/icon-192.png',
   'icons/icon-512.png',
@@ -70,6 +95,12 @@ self.addEventListener('install', (e) => {
           console.warn('[sw] could not precache', url, err && err.message);
         })
       )))
+      .then(() => caches.open(LIB_CACHE))
+      .then((c) => Promise.all(LIBS.map((url) =>
+        c.match(url).then((hit) => hit || c.add(url)).catch((err) => {
+          console.warn('[sw] could not precache', url, err && err.message);
+        })
+      )))
       .then(() => self.skipWaiting())
       // Even a catastrophic cache failure must not block activation; a worker
       // that cannot cache is still better than one that never takes over.
@@ -80,15 +111,58 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE && k !== FONT_CACHE && k !== LIB_CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
 
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
-  // Only handle same-origin GETs — Firebase/API traffic passes straight through
-  if (e.request.method !== 'GET' || url.origin !== location.origin) return;
+  if (e.request.method !== 'GET') return;
+
+  // Fonts are the one cross-origin thing worth keeping offline: without them
+  // the app falls back to system fonts, and icons set in Material Symbols
+  // would show as their ligature names.
+  if (url.hostname === FONT_FILE_HOST) {
+    e.respondWith(
+      caches.open(FONT_CACHE).then((c) => c.match(e.request).then((hit) =>
+        hit || fetch(e.request).then((res) => {
+          if (res.ok || res.type === 'opaque') c.put(e.request, res.clone());
+          return res;
+        })
+      ))
+    );
+    return;
+  }
+  if (url.hostname === LIB_HOST && url.pathname.startsWith(LIB_PATH)) {
+    e.respondWith(
+      caches.open(LIB_CACHE).then((c) => c.match(e.request, { ignoreVary: true }).then((hit) =>
+        hit || fetch(e.request).then((res) => {
+          if (res.ok || res.type === 'opaque') c.put(e.request, res.clone());
+          return res;
+        })
+      ))
+    );
+    return;
+  }
+  if (url.hostname === FONT_CSS_HOST) {
+    e.respondWith(
+      fetch(e.request)
+        .then((res) => {
+          if (res.ok || res.type === 'opaque') {
+            const copy = res.clone();
+            caches.open(FONT_CACHE).then((c) => c.put(e.request, copy));
+          }
+          return res;
+        })
+        .catch(() => caches.open(FONT_CACHE).then((c) => c.match(e.request)))
+        .then((res) => res || Response.error())
+    );
+    return;
+  }
+
+  // Everything else must be same-origin — Firebase/API traffic passes straight through
+  if (url.origin !== location.origin) return;
 
   // `fetch(e.request)` uses the DEFAULT cache mode, which consults the browser
   // HTTP cache first. GitHub Pages serves these assets with max-age=600, so for

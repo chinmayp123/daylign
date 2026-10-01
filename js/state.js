@@ -5,10 +5,10 @@
 // were never theirs. Only the default categories remain, because creating a
 // task needs at least one category to file under.
 const DEFAULT_CATEGORIES = [
-  { id: 'work', name: 'Work', color: '#6366f1' },
-  { id: 'personal', name: 'Personal', color: '#22c55e' },
-  { id: 'health', name: 'Health', color: '#ef4444' },
-  { id: 'learning', name: 'Learning', color: '#eab308' },
+  { id: 'work', name: 'Work', color: 'meet' },
+  { id: 'personal', name: 'Personal', color: 'move' },
+  { id: 'health', name: 'Health', color: 'food' },
+  { id: 'learning', name: 'Learning', color: 'habit' },
 ];
 
 // Parse one localStorage key defensively. A single corrupt/truncated value
@@ -41,12 +41,14 @@ function loadData() {
     diet: safeParse('tf_diet', []),
     customFoods: safeParse('tf_custom_foods', {}),
     water: safeParse('tf_water', {}),
+    waterAt: safeParse('tf_waterAt', {}),
     events: safeParse('tf_events', []),
     removedFoods: safeParse('tf_removed_foods', []),
     // Named multi-item meals ("Protein shake"), each item with its own
     // servings. See saveCombo in diet-food.js.
     combos: safeParse('tf_combos', []),
     weight: safeParse('tf_weight', {}),
+    waist: safeParse('tf_waist', {}),
     goals: safeParse('tf_goals', {}),
     sleep: safeParse('tf_sleep', {}),
     aiUsage: safeParse('tf_ai_usage', {}),
@@ -70,11 +72,13 @@ function writeStateToLocal(d) {
   localStorage.setItem('tf_diet', JSON.stringify(d.diet));
   localStorage.setItem('tf_custom_foods', JSON.stringify(d.customFoods));
   localStorage.setItem('tf_water', JSON.stringify(d.water));
+  localStorage.setItem('tf_waterAt', JSON.stringify(d.waterAt || {}));
   localStorage.setItem('tf_projects', JSON.stringify(d.projects));
   localStorage.setItem('tf_events', JSON.stringify(d.events));
   localStorage.setItem('tf_removed_foods', JSON.stringify(d.removedFoods || []));
   localStorage.setItem('tf_combos', JSON.stringify(d.combos || []));
   localStorage.setItem('tf_weight', JSON.stringify(d.weight || {}));
+  localStorage.setItem('tf_waist', JSON.stringify(d.waist || {}));
   localStorage.setItem('tf_goals', JSON.stringify(d.goals || {}));
   localStorage.setItem('tf_sleep', JSON.stringify(d.sleep || {}));
   localStorage.setItem('tf_ai_usage', JSON.stringify(d.aiUsage || {}));
@@ -117,8 +121,8 @@ function saveData(data) {
 // Keys the cloud owns, with the empty value each falls back to.
 const CLOUD_KEYS = {
   tasks: [], categories: [], projects: [], gym: [], cardio: [], modules: {},
-  diet: [], customFoods: {}, water: {}, events: [], removedFoods: [],
-  combos: [], weight: {}, goals: {}, sleep: {}, aiUsage: {},
+  diet: [], customFoods: {}, water: {}, waterAt: {}, events: [], removedFoods: [],
+  combos: [], weight: {}, waist: {}, goals: {}, sleep: {}, aiUsage: {},
 };
 
 function applyFirebaseData(data) {
@@ -175,23 +179,13 @@ function moduleEnabled(key) {
 // into their cloud node. New profiles get this instead: no tasks, no demo
 // projects, everything empty. The default categories stay because task
 // creation needs at least one category to file under.
+// Every synced key, empty, from the one list that defines them, so a key added
+// later cannot survive Start fresh. The hand-written list this replaced had
+// no sleep, aiUsage or waist, so those came through an erase untouched.
 function starterState() {
-  return {
-    tasks: [],
-    categories: [...DEFAULT_CATEGORIES],
-    projects: [],
-    gym: [],
-    cardio: [],
-    modules: {},
-    diet: [],
-    customFoods: {},
-    water: {},
-    events: [],
-    removedFoods: [],
-    combos: [],
-    weight: {},
-    goals: {},
-  };
+  const fresh = JSON.parse(JSON.stringify(CLOUD_KEYS));
+  fresh.categories = DEFAULT_CATEGORIES.map(c => Object.assign({}, c));
+  return fresh;
 }
 
 // Reset THIS device's cached data and the in-memory state to a clean slate.
@@ -218,14 +212,13 @@ try {
   console.warn('localStorage unavailable — running in memory for this session:', e);
   state = starterState();
 }
-let currentView = localStorage.getItem('tf_view') || 'dashboard';
+// v3 renamed the view key dashboard -> today. Old installs have 'dashboard'
+// in tf_view, and an unmapped key would fall through to no view at all.
+let currentView = localStorage.getItem('tf_view') || 'today';
+if (currentView === 'dashboard') currentView = 'today';
 let calendarDate = new Date();
-let miniCalDate = new Date();
-let editingSubtasks = [];
-let activeTaskTab = null;
 let activeBoardFilter = null;
 let boardFoldersCollapsed = {};
-let scheduleDate = new Date();
 let calViewMode = 'month';
 // Blank set rows for the gym form. Count comes from the device preference
 // (Settings -> Workout defaults) so it is honoured everywhere the form resets.
