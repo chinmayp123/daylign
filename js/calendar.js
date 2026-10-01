@@ -429,7 +429,7 @@ function openEventModal(date, existingEvent, presetTime) {
       <p class="ev-ro-meta">${esc(formatDate(ev.date || date))}${ev.time ? ' · ' + esc(ev.time) : ''}</p>
       ${ev.description ? `<p class="ev-ro-desc">${esc(ev.description)}</p>` : ''}
       <p class="ev-ro-note">From your Google Calendar — edit it there.</p>
-      <div class="ts-actions"><span class="ts-spacer"></span>
+      <div class="ts-actions sheet-foot"><span class="ts-spacer"></span>
         <button type="button" class="dl-btn" id="evCancel">Close</button></div>`;
   } else {
     body.innerHTML = `
@@ -458,7 +458,7 @@ function openEventModal(date, existingEvent, presetTime) {
         <span class="ts-label">Notes</span>
         <textarea id="evDesc" rows="3" placeholder="Anything worth keeping with it...">${esc(ev.description || '')}</textarea>
       </div>
-      <div class="ts-actions">
+      <div class="ts-actions sheet-foot">
         ${isEdit ? '<button type="button" class="dl-btn danger" id="evDelete">Delete</button>' : ''}
         <span class="ts-spacer"></span>
         <button type="button" class="dl-btn" id="evCancel">Cancel</button>

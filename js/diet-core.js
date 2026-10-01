@@ -403,7 +403,7 @@ function openComboSheet(title, hint, name, items, comboId, saveLabel) {
     <label class="dl-field"><span class="dl-field-label">Name</span>
       <input type="text" id="comboName" value="${esc(name)}" maxlength="60" autocomplete="off"></label>
     <div class="cb-list" id="comboList"></div>
-    <div class="ts-actions"><span class="ts-spacer"></span>
+    <div class="ts-actions sheet-foot"><span class="ts-spacer"></span>
       <button type="button" class="dl-btn" id="comboCancel">Cancel</button>
       <button type="button" class="dl-btn primary" id="comboSave">${esc(saveLabel)}</button></div>`;
   renderComboDraft();

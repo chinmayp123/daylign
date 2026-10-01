@@ -206,7 +206,7 @@ function buildTaskSheet(d, isEdit) {
       </div>
     </details>
 
-    <div class="ts-actions">
+    <div class="ts-actions sheet-foot">
       ${isEdit ? '<button type="button" class="dl-btn danger" id="tsDelete">Delete</button>' : ''}
       <span class="ts-spacer"></span>
       <button type="button" class="dl-btn" id="tsCancel">Cancel</button>

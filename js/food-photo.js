@@ -266,10 +266,10 @@ function renderPhotoSheet() {
       <p class="ts-hint">Photo logging uses your own Anthropic key. It is stored on this device only and is never synced.</p>
       <label class="dl-field"><span class="dl-field-label">Anthropic key</span>
         <input type="password" id="photoKeyInline" placeholder="sk-ant-..." autocomplete="off"></label>
-      <div class="ts-actions"><span class="ts-spacer"></span>
+      <p class="ts-hint">You can get one at console.anthropic.com, and change or remove it in Settings, under AI features.</p>
+      <div class="ts-actions sheet-foot"><span class="ts-spacer"></span>
         <button type="button" class="dl-btn" data-photo-close>Not now</button>
-        <button type="button" class="dl-btn primary" data-photo-savekey>Save and take the photo</button></div>
-      <p class="ts-hint">You can get one at console.anthropic.com, and change or remove it in Settings, under AI features.</p>`;
+        <button type="button" class="dl-btn primary" data-photo-savekey>Save and take the photo</button></div>`;
     return;
   }
 
@@ -285,7 +285,7 @@ function renderPhotoSheet() {
     body.innerHTML = `
       ${thumb}
       <div class="ph-error" role="alert"><span class="ms" aria-hidden="true">error</span><span>${esc(photoError)}</span></div>
-      <div class="ts-actions"><span class="ts-spacer"></span>
+      <div class="ts-actions sheet-foot"><span class="ts-spacer"></span>
         <button type="button" class="dl-btn" data-photo-close>Close</button>
         ${photoLastFile ? '<button type="button" class="dl-btn primary" data-photo-retry>Retry</button>'
           : '<button type="button" class="dl-btn primary" data-photo-again>Take another photo</button>'}</div>`;
@@ -322,12 +322,12 @@ function renderPhotoSheet() {
     <label class="dl-field"><span class="dl-field-label">Add to</span>
       <select id="photoMeal">${['breakfast', 'lunch', 'snack', 'dinner'].map(m =>
         `<option value="${m}"${m === meal ? ' selected' : ''}>${m[0].toUpperCase() + m.slice(1)}</option>`).join('')}</select></label>
-    <div class="ts-actions">
+    <p class="ts-hint">If you leave, this waits for you for 12 hours.</p>
+    <div class="ts-actions sheet-foot">
       <button type="button" class="dl-btn danger" data-photo-discard>Discard</button>
       <span class="ts-spacer"></span>
       <button type="button" class="dl-btn primary" data-photo-addall>Add ${photoItems.length === 1 ? 'it' : 'all ' + photoItems.length}</button>
-    </div>
-    <p class="ts-hint">If you leave, this waits for you for 12 hours.</p>`;
+    </div>`;
 }
 
 function savePhotoItems() {

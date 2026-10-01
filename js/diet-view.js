@@ -188,7 +188,7 @@ function mealSheetEntryRow(e, isIngredient) {
       <span class="ms-kcal">${Math.round(e.calories || 0)}</span>
       <button type="button" class="ss-act" data-ms-edit="${idx}" aria-label="Edit ${name}" aria-expanded="${dietEditFormIdx === idx}"><span class="ms" aria-hidden="true">edit</span></button>
       <button type="button" class="ss-act" data-ms-del="${idx}" aria-label="Delete ${name}"><span class="ms" aria-hidden="true">close</span></button>
-      <span class="ms-sub">${Math.round(e.protein || 0)}g protein · ${Math.round(e.carbs || 0)}g carbs · ${Math.round(e.fat || 0)}g fat</span>
+      <span class="ms-sub" aria-label="${Math.round(e.protein || 0)} grams protein, ${Math.round(e.carbs || 0)} carbs, ${Math.round(e.fat || 0)} fat">${Math.round(e.protein || 0)}g P · ${Math.round(e.carbs || 0)}g C · ${Math.round(e.fat || 0)}g F</span>
       <span class="ms-step">
         <button type="button" data-ms-step="-0.5" data-idx="${idx}" aria-label="Fewer servings of ${name}"><span class="ms" aria-hidden="true">remove</span></button>
         <b>${serv}x</b>
@@ -282,11 +282,6 @@ function renderMealSheet() {
     ${entries.length
       ? `<p class="ms-macro">${Math.round(m.protein)}g protein · ${Math.round(m.carbs)}g carbs · ${Math.round(m.fat)}g fat</p><div class="ms-list">${blocks}</div>`
       : `<p class="ms-empty">Nothing in ${label.toLowerCase()} yet.</p>`}
-    <div class="ms-actions">
-      <button type="button" class="dl-btn" data-ms-add aria-expanded="${dietSheetSearch}"><span class="ms" aria-hidden="true">add</span>Add food</button>
-      <button type="button" class="dl-btn" data-diet-photo="${meal}"><span class="ms" aria-hidden="true">photo_camera</span>Photo</button>
-      ${entries.length >= 2 ? `<button type="button" class="dl-btn" data-ms-savecombo><span class="ms" aria-hidden="true">bookmark_add</span>Save these ${entries.length} as a meal</button>` : ''}
-    </div>
     <div class="dt-addwrap diet-meal-addwrap" data-meal="${meal}"${dietSheetSearch ? '' : ' hidden'}>
       <div class="dt-search">
         <span class="ms" aria-hidden="true">search</span>
@@ -294,7 +289,12 @@ function renderMealSheet() {
       </div>
       <div class="diet-inline-results"></div>
     </div>
-    <p class="ts-hint">A saved meal logs as one group. Open it to add an ingredient, or remove the whole group with its x.</p>`;
+    <p class="ts-hint">A saved meal logs as one group. Open it to add an ingredient, or remove the whole group with its x.</p>
+    <div class="ts-actions sheet-foot ms-foot">
+      <button type="button" class="dl-btn" data-diet-photo="${meal}" aria-label="Add to ${label} from a photo"><span class="ms" aria-hidden="true">photo_camera</span>Photo</button>
+      ${entries.length >= 2 ? `<button type="button" class="dl-btn" data-ms-savecombo aria-label="Save these ${entries.length} as a meal"><span class="ms" aria-hidden="true">bookmark_add</span>Save meal</button>` : ''}
+      <button type="button" class="dl-btn primary ms-foot-add" data-ms-add aria-expanded="${dietSheetSearch}"><span class="ms" aria-hidden="true">${dietSheetSearch ? 'close' : 'add'}</span>${dietSheetSearch ? 'Close search' : 'Add food'}</button>
+    </div>`;
 
   if (typed) {
     const input = document.getElementById('mealSheetInput');
@@ -390,7 +390,8 @@ function bindMealSheet() {
     if (t.closest('[data-ms-add]')) {
       dietSheetSearch = !dietSheetSearch;
       renderMealSheet();
-      if (dietSheetSearch) { const i = document.getElementById('mealSheetInput'); if (i) i.focus(); }
+      // The search sits just above the sticky footer; bring it into view.
+      if (dietSheetSearch) { const i = document.getElementById('mealSheetInput'); if (i) { i.scrollIntoView({ block: 'center' }); i.focus({ preventScroll: true }); } }
       return;
     }
     if (t.closest('[data-ms-savecombo]')) { if (typeof openComboSaver === 'function') openComboSaver(dietSheetMeal); return; }

@@ -105,6 +105,7 @@ body {
   background: var(--bg-primary);
   color: var(--text-primary);
   min-height: 100vh;
+  min-height: 100dvh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -114,6 +115,7 @@ body {
 .app {
   display: flex;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* ========== Sidebar ========== */
@@ -294,6 +296,7 @@ body {
   margin-left: var(--sidebar-width);
   padding: 24px 32px;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* ========== Header ========== */
@@ -4216,6 +4219,7 @@ button.sync-status {
   position: relative;
   width: 100%;
   max-height: 90vh;
+  max-height: 90dvh;
   overflow-y: auto;
   overscroll-behavior: contain;
   background: var(--bg-primary);
@@ -4243,6 +4247,7 @@ button.sync-status {
   .dl-sheet {
     max-width: 520px;
     max-height: 85vh;
+    max-height: 85dvh;
     border-radius: 20px;
     border: 1px solid var(--border);
     box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
@@ -5045,14 +5050,19 @@ html.pref-reduce-motion .dl-btn:active { transform: none; }
 /* Save is always on screen: the footer sticks to the bottom of the sheet,
    which is the scroller. The sheet's own bottom padding is pulled into the
    footer so the fields scroll under it rather than peeking out below. */
-.ts-actions {
+.ts-actions { display: flex; align-items: center; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border); }
+/* A sheet's own action bar sticks to the bottom of the sheet, which is the
+   scroller, with the fields scrolling under it; the sheet's bottom padding is
+   pulled into the bar. Only for a bar that is the LAST child of a sheet body:
+   .ts-actions on its own (a form inside a list, the Food library page) is a
+   plain row. Making .ts-actions itself sticky hung the library's Save button
+   outside its card. */
+.sheet-foot {
   --pad-b: calc(18px + env(safe-area-inset-bottom, 0px));
   position: sticky; bottom: calc(-1 * var(--pad-b)); z-index: 2;
-  display: flex; align-items: center; gap: 8px;
   margin: 0 -16px calc(-1 * var(--pad-b));
   padding: 12px 16px var(--pad-b);
   background: var(--bg-primary);
-  border-top: 1px solid var(--border);
 }
 
 /* More: the fields most tasks never need. */
@@ -5070,7 +5080,7 @@ html.pref-reduce-motion .dl-btn:active { transform: none; }
 .ts-body > .ts-clear { margin-top: -10px; align-self: flex-start; }
 @media (min-width: 768px) {
   /* The desktop sheet pads 20px on the sides and bottom. */
-  .ts-actions { --pad-b: 20px; margin: 0 -20px calc(-1 * var(--pad-b)); padding: 12px 20px var(--pad-b); border-radius: 0 0 20px 20px; }
+  .sheet-foot { --pad-b: 20px; margin: 0 -20px calc(-1 * var(--pad-b)); padding: 12px 20px var(--pad-b); border-radius: 0 0 20px 20px; }
 }
 .ts-spacer { flex: 1; }
 
@@ -5946,13 +5956,21 @@ button.dl-line-item:focus-visible { outline: 2px solid var(--accent); outline-of
 .ms-macro { margin: -6px 0 0; font: 500 11.5px var(--font-mono); color: var(--text-secondary); }
 .ms-empty { margin: 0; font-size: 13px; color: var(--text-secondary); }
 .ms-list { display: grid; }
-.ms-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; column-gap: 4px; row-gap: 2px; padding: 9px 0; border-top: 1px solid var(--border); }
+.ms-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; column-gap: 2px; row-gap: 0; padding: 6px 0; border-top: 1px solid var(--border); }
 .ms-list > .ms-row:first-child, .ms-list > .ms-group:first-child > .ms-row { border-top: 0; }
-.ms-name { font-size: 14px; font-weight: 500; color: var(--text-primary); min-width: 0; overflow-wrap: anywhere; }
-.ms-kcal { font: 700 13px var(--font-mono); color: var(--c-food-ink); padding: 0 4px; }
-.ms-sub { grid-column: 1; font: 500 11.5px var(--font-mono); color: var(--text-secondary); }
-.ms-step { grid-column: 2 / -1; justify-self: end; display: inline-flex; align-items: center; gap: 2px; border: 1px solid var(--border); border-radius: 999px; padding: 1px; }
-.ms-step button { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 50%; background: none; color: var(--text-secondary); cursor: pointer; }
+/* Two lines at most, broken between words; a long name used to break mid-word. */
+.ms-name { font-size: 15px; font-weight: 500; line-height: 1.3; color: var(--text-primary); min-width: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.ms-kcal { font: 700 14px var(--font-mono); color: var(--c-food-ink); padding: 0 4px; white-space: nowrap; }
+.ms-sub { grid-column: 1; font: 500 12.5px var(--font-mono); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-step { grid-column: 2 / -1; justify-self: end; display: inline-flex; align-items: center; gap: 0; border: 1px solid var(--border); border-radius: 999px; padding: 0; }
+/* 44px: the smallest target a thumb hits reliably. */
+.ms-step button { display: grid; place-items: center; width: 44px; height: 40px; border: 0; border-radius: 999px; background: none; color: var(--text-secondary); cursor: pointer; }
+.ms-row .ss-act, .ms-grouphead .ss-act { width: 44px; height: 44px; }
+.ms-grouptoggle { min-height: 44px; }
+.ms-foot { display: flex; align-items: center; gap: 8px; }
+.ms-foot .dl-btn { min-height: 44px; }
+.ms-foot .dl-btn .ms { font-size: 18px; }
+.ms-foot .ms-foot-add { flex: 1; }
 .ms-step button:hover { background: var(--bg-hover); color: var(--text-primary); }
 .ms-step button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .ms-step .ms { font-size: 17px; }
