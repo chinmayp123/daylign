@@ -99,6 +99,11 @@
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace;
 }
 
+/* iOS Safari scrolls the page sideways when anything pokes past the edge,
+   even with body clipped, and it does not scroll back. Clipping html too
+   pins the page. clip (not hidden) keeps body from becoming a scroller. */
+html { overflow-x: hidden; overflow-x: clip; }
+
 body {
   font-family: var(--font-body);
   /* Flat page: the v2 purple/blue radial glows are gone. */
@@ -107,6 +112,7 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   overflow-x: hidden;
+  overflow-x: clip;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -117,10 +123,32 @@ body {
    a size or weight still wins. */
 button, input, select, textarea { font-family: inherit; }
 
+/* Safari draws its own inset box inside text and search fields (a box in a
+   box) and a glossy native face on selects, so one row of fields showed
+   controls of different heights. Strip the native look; each control keeps
+   the app's own border and background. Selects get a drawn chevron. */
+input[type="text"], input[type="search"], input[type="email"], input[type="tel"],
+input[type="url"], input[type="password"], input[type="number"], input:not([type]),
+textarea { -webkit-appearance: none; appearance: none; }
+input[type="search"]::-webkit-search-decoration,
+input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; }
+html select:not([multiple]) {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23878a85' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  background-size: 12px 8px;
+  padding-right: 32px;
+}
+
 /* iOS zooms the whole page when a field under 16px takes focus, and it does
    not zoom back out. On a phone every field is at least 16px. */
 @media (max-width: 600px) {
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea { font-size: max(16px, 1em) !important; }
+  /* Selects are 44px tall on a phone; the fields beside them in a sheet's
+     two-column rows match, or the pair sits out of line. */
+  .dl-field input:not([type="checkbox"]):not([type="radio"]), .dl-field select { min-height: 44px; }
 }
 
 /* ========== Layout ========== */
@@ -1572,7 +1600,9 @@ button:not(:disabled):active {
      them — unreachable, and on iOS the page just rubber-banded back. */
   .main {
     padding: 16px;
-    padding-bottom: calc(146px + env(safe-area-inset-bottom, 0px));
+    /* The floating nav is ~68px tall at a 12px inset; 100px clears it with
+       a little air. Nothing else floats over the page any more. */
+    padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
   }
   .header h1 { font-size: 24px; }
   .header-right {
@@ -1926,14 +1956,6 @@ html[data-theme="light"] .more-sheet-overlay { background: rgba(18, 20, 18, 0.35
 /* ---- Dashboard "Today" hero ---- */
 
 /* ---- Reminders as a scannable focus rail ---- */
-
-/* ---- Calendar agenda (phones) ---- */
-.calendar-agenda { display: none; }
-@media (max-width: 900px) {
-  .calendar-agenda { display: flex; flex-direction: column; gap: 18px; }
-  #calMonthView, #calWeekView { display: none !important; }
-  
-}
 
 /* ---- Food logging polish (photo confirm · search · day log) ---- */
 
@@ -3363,7 +3385,10 @@ html.pref-large-text { font-size: 112.5%; }
      pill sits 84px up and is 48 tall; the mic sits above it at 144px. So the
      stack reaches ~192px, and 56px of padding left the last card on Today,
      Insights and Training sitting underneath both of them. */
-  .view.active { padding-bottom: calc(200px + env(safe-area-inset-bottom, 0px)); }
+  /* Bottom clearance lives on .main alone (below). This used to add 200px
+     on top of it for the old voice FAB stack, leaving ~270px of blank page
+     under every screen. */
+  .view.active { padding-bottom: 0; }
 
   /* Undo is display:none while hidden - stated here because .water-btn sets no
      display of its own, and a later one would silently beat the attribute. */
@@ -4233,6 +4258,9 @@ button.sync-status {
   max-height: 90vh;
   max-height: 90dvh;
   overflow-y: auto;
+  /* Nothing in a sheet may scroll it sideways; on iOS that drag also left the
+     page behind shifted. */
+  overflow-x: hidden;
   overscroll-behavior: contain;
   background: var(--bg-primary);
   color: var(--text-primary);
@@ -4246,6 +4274,12 @@ button.sync-status {
 }
 .dl-sheet-wrap.open .dl-sheet { transform: translateY(var(--drag, 0px)); }
 .dl-sheet.dragging { transition: none; }
+/* While a sheet is open the page under it holds still (js/utils.js sets the
+   class). Phone only: on a desktop it would hide the scrollbar and shift the
+   page sideways. */
+@media (max-width: 767px) {
+  html.dl-sheet-locked { overflow: hidden; }
+}
 /* Focus is moved onto the sheet so Esc and screen readers land in it; that is
    not a reason to draw a ring round the whole panel. */
 .dl-sheet:focus { outline: none; }
@@ -4500,7 +4534,7 @@ html.pref-reduce-motion .dl-btn:active { transform: none; }
 
   /* Re-measured for what actually floats now: the bar (about 68px) at a 12px
      inset, plus the voice FAB above it. Was 200px for the old FAB stack. */
-  .view.active { padding-bottom: calc(190px + env(safe-area-inset-bottom, 0px)); }
+  .view.active { padding-bottom: 0; }
 }
 
 /* ---- The now block (spec 4.2) ---- */
@@ -4650,6 +4684,10 @@ html.pref-reduce-motion .dl-btn:active { transform: none; }
     margin-bottom: 22px;
   }
   .now-block { top: 84px; }
+}
+@media (max-width: 600px) {
+  /* --header-h is the header's live height (js/app.js bindHeaderCondense). */
+  .now-block { top: var(--header-h, 48px); }
 }
 
 /* ============================================================
@@ -5109,6 +5147,9 @@ html.pref-reduce-motion .dl-btn:active { transform: none; }
   font: 500 12.5px var(--font-body); color: var(--text-primary); background: var(--bg-card);
   border: 1px solid var(--border); border-radius: 10px; padding: 6px 8px; cursor: pointer;
 }
+/* Same height as the Open / All / Doing / Done control beside it; the phone's
+   44px select minimum made it stand taller than its row. */
+.tk-sort select { min-height: 35px; }
 .tk-sort select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .tk-clear {
   display: inline-flex; align-items: center; gap: 3px; margin-left: auto; min-height: 32px; padding: 0 8px;
@@ -5884,6 +5925,11 @@ details[open] > summary .cd-more-chev { transform: rotate(180deg); }
 .dt-search > .ms { font-size: 19px; color: var(--text-muted); }
 .dt-search-input { flex: 1; min-width: 0; border: 0; background: none; outline: 0; font: 400 15px var(--font-body); color: var(--text-primary); padding: 10px 0; }
 .dt-search-input::placeholder { color: var(--text-muted); }
+/* The box draws the focus ring; the field's own glow drew a second, inset
+   box inside it. Same for the other fields that sit inside a ringed box. */
+.dt-search-input:focus-visible, .search-box input:focus-visible,
+.dl-daynav-label input:focus-visible, .vc-type input:focus-visible,
+.vc-type textarea:focus-visible { box-shadow: none; }
 .dt-search-btn { display: grid; place-items: center; width: 38px; height: 38px; border: 0; border-radius: 10px; background: none; color: var(--text-secondary); cursor: pointer; }
 .dt-search-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
 .dt-search-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -5988,6 +6034,9 @@ button.dl-line-item:focus-visible { outline: 2px solid var(--accent); outline-of
 .ms-foot .dl-btn { min-height: 44px; }
 .ms-foot .dl-btn .ms { font-size: 18px; }
 .ms-foot .ms-foot-add { flex: 1; }
+/* Three buttons on a 390px phone: they shrink and clip their label rather than
+   push the sheet wider than the screen (which scrolled the page sideways). */
+.ms-foot .dl-btn { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ms-step button:hover { background: var(--bg-hover); color: var(--text-primary); }
 .ms-step button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .ms-step .ms { font-size: 17px; }

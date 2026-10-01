@@ -138,8 +138,18 @@ function briefSentence(s, nut, tasks) {
   // "Push today" reads better as "Push day at 6:30" once there is a time to put
   // on it — and it is the same session the line is drawing at that time.
   let lead = d.verdict;
-  if (!s.trainedToday && /today$/i.test(lead)) {
-    lead = lead.replace(/\s*today$/i, ' day at ' + briefWorkoutClock());
+  // Only a session verdict: "Rest today" used to become "Rest day at 18:30".
+  if (!s.trainedToday && /today$/i.test(lead) && !/^(rest|done)\b/i.test(lead)) {
+    // Once the planned time is well past, "Pull day at 18:30" at 23:00 reads
+    // as a stale screen. Say where the day actually is instead.
+    const slot = (typeof LINE_SLOT !== 'undefined' && LINE_SLOT.workout) || (18 * 60 + 30);
+    const now = new Date();
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const base = lead.replace(/\s*today$/i, '');
+    const name = base === 'Train' ? 'Training' : base;
+    if (nowMin >= 21 * 60 && nowMin > slot + 60) lead = name + ' was the plan today';
+    else if (nowMin > slot + 60) lead = name + ' is still open today';
+    else lead = base + ' day at ' + briefWorkoutClock();
   }
 
   let rest;

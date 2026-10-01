@@ -40,6 +40,26 @@ function lineMinutesFrom(at, fallbackMin) {
   return fallbackMin;
 }
 
+// Where a meal sits on the line. An entry's `at` is when it was LOGGED, which
+// is when it was eaten only if it was logged at the table. Breakfast logged at
+// 11pm used to jump to 23:00, below dinner. So a logged time is used only if it
+// is plausible for that meal; otherwise the meal keeps its usual slot. Snacks
+// are eaten at any hour, so a snack's logged time always counts.
+const LINE_MEAL_WINDOW = {
+  breakfast: [4 * 60, 11 * 60 + 30],
+  lunch: [10 * 60 + 30, 16 * 60],
+  dinner: [16 * 60, 24 * 60],
+  snack: [0, 24 * 60],
+};
+function mealLineMinutes(meal, entries) {
+  const slot = LINE_SLOT[meal];
+  const at = (entries || []).reduce((a, e) => (e.at && (!a || e.at < a) ? e.at : a), null);
+  const min = lineMinutesFrom(at, null);
+  const win = LINE_MEAL_WINDOW[meal];
+  if (min == null || !win || min < win[0] || min >= win[1]) return slot;
+  return min;
+}
+
 // Habit keys used to hold '1'. They hold a timestamp now, and both are read:
 // a '1' means done but at an unknown time, so it takes its default slot.
 function habitState(key, dateStr) {
@@ -112,8 +132,7 @@ function lineItemsFor(dateStr) {
   Object.keys(meals).forEach(meal => {
     const entries = (state.diet || []).filter(e => e.date === dateStr && e.meal === meal);
     const kcal = Math.round(entries.reduce((s, e) => s + (e.calories || 0), 0));
-    const at = entries.reduce((a, e) => (e.at && (!a || e.at < a) ? e.at : a), null);
-    const min = lineMinutesFrom(at, LINE_SLOT[meal]);
+    const min = mealLineMinutes(meal, entries);
     push({ sort: min, time: lineClock(min), c: 'food', icon: 'restaurant',
            title: meals[meal],
            sub: entries.length ? entries.map(e => e.food).filter(Boolean).slice(0, 3).join(', ') : 'nothing logged yet',
@@ -175,9 +194,12 @@ function lineItemsFor(dateStr) {
            sub: gym.map(e => e.exercise).filter(Boolean).slice(0, 3).join(', '),
            val: sets + (sets === 1 ? ' set' : ' sets'), past: true, tap: 'strength' });
   } else if (isToday) {
+    // An hour past its slot it is no longer "up next"; say so plainly.
+    const n = new Date();
+    const late = n.getHours() * 60 + n.getMinutes() > LINE_SLOT.workout + 60;
     push({ sort: LINE_SLOT.workout, time: lineClock(LINE_SLOT.workout), c: 'move',
-           icon: 'fitness_center', title: 'Workout', sub: 'planned by the coach', val: '',
-           card: true, tap: 'strength' });
+           icon: 'fitness_center', title: 'Workout', sub: late ? 'planned, not logged yet' : 'planned by the coach', val: '',
+           card: !late, tap: 'strength' });
   }
 
   // ---- calendar events, own and mirrored ----
