@@ -534,7 +534,9 @@ function render() {
 function renderSidebarCategories() {
   const list = $('#categoryList');
   list.innerHTML = state.categories.map(cat => {
-    const count = state.tasks.filter(t => t.category === cat.id).length;
+    // Open tasks, as the projects list below counts them. Counting done ones
+    // too made Work read 17 when the board showed a handful.
+    const count = state.tasks.filter(t => t.category === cat.id && t.status !== 'done').length;
     return `
       <div class="category-item" data-cat="${esc(cat.id)}">
         <span class="category-dot" style="background:${taxColor(cat)}"></span>
