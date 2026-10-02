@@ -103,6 +103,12 @@
    even with body clipped, and it does not scroll back. Clipping html too
    pins the page. clip (not hidden) keeps body from becoming a scroller. */
 html { overflow-x: hidden; overflow-x: clip; }
+/* No scroll anchoring. The pinned block on Today shrinks to a slim bar as
+   you scroll past it, and the header condenses: both take height out of the
+   page above where you are reading. Anchoring "kept your place" by scrolling
+   back up by that much, which put the page at the top, which expanded the
+   block again - so Today could not be scrolled past about 100px. */
+html { overflow-anchor: none; }
 
 body {
   font-family: var(--font-body);
