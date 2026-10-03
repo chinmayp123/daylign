@@ -1,81 +1,93 @@
-# Firebase security rules
+# Locking the database
 
-The database currently has **no rules**. It is world-readable, world-writable
-and world-deletable by anyone who has the URL — and the URL is in this repo.
+Today the database runs `firebase-rules-interim.json`: nothing can be deleted
+wholesale, but **anyone with the URL can read your data** (the URL is in this
+public repo). `firebase-rules.json` fixes that: only your signed-in account can
+read or change anything.
 
-I cannot apply these for you. Writing rules needs Firebase console access, and
-the app authenticates with nothing but a public config, so there is no
-credential here that could do it. Both files below are paste-ready.
+The order matters. Rules that demand sign-in, published before the app can
+sign in, lock the app out. So: console setup first (changes nothing for the
+app), then ship the app with sign-in, then publish the rules.
+
+Rollback at any point: paste `firebase-rules-interim.json` back and Publish.
+A rules change never touches data.
 
 ---
 
-## Step 1 — interim hardening (do this now, ~2 minutes)
+## Part 1: Firebase console (you, about 5 minutes)
 
-`firebase-rules-interim.json`
+None of this affects the app as it runs today.
 
-1. Firebase console → **Realtime Database** → **Rules**
-2. Replace everything in the editor with the contents of that file
-3. **Publish**
+1. **Back up.** Settings, Data and sync, Download a backup.
+2. **Turn on email sign-in.** Firebase console, Authentication, Sign-in
+   method, Email/Password, Enable (leave "Email link" off), Save.
+3. **Create your account.** Authentication, Users, Add user. Your email and a
+   password. Copy the **User UID** it shows.
+4. **Turn off sign-up.** Authentication, Settings, User actions: untick
+   **Enable create (sign-up)**, Save. The web key is public, so with sign-up
+   on, anyone could make an account.
 
-Nothing breaks. Nothing in it requires authentication, so the app and the
-iPhone Health Shortcuts keep working exactly as they do today.
+Then tell Claude it is done. Claude ships the app (Part 2).
 
-**What it stops**
+## Part 2: ship the app (Claude, on your OK)
 
-- **Wholesale deletion.** Every write must leave data behind, so a DELETE, a
-  null write, or a `{}` overwrite is refused. This is the "someone wipes all my
-  health data" case.
-- Destruction of the frozen pre-profiles backup at `/lifestack`, now read-only.
-- Junk in the shared food bank — shape and range validated.
-- Garbage dates or non-numeric values in the health node.
+The app gains a sign-in screen. Rules are still the interim ones, so syncing
+works exactly as before once you are signed in.
 
-**What it does not stop**
+5. On each device (phone, laptop): fully close and reopen the app, then sign
+   in with the account from step 3. Check the header pill reads **Synced** and
+   your data is there.
+   - "Use this device only" skips sign-in: the device's data stays usable and
+     syncs after you sign in from Settings, Data and sync.
 
-- **Reading.** Your data stays publicly readable to anyone with the URL. Only
-  real auth fixes that.
-- Overwriting a value with different-but-valid data.
+## Part 3: publish the rules (you, about 2 minutes)
 
-It is a seatbelt, not a lock.
+Only after every device you use has signed in (step 5).
 
-**Validated against the live database on 2026-08-11** — these rules accept
-every shape currently in it, and accept every write the app actually makes:
+6. **Mark yourself as the owner.** Realtime Database, Data. Hover the root,
+   **+**, key `owners`. Under it add key = your **User UID** from step 3,
+   value = `true` (boolean, not the text "true").
+7. **Publish.** Realtime Database, Rules. Double-click into the editor to
+   focus it, select all, paste the whole of `firebase-rules.json`, Publish.
+8. **Check from the app:** reload, pill reads Synced, add and delete a
+   throwaway task.
+9. **Check it is locked.** Open these in a private browser window; each must
+   say `Permission denied`:
+   - `https://lifestack-d5300-default-rtdb.firebaseio.com/profiles.json`
+   - `https://lifestack-d5300-default-rtdb.firebaseio.com/users/chinmay.json`
+   - `https://lifestack-d5300-default-rtdb.firebaseio.com/external/steps.json`
 
-| Path | Live shape | Verdict |
+If anything is wrong after step 7: paste `firebase-rules-interim.json` back
+and Publish. You are back where you started.
+
+---
+
+## What keeps working without changes
+
+| Writer | Path | Why it still works |
 |---|---|---|
-| `profiles` | `{"chinmay": "Chinmay"}` | passes |
-| `users/<id>` | object with children | passes |
-| `external/*/<date>` | all numeric, all ≥ 0 | passes |
-| `foodBank` | 32 entries, all have `name` + `calories`, zero unexpected keys | passes |
-| `lifestack` | legacy backup | becomes read-only |
+| iPhone Health Shortcut | `external/<metric>/<date>`, `external/workouts`, `external/lastSync` | Writes stay open, as in the interim rules. Only reads are locked. |
+| GitHub calendar Action | `external/calendar` | Same. |
+| Tester form (`report.html`) | `inbox` | Anyone can still *file* a report; only you can read, triage or delete them. |
 
-"Start fresh (erase this profile)" was specifically checked: it writes a
-starter object rather than deleting, so the no-delete rule does not break it.
+## Stage 2 (later, optional)
 
----
+The Shortcut and the calendar Action can still *write* without credentials, so
+a stranger could add fake health numbers (not read or delete). Closing that
+means giving each a credential (a database secret on the Shortcut URLs, or a
+sign-in step), then tightening those four `.write` rules. Not needed for
+privacy; worth doing eventually.
 
-## Step 2 — real auth (when you have an hour)
+## What the app does (for whoever works on it next)
 
-`firebase-rules.json`
-
-This is the version that actually stops strangers reading your data, but it
-requires Firebase Auth in the app first. **Do the prerequisites before pasting
-or you will lock yourself out.** They are listed in the file header:
-
-1. Enable a sign-in provider. Anonymous is not enough on its own — anyone can
-   mint an anonymous token, so it only deters casual scraping.
-2. Sign in once, copy your uid.
-3. Create `profileOwners/chinmay = "<your-uid>"` by hand. This binds the named
-   profile to an account **without moving `users/chinmay`**, which must not be
-   migrated.
-4. Append `?auth=<DATABASE_SECRET>` to every URL in the Health Shortcuts.
-   Legacy, but it is the only practical way for a Shortcut to authenticate.
-
----
-
-## A defect I fixed in both files
-
-They previously carried a `_comment` key as a sibling to `"rules"`. Firebase
-rejects unknown top-level keys, so **both files would have failed on paste**
-with `Unknown key: _comment`. The notes are now `//` comments, which the rules
-editor accepts. Both files were re-parsed after the change to confirm they are
-valid JSON with `rules` as the only top-level key.
+- `js/firebase-sync.js` `requireSignIn()` runs before the profile picker and
+  before any database read or write. `js/app.js` chains
+  `requireSignIn -> requireProfile -> initFirebaseSync`.
+- Signed out ("Use this device only") sets `cloudSignedOut`, which takes the
+  same local-only path as a session with no SDK. Nothing is lost; the next
+  signed-in load pushes the newer local data up.
+- Settings, Data and sync shows the signed-in email with Sign out, or Sign in.
+- The tester inbox watch starts after sign-in (it is owner-only under the rules).
+- Verified with a fake Firebase SDK (no network): no database call happens
+  before sign-in, wrong password, sign out, use-this-device-only, and signing
+  back in pushes the offline edit.

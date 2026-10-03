@@ -6569,3 +6569,6 @@ body.onboard-open { overflow: hidden; }
 .cmd-row-sub { font-family: var(--font-mono); font-size: 11px; }
 
 /* The floating mic and the thumb FAB are gone; the bottom bar's + adds. */
+
+/* Sign-in screen (index.html #authGate): the second button sits apart. */
+#authForm .dl-btn + .dl-btn { margin-top: 8px; }
