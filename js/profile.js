@@ -177,6 +177,15 @@ function updateProfileSettingsCard() {
   if (sideName) sideName.textContent = name;
   const avatar = document.getElementById('sidebarProfileAvatar');
   if (avatar) avatar.textContent = letter;
+  // Real account state, not just "a profile is picked": device-only sessions
+  // must not claim to be signed in.
+  const sub = document.querySelector('#sidebarProfile .sidebar-profile-sub');
+  if (sub) {
+    const email = (typeof authUserEmail === 'function') ? authUserEmail() : '';
+    sub.textContent = email ? 'Signed in' : 'This device only';
+    const btn = document.getElementById('sidebarProfile');
+    if (btn) btn.title = (email ? 'Signed in as ' + email : 'Not signed in: data stays on this device') + ' — tap to manage profiles';
+  }
 }
 
 // ---------- Usage report ----------
