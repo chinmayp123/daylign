@@ -29,6 +29,103 @@ if (!firebaseSdkLoaded) {
 const firebaseApp = firebaseSdkLoaded ? firebase.initializeApp(firebaseConfig) : null;
 const db = firebaseSdkLoaded ? firebase.database() : null;
 
+// ---------- Sign-in ----------
+// The database rules admit only a signed-in owner (firebase-rules.json), so
+// nothing may read or write the cloud until the account is known. Email and
+// password, because it needs no redirect: Google sign-in bounces through
+// firebaseapp.com, and an installed iPhone web app loses that state.
+// Accounts are made in the Firebase console; sign-up is switched off there.
+//
+// Signed out is never a lockout: "use this device only" runs the same
+// local-only path as a session with no SDK, and the data on this device stays
+// visible and editable. It syncs after the next sign-in (local is newer, so
+// the first load pushes it up).
+const fbAuth = (firebaseSdkLoaded && typeof firebase.auth === 'function') ? firebase.auth() : null;
+let cloudSignedOut = false;
+
+const AUTH_ERRORS = {
+  'auth/invalid-credential': 'Wrong email or password.',
+  'auth/invalid-login-credentials': 'Wrong email or password.',
+  'auth/wrong-password': 'Wrong email or password.',
+  'auth/user-not-found': 'Wrong email or password.',
+  'auth/invalid-email': 'That is not an email address.',
+  'auth/too-many-requests': 'Too many tries. Wait a minute, then try again.',
+  'auth/network-request-failed': 'No connection. Try again when you are online, or use this device only for now.',
+  'auth/operation-not-allowed': 'Sign-in is not switched on for this app yet (Firebase console, Authentication).',
+  'auth/user-disabled': 'This account is switched off.',
+};
+
+function authUserEmail() {
+  return (fbAuth && fbAuth.currentUser && fbAuth.currentUser.email) || '';
+}
+
+// Calls onReady exactly once: with the user, or with null for local-only.
+function requireSignIn(onReady) {
+  if (!fbAuth) { onReady(null); return; }   // no SDK: initFirebaseSync goes local-only
+  let done = false;
+  const finish = (user) => {
+    if (done) return;
+    done = true;
+    hideAuthGate();
+    onReady(user);
+  };
+  fbAuth.onAuthStateChanged(user => {
+    if (user) finish(user);
+    else if (!done) showAuthGate(() => { cloudSignedOut = true; finish(null); });
+  });
+}
+
+function showAuthGate(onSkip) {
+  const gate = document.getElementById('authGate');
+  if (!gate) { onSkip(); return; }
+  gate.hidden = false;
+  document.body.classList.add('profile-gated');
+  const form = document.getElementById('authForm');
+  const err = document.getElementById('authError');
+  const btn = document.getElementById('authSubmit');
+  const email = document.getElementById('authEmail');
+  const pass = document.getElementById('authPassword');
+  if (!form._bound) {
+    form._bound = true;
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (err) err.hidden = true;
+      btn.disabled = true;
+      btn.textContent = 'Signing in…';
+      // Success is picked up by onAuthStateChanged in requireSignIn.
+      fbAuth.signInWithEmailAndPassword(email.value.trim(), pass.value)
+        .catch(e2 => {
+          if (err) { err.textContent = AUTH_ERRORS[e2 && e2.code] || ('Could not sign in: ' + ((e2 && e2.message) || 'unknown error')); err.hidden = false; }
+          pass.value = '';
+          pass.focus();
+        })
+        .then(() => { btn.disabled = false; btn.textContent = 'Sign in'; });
+    });
+    document.getElementById('authSkip').addEventListener('click', () => gate._onSkip && gate._onSkip());
+  }
+  gate._onSkip = onSkip;
+  setTimeout(() => { try { email.focus(); } catch (e) {} }, 50);
+}
+
+function hideAuthGate() {
+  const gate = document.getElementById('authGate');
+  if (!gate || gate.hidden) return;
+  gate.hidden = true;
+  const pg = document.getElementById('profileGate');
+  if (!pg || pg.hidden) document.body.classList.remove('profile-gated');
+}
+
+// From Settings. Reloading starts sync cleanly from the top either way.
+function signOutOfCloud() {
+  if (!fbAuth) return;
+  fbAuth.signOut().then(() => location.reload());
+}
+function signInToCloud() {
+  if (!fbAuth) return;
+  showAuthGate(() => hideAuthGate());
+  const off = fbAuth.onAuthStateChanged(u => { if (u) { off(); location.reload(); } });
+}
+
 // Whose data this session reads and writes. Assigned in initFirebaseSync once
 // a profile has been chosen (see js/profile.js) — it is deliberately not set at
 // load time, so there is no ref to write through before we know who is using
@@ -422,7 +519,7 @@ let syncRetryTimer = null;
 let syncState = 'connecting';
 let lastSyncedAt = 0;
 
-const SYNC_STATE_LABELS = { connecting: 'Connecting…', saving: 'Saving…', synced: 'Synced', error: 'Not saving', offline: 'Offline' };
+const SYNC_STATE_LABELS = { connecting: 'Connecting…', saving: 'Saving…', synced: 'Synced', error: 'Not saving', offline: 'Offline', signedout: 'Signed out' };
 
 function syncStatusInfo() {
   return { state: syncState, label: SYNC_STATE_LABELS[syncState] || SYNC_STATE_LABELS.connecting, message: lastSyncError, at: lastSyncedAt };
@@ -457,6 +554,12 @@ function setSyncStatus(state, message) {
       el.classList.add('is-error');
       if (txt) txt.textContent = 'Not saving';
       el.title = message || 'Cloud sync failed — your changes are only on this device. Use Backup to be safe.';
+      break;
+    case 'signedout':
+      // Chose "use this device only" at sign-in. Like offline, nothing is lost.
+      el.classList.add('is-offline');
+      if (txt) txt.textContent = 'Signed out';
+      el.title = 'Signed out. Changes are saved on this device; sign in from Settings, Data and sync, to sync them.';
       break;
     case 'offline':
       // No network, or no SDK at all this session. Distinct from 'error',
@@ -628,13 +731,13 @@ function initFirebaseSync(onDataReceived) {
   // which reads data.tasks and throws on null. There is no cloud snapshot to
   // apply here; state.js has already loaded localStorage, so the right move is
   // to leave it alone and just render.
-  if (!db) {
+  if (!db || cloudSignedOut) {
     // Saves must still advance this device's clock, or an edit made in a
     // session with no SDK looks older than the cloud and is overwritten on the
     // next online load. Same trade-off as a failed first read (below): what was
     // done on this device wins.
     appReconciled = true;
-    setSyncStatus('offline');
+    setSyncStatus(cloudSignedOut ? 'signedout' : 'offline');
     document.body.classList.remove('app-loading');
     if (typeof render === 'function') render();
     // A profile created with no SDK still gets its setup, as it does when the
@@ -648,6 +751,8 @@ function initFirebaseSync(onDataReceived) {
   DATA_REF = db.ref(profileDataPath());
   loadExternalData();
   loadSharedFoods();
+  // The inbox is owner-only under the rules, so it waits for sign-in too.
+  if (typeof startInboxWatch === 'function') startInboxWatch();
 
   // The owner's data has to be in place before the first read, or an empty
   // node would look like "no cloud data" and get overwritten by local state.

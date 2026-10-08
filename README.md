@@ -285,11 +285,10 @@ state object syncs. A new synced key must be added in four places:
 
 ## Known gaps
 
-- **The Firebase database has no security rules.** It is world-readable and
-  world-writable; anyone with the URL can read or delete all data. Rules are
-  drafted in `firebase-rules.json` (needs Firebase Auth added first) and
-  `firebase-rules-interim.json` (safe to apply today, blocks deletion).
-  This is the single most important outstanding item.
+- **The database is readable by anyone with the URL** until the owner-only
+  rules are published. The interim rules (live) block wholesale deletion; the
+  app now signs in with email and password; `FIREBASE-RULES.md` is the
+  runbook for the console steps and the final `firebase-rules.json`.
 - Drag-and-drop on the Board and Schedule uses HTML5 DnD, which fires no
   events from touch on iOS — those are mouse-only. `layout.js` uses pointer
   events and does work on touch.

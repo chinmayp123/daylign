@@ -1,98 +1,121 @@
-// TARGET RULES — requires Firebase Auth in the app first.
-// Firebase rejects unknown top-level keys, so these notes are //
-// comments rather than a "_comment" sibling to "rules".
-//
-// TARGET RULES for Daylign — requires Firebase Auth to be added to the app first.
-// Paste into: Firebase console -> Realtime Database -> Rules.
-//
-// PREREQUISITES (do these BEFORE pasting, or you will lock yourself out):
-//   1. Enable a sign-in provider (Authentication -> Sign-in method).
-//      Google or Email/Password both work. Anonymous is NOT enough on its own:
-//      anyone can mint an anonymous token, so it only stops casual scraping.
-//   2. Sign in once in the app, copy your uid from Authentication -> Users.
-//   3. In the database, create this mapping by hand (one node per person):
-//         profileOwners/chinmay = "<your-uid>"
-//      This is what binds a named profile to an account WITHOUT having to
-//      migrate users/chinmay to a uid-keyed path (that data must not move).
-//   4. For the iPhone Health Shortcuts, append an auth token to every URL:
-//         .../external/steps/2026-08-03.json?auth=<DATABASE_SECRET>
-//      Get it at Project Settings -> Service Accounts -> Database secrets.
-//      Legacy but still functional, and it is the only practical way for a
-//      Shortcut to authenticate.
 {
+  // TARGET RULES, stage 1: reads locked to the owner. Paste into Firebase
+  // console -> Realtime Database -> Rules ONLY after the steps in
+  // FIREBASE-RULES.md are done (sign-in enabled, your account created, sign-up
+  // turned off, owners/<your-uid> = true written, the app shipped with sign-in
+  // and you signed in once).
+  //
+  // "Trusted" below means: signed in AND listed under owners/<uid>. It is
+  // never just `auth != null` - the Web API key is public, so while sign-up is
+  // open anyone can mint an account, and even with sign-up off, owners/ is the
+  // line that decides who sees data.
+  //
+  // Unchanged from the interim rules on purpose (stage 2 locks these):
+  //   - external/<metric>/<date>, external/workouts, external/lastSync:
+  //     the iPhone Health Shortcut writes these with no credentials today.
+  //   - external/calendar: the GitHub Action writes it with no credentials.
+  //   - inbox create: testers file through report.html with no account.
+  // Nothing in this file can be deleted wholesale, as in the interim rules.
+  //
+  // Rollback: paste firebase-rules-interim.json back. Data is never touched by
+  // a rules change.
   "rules": {
     ".read": false,
     ".write": false,
-    "profileOwners": {
-      ".read": "auth != null",
+
+    // Who may see and change data. Written by hand in the console (the
+    // console ignores these rules), never by the app.
+    "owners": {
+      ".read": false,
       ".write": false
     },
+
     "profiles": {
-      ".read": "auth != null",
+      ".read": "auth != null && root.child('owners/' + auth.uid).val() === true",
       "$profileId": {
-        ".write": "auth != null && auth.uid === root.child('profileOwners/' + $profileId).val()",
+        ".write": "auth != null && root.child('owners/' + auth.uid).val() === true && newData.exists()",
         ".validate": "newData.isString() && newData.val().length <= 60"
       }
     },
+
     "users": {
+      // Read at this level too: Settings -> AI usage reads every profile.
+      ".read": "auth != null && root.child('owners/' + auth.uid).val() === true",
       "$profileId": {
-        ".read": "auth != null && auth.uid === root.child('profileOwners/' + $profileId).val()",
-        ".write": "auth != null && auth.uid === root.child('profileOwners/' + $profileId).val()",
-        ".validate": "newData.hasChildren()",
-        "lastUpdated": {
-          ".validate": "newData.isNumber()"
-        }
+        ".write": "auth != null && root.child('owners/' + auth.uid).val() === true && newData.exists()",
+        ".validate": "newData.hasChildren()"
       }
     },
+
     "external": {
-      "$metric": {
-        "$date": {
-          ".read": "auth != null",
-          ".write": "auth != null",
-          ".validate": "newData.isNumber() && $date.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"
-        }
-      },
+      // The app reads the whole node in one go (js/firebase-sync.js,
+      // loadExternalData), so the grant has to be HERE: a read granted only
+      // on children does not satisfy a read of the parent.
+      ".read": "auth != null && root.child('owners/' + auth.uid).val() === true",
+
       "u": {
         "$profileId": {
-          ".read": "auth != null && auth.uid === root.child('profileOwners/' + $profileId).val()",
-          ".write": "auth != null && auth.uid === root.child('profileOwners/' + $profileId).val()"
+          ".write": "newData.exists()"
         }
       },
+      "calendar": {
+        // Whole-list PUT from the Action; an empty week must be able to clear it.
+        ".write": true
+      },
       "workouts": {
-        ".read": "auth != null",
-        ".write": "auth != null"
-      }
-    },
-    "foodBank": {
-      ".read": "auth != null",
-      "$foodKey": {
-        ".write": "auth != null",
-        ".validate": "newData.hasChildren(['name', 'calories'])",
-        "name": {
-          ".validate": "newData.isString() && newData.val().length <= 120"
-        },
-        "calories": {
-          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000"
-        },
-        "protein": {
-          ".validate": "newData.isNumber() && newData.val() >= 0"
-        },
-        "carbs": {
-          ".validate": "newData.isNumber() && newData.val() >= 0"
-        },
-        "fat": {
-          ".validate": "newData.isNumber() && newData.val() >= 0"
-        },
-        "fiber": {
-          ".validate": "newData.isNumber() && newData.val() >= 0"
-        },
-        "$other": {
-          ".validate": false
+        "$date": { ".write": "newData.exists()" }
+      },
+      "lastSync": {
+        ".write": "newData.exists()",
+        ".validate": "newData.isNumber() || (newData.isString() && newData.val().length <= 64)"
+      },
+      "$metric": {
+        "$date": {
+          ".write": "newData.exists()",
+          ".validate": "newData.isNumber() && newData.val() >= 0 && $date.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"
         }
       }
     },
+
+    "foodBank": {
+      ".read": "auth != null && root.child('owners/' + auth.uid).val() === true",
+      "$foodKey": {
+        ".write": "auth != null && root.child('owners/' + auth.uid).val() === true && newData.exists()",
+        ".validate": "newData.hasChildren(['name', 'calories'])",
+        "name":     { ".validate": "newData.isString() && newData.val().length <= 120" },
+        "calories": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000" },
+        "protein":  { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "carbs":    { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "fat":      { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "fiber":    { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "$other":   { ".validate": false }
+      }
+    },
+
+    // Tester reports (report.html). Anyone may FILE one; only the owner may
+    // read, triage or delete. A filed report's content can never be edited.
+    "inbox": {
+      ".read": "auth != null && root.child('owners/' + auth.uid).val() === true",
+      "$reportId": {
+        ".write": "(!data.exists() && newData.exists()) || (!newData.exists() && auth != null && root.child('owners/' + auth.uid).val() === true)",
+        ".validate": "newData.hasChildren(['title', 'at'])",
+        "title":   { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "detail":  { ".validate": "newData.isString() && newData.val().length <= 4000" },
+        "who":     { ".validate": "newData.isString() && newData.val().length <= 60" },
+        "project": { ".validate": "newData.isString() && newData.val().length <= 40" },
+        "status":  { ".write": "auth != null && root.child('owners/' + auth.uid).val() === true",
+                     ".validate": "newData.isString() && newData.val().length <= 20" },
+        "at":      { ".validate": "newData.isNumber()" },
+        "shots": {
+          "$i": { ".validate": "newData.isString() && newData.val().length <= 900000" }
+        },
+        "$other": { ".validate": false }
+      }
+    },
+
+    // Frozen pre-profiles backup.
     "lifestack": {
-      ".read": "auth != null",
+      ".read": "auth != null && root.child('owners/' + auth.uid).val() === true",
       ".write": false
     }
   }

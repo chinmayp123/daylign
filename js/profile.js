@@ -59,7 +59,8 @@ function saveProfile(profile) {
   localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
   // Registry of who exists, so a future "compare our week" view can find both
   // of us. Never read for auth — it is a convenience list, nothing more.
-  try { db.ref('profiles/' + profile.id).set(profile.name); } catch (e) { /* offline is fine */ }
+  if (typeof cloudSignedOut !== 'undefined' && cloudSignedOut) return;
+  try { db.ref('profiles/' + profile.id).set(profile.name).catch(() => {}); } catch (e) { /* offline is fine */ }
 }
 
 // Gate startup on a profile being chosen. Firebase sync is not started until
@@ -133,7 +134,7 @@ function showProfileGate(onReady) {
   // with a tap instead of retyping their name. Best-effort — offline just shows
   // the owner plus the create box.
   const seen = { [OWNER_PROFILE.id]: true };
-  try {
+  if (!(typeof cloudSignedOut !== 'undefined' && cloudSignedOut)) try {
     db.ref('profiles').once('value').then(snap => {
       const reg = snap.val() || {};
       Object.keys(reg).forEach(id => {
@@ -176,6 +177,15 @@ function updateProfileSettingsCard() {
   if (sideName) sideName.textContent = name;
   const avatar = document.getElementById('sidebarProfileAvatar');
   if (avatar) avatar.textContent = letter;
+  // Real account state, not just "a profile is picked": device-only sessions
+  // must not claim to be signed in.
+  const sub = document.querySelector('#sidebarProfile .sidebar-profile-sub');
+  if (sub) {
+    const email = (typeof authUserEmail === 'function') ? authUserEmail() : '';
+    sub.textContent = email ? 'Signed in' : 'This device only';
+    const btn = document.getElementById('sidebarProfile');
+    if (btn) btn.title = (email ? 'Signed in as ' + email : 'Not signed in: data stays on this device') + ' — tap to manage profiles';
+  }
 }
 
 // ---------- Usage report ----------

@@ -15,7 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
   bindSheetDrag();
   if (typeof bindSyncStatusUI === 'function') bindSyncStatusUI();
   if (typeof bindDiagnostics === 'function') bindDiagnostics();
-  if (typeof startInboxWatch === 'function') startInboxWatch();
   if (typeof bindCsvImport === 'function') bindCsvImport();
   // The date format is breakpoint-dependent, so it has to be re-derived when
   // the viewport crosses 600px (rotation, or a resized desktop window).
@@ -37,7 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // push local state after a timeout, which could clobber newer cloud data
   // before it had a chance to load.
   updateProfileSettingsCard();
-  requireProfile(() => initFirebaseSync(applyFirebaseData));
+  // Signed in first: the profile list and every node after it are owner-only.
+  requireSignIn(() => requireProfile(() => initFirebaseSync(applyFirebaseData)));
 });
 
 // "Tuesday, August 11, 2026" is 24 characters competing with the title for a

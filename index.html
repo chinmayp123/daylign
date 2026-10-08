@@ -48,7 +48,7 @@
         </div>
         <span>Daylign</span>
       </div>
-      <button class="sidebar-profile" id="sidebarProfile" type="button" title="You're signed in here — tap to manage profiles">
+      <button class="sidebar-profile" id="sidebarProfile" type="button" title="Tap to manage profiles">
         <span class="sidebar-profile-avatar" id="sidebarProfileAvatar">D</span>
         <span class="sidebar-profile-meta">
           <span class="sidebar-profile-name" id="sidebarProfileName">—</span>
@@ -1127,6 +1127,27 @@
       <p class="profile-gate-error" id="profileGateError" role="alert" hidden></p>
       <button type="button" class="dl-btn primary full" id="profileCreateBtn">Create my profile</button>
     </div>
+  </div>
+
+  <!-- Sign-in (js/firebase-sync.js requireSignIn). The database admits only a
+       signed-in owner; "use this device only" keeps the app usable offline. -->
+  <div class="profile-gate" id="authGate" hidden>
+    <form class="profile-gate-card" id="authForm" role="dialog" aria-modal="true" aria-labelledby="authTitle" novalidate>
+      <div class="profile-gate-mark" aria-hidden="true">D</div>
+      <h1 id="authTitle">Sign in to Daylign</h1>
+      <p class="profile-gate-desc">Your data in the cloud is private to your account. Sign in once on each device.</p>
+      <div class="dl-field">
+        <label for="authEmail">Email</label>
+        <input type="email" id="authEmail" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false" required>
+      </div>
+      <div class="dl-field">
+        <label for="authPassword">Password</label>
+        <input type="password" id="authPassword" autocomplete="current-password" required>
+      </div>
+      <p class="profile-gate-error" id="authError" role="alert" hidden></p>
+      <button type="submit" class="dl-btn primary full" id="authSubmit">Sign in</button>
+      <button type="button" class="dl-btn full" id="authSkip">Use this device only</button>
+    </form>
   </div>
 
   <!-- Setup (spec 10.2): first run for a new profile, and Replay setup from Settings (js/onboarding.js) -->

@@ -189,15 +189,31 @@ function renderSettingsSync() {
     title = 'Not saving to the cloud'; icon = 'cloud_off'; tint = ' tint c-food';
     note = s.message || 'Cloud sync failed. Your changes are saved on this device.';
     side = 'retries every 30s'; retry = true;
+  } else if (s.state === 'signedout') {
+    title = 'Signed out'; icon = 'cloud_off';
+    note = 'Changes are saved on this device. Sign in to sync them to the cloud.';
   } else {
     title = 'On this device only'; icon = 'cloud_off';
     note = 'Cloud sync is unavailable this session. Changes are saved on this device.';
   }
+  const email = (typeof authUserEmail === 'function') ? authUserEmail() : '';
+  const authOn = typeof fbAuth !== 'undefined' && !!fbAuth;
+  const account = !authOn ? '' : email
+    ? `<div class="set-btnrow"><span class="set-sub">Signed in as ${esc(email)}</span><button type="button" class="dl-btn" data-auth-out>Sign out</button></div>`
+    : '<div class="set-btnrow"><button type="button" class="dl-btn primary" data-auth-in>Sign in</button></div>';
   el.className = 'dl-card set-sync' + tint;
   setHtml(el, `
     <div class="dl-card-h"><span class="set-sync-t"><span class="ms" aria-hidden="true">${icon}</span>${esc(title)}</span>${side ? `<em>${esc(side)}</em>` : ''}</div>
     <p class="set-sub">${esc(note)}</p>
-    ${retry ? '<div class="set-btnrow"><button type="button" class="dl-btn" data-sync-retry>Retry now</button></div>' : ''}`);
+    ${retry ? '<div class="set-btnrow"><button type="button" class="dl-btn" data-sync-retry>Retry now</button></div>' : ''}
+    ${account}`);
+  if (!el._authBound) {
+    el._authBound = true;
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('[data-auth-out]') && typeof signOutOfCloud === 'function') signOutOfCloud();
+      if (e.target.closest('[data-auth-in]') && typeof signInToCloud === 'function') signInToCloud();
+    });
+  }
 }
 
 // Called by the sync layer whenever the header pill changes.
